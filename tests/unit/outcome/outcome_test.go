@@ -73,6 +73,24 @@ func TestSerializerEmitsOneContentFreeObject(t *testing.T) {
 	}
 }
 
+func TestOutcomeBindingsAcceptOnlyFullGitObjectIDs(t *testing.T) {
+	for _, width := range []int{40, 64} {
+		value, _ := outcome.NewTerminal("123e4567-e89b-42d3-a456-426614174000", "pr", outcome.ReasonUnavailableEngine, 1, fixedTime, fixedTime)
+		d := strings.Repeat("a", 64)
+		oid := strings.Repeat("b", width)
+		value.Bindings = &outcome.Bindings{ScannerReleaseDigest: d, EngineName: "gitleaks", EngineVersion: "1.0.0", EngineBinaryDigest: d, AdapterVersion: "1.0.0", RulePackDigest: d, PolicyDigest: d, AllowlistDigest: d, RequestSchemaVersion: "1.0", SourceBaseCommit: oid, SourceHeadCommit: oid, SourceMergeBase: oid, HistoryRangeDigest: d, TrackedTreeDigest: d, TrackedSourceManifestDigest: d}
+		if err := value.Validate(); err != nil {
+			t.Fatalf("%d-hex full object ID rejected: %v", width, err)
+		}
+	}
+	value, _ := outcome.NewTerminal("123e4567-e89b-42d3-a456-426614174000", "pr", outcome.ReasonUnavailableEngine, 1, fixedTime, fixedTime)
+	d := strings.Repeat("a", 64)
+	value.Bindings = &outcome.Bindings{ScannerReleaseDigest: d, EngineName: "gitleaks", EngineVersion: "1.0.0", EngineBinaryDigest: d, AdapterVersion: "1.0.0", RulePackDigest: d, PolicyDigest: d, AllowlistDigest: d, RequestSchemaVersion: "1.0", SourceHeadCommit: strings.Repeat("b", 12), HistoryRangeDigest: d, TrackedTreeDigest: d, TrackedSourceManifestDigest: d}
+	if err := value.Validate(); err == nil {
+		t.Fatal("abbreviated object ID was accepted")
+	}
+}
+
 func TestSerializerRejectsStateReasonAndInjection(t *testing.T) {
 	value, _ := outcome.NewTerminal("123e4567-e89b-42d3-a456-426614174000", "pr", outcome.ReasonFailInputIntegrity, 1, fixedTime, fixedTime)
 	value.State = outcome.StatePass

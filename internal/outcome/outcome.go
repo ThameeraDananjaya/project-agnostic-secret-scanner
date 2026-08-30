@@ -110,6 +110,7 @@ var stateExit = map[State]int{
 
 var uuidV4Pattern = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
 var digestPattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
+var gitOIDPattern = regexp.MustCompile(`^(?:[0-9a-f]{40}|[0-9a-f]{64})$`)
 var versionTokenPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._+-]{0,63}$`)
 
 var reasonState = map[ReasonCode]State{
@@ -237,7 +238,7 @@ func (o Outcome) Validate() error {
 	}
 	if o.Bindings != nil {
 		b := o.Bindings
-		if !digestPattern.MatchString(b.ScannerReleaseDigest) || b.EngineName != "gitleaks" || !versionTokenPattern.MatchString(b.EngineVersion) || !digestPattern.MatchString(b.EngineBinaryDigest) || !versionTokenPattern.MatchString(b.AdapterVersion) || !digestPattern.MatchString(b.RulePackDigest) || !digestPattern.MatchString(b.PolicyDigest) || !digestPattern.MatchString(b.AllowlistDigest) || !digestPattern.MatchString(b.SourceHeadCommit) || !digestPattern.MatchString(b.HistoryRangeDigest) || !digestPattern.MatchString(b.TrackedTreeDigest) || !digestPattern.MatchString(b.TrackedSourceManifestDigest) || !optionalDigest(b.SourceBaseCommit) || !optionalDigest(b.SourceMergeBase) || !optionalDigest(b.BuildContextManifestDigest) || !optionalDigest(b.ArtifactManifestDigest) {
+		if !digestPattern.MatchString(b.ScannerReleaseDigest) || b.EngineName != "gitleaks" || !versionTokenPattern.MatchString(b.EngineVersion) || !digestPattern.MatchString(b.EngineBinaryDigest) || !versionTokenPattern.MatchString(b.AdapterVersion) || !digestPattern.MatchString(b.RulePackDigest) || !digestPattern.MatchString(b.PolicyDigest) || !digestPattern.MatchString(b.AllowlistDigest) || !gitOIDPattern.MatchString(b.SourceHeadCommit) || !digestPattern.MatchString(b.HistoryRangeDigest) || !digestPattern.MatchString(b.TrackedTreeDigest) || !digestPattern.MatchString(b.TrackedSourceManifestDigest) || !optionalGitOID(b.SourceBaseCommit) || !optionalGitOID(b.SourceMergeBase) || !optionalDigest(b.BuildContextManifestDigest) || !optionalDigest(b.ArtifactManifestDigest) {
 			return errors.New("invalid bindings")
 		}
 		version, err := parseSchemaVersion(b.RequestSchemaVersion)
@@ -249,6 +250,7 @@ func (o Outcome) Validate() error {
 }
 
 func optionalDigest(value string) bool { return value == "" || digestPattern.MatchString(value) }
+func optionalGitOID(value string) bool { return value == "" || gitOIDPattern.MatchString(value) }
 
 func parseSchemaVersion(value string) (int, error) {
 	match := regexp.MustCompile(`^([0-9]+)\.[0-9]+$`).FindStringSubmatch(value)

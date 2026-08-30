@@ -11,7 +11,11 @@ import (
 
 func TestLinuxAcceptsBoundedAbsoluteWorkspaceRoot(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "scanner")
-	if _, err := workspace.NewManager(root); err != nil {
+	manager, err := workspace.NewManager(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := manager.Close(); err != nil {
 		t.Fatal(err)
 	}
 }

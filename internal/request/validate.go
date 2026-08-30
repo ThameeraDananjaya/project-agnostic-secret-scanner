@@ -25,6 +25,7 @@ const (
 )
 
 var digestPattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
+var gitOIDPattern = regexp.MustCompile(`^(?:[0-9a-f]{40}|[0-9a-f]{64})$`)
 var versionPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._+-]{0,63}$`)
 var uuidV4Pattern = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
 
@@ -46,7 +47,7 @@ func ValidateAt(value ScanRequest, now time.Time) error {
 	if value.Mode != "local" && value.Mode != "pr" && value.Mode != "release" {
 		return reject(outcome.ReasonFailInputIntegrity)
 	}
-	if !allDigests(value.ScannerReleaseDigest, value.EngineBinding.BinaryDigest, value.RulePackDigest, value.PolicyDigest, value.AllowlistDigest, value.SourceBinding.HeadCommit, value.SourceBinding.HistoryRangeDigest, value.SourceBinding.TrackedTreeDigest, value.TrackedSourceManifest.Digest) {
+	if !allDigests(value.ScannerReleaseDigest, value.EngineBinding.BinaryDigest, value.RulePackDigest, value.PolicyDigest, value.AllowlistDigest, value.SourceBinding.HistoryRangeDigest, value.SourceBinding.TrackedTreeDigest, value.TrackedSourceManifest.Digest) || !gitOIDPattern.MatchString(value.SourceBinding.HeadCommit) || !optionalGitOID(value.SourceBinding.BaseCommit) || !optionalGitOID(value.SourceBinding.MergeBase) {
 		return reject(outcome.ReasonFailBindingMismatch)
 	}
 	if value.EngineBinding.Name != "gitleaks" || !versionPattern.MatchString(value.EngineBinding.Version) || !versionPattern.MatchString(value.EngineBinding.AdapterVersion) {
@@ -63,7 +64,7 @@ func ValidateAt(value ScanRequest, now time.Time) error {
 		return reject(outcome.ReasonFailInputIntegrity)
 	}
 	if value.Mode == "pr" {
-		if value.SourceBinding.FirstRelease || !allDigests(value.SourceBinding.BaseCommit, value.SourceBinding.MergeBase) {
+		if value.SourceBinding.FirstRelease || !allGitOIDs(value.SourceBinding.BaseCommit, value.SourceBinding.MergeBase) {
 			return reject(outcome.ReasonFailBindingMismatch)
 		}
 	}
@@ -78,7 +79,7 @@ func ValidateAt(value ScanRequest, now time.Time) error {
 			if value.SourceBinding.BaseCommit != "" {
 				return reject(outcome.ReasonFailBindingMismatch)
 			}
-		} else if !digestPattern.MatchString(value.SourceBinding.BaseCommit) {
+		} else if !gitOIDPattern.MatchString(value.SourceBinding.BaseCommit) {
 			return reject(outcome.ReasonFailBindingMismatch)
 		}
 	}
@@ -147,6 +148,17 @@ func allDigests(values ...string) bool {
 	}
 	return true
 }
+
+func allGitOIDs(values ...string) bool {
+	for _, value := range values {
+		if !gitOIDPattern.MatchString(value) {
+			return false
+		}
+	}
+	return true
+}
+
+func optionalGitOID(value string) bool { return value == "" || gitOIDPattern.MatchString(value) }
 
 func validateLimits(mode string, limits Limits) error {
 	maxExpanded := maxPRExpandedBytes

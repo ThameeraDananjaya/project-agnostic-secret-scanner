@@ -97,3 +97,52 @@ func TestRunCorruptionUnknownMajorAndArgumentInjectionFailClosed(t *testing.T) {
 		t.Fatal("argument injection escaped")
 	}
 }
+
+func TestRunInvalidRequestIdentityStillEmitsOneSafeOutcome(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		mutate func(map[string]any)
+	}{
+		{"scanId", func(v map[string]any) { v["scanId"] = "invalid" }},
+		{"mode", func(v map[string]any) { v["mode"] = "invalid" }},
+		{"supersedes", func(v map[string]any) { v["supersedesScanId"] = "invalid" }},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			path, _ := cliRequest(t)
+			data, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var object map[string]any
+			_ = json.Unmarshal(data, &object)
+			test.mutate(object)
+			data, _ = json.Marshal(object)
+			if err := os.WriteFile(path, data, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			var stdout, stderr bytes.Buffer
+			code := run([]string{"--request", path}, &stdout, &stderr, func() time.Time { return cliTestTime })
+			decoder := json.NewDecoder(&stdout)
+			var value outcome.Outcome
+			if err := decoder.Decode(&value); err != nil {
+				t.Fatal(err)
+			}
+			if code != 10 || value.ScanID == "invalid" || value.Mode != "unknown" || value.SupersedesScanID != "" || value.ReasonCode != outcome.ReasonFailInputIntegrity {
+				t.Fatalf("unsafe rejection outcome: code=%d value=%#v", code, value)
+			}
+		})
+	}
+}
+
+func TestRunInvalidAttemptEmitsRepresentableInputFailure(t *testing.T) {
+	path, _ := cliRequest(t)
+	var stdout, stderr bytes.Buffer
+	code := run([]string{"--request", path, "--attempt", "0"}, &stdout, &stderr, func() time.Time { return cliTestTime })
+	var value outcome.Outcome
+	if err := json.Unmarshal(stdout.Bytes(), &value); err != nil {
+		t.Fatal(err)
+	}
+	if code != 10 || value.AttemptNumber != 1 || value.ReasonCode != outcome.ReasonFailInputIntegrity || value.State != outcome.StateFail {
+		t.Fatalf("invalid invocation was not safely representable: code=%d value=%#v", code, value)
+	}
+}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"io"
@@ -34,7 +35,7 @@ func run(args []string, stdout, stderr io.Writer, now func() time.Time) int {
 	flags.IntVar(&attempt, "attempt", 1, "")
 	if err := flags.Parse(args); err != nil || flags.NArg() != 0 || attempt < 1 || attempt > 3 || ((*requestPath == "") == (*requestFD < 0)) {
 		writeDiagnostic(stderr, "invalid invocation")
-		return emit(stdout, safeID, mode, supersedes, reason, attempt, started, now().UTC(), bindings)
+		return emit(stdout, safeID, mode, supersedes, reason, safeAttempt(attempt), started, now().UTC(), bindings)
 	}
 
 	reader, closeReader, err := openRequest(*requestPath, *requestFD)
@@ -49,12 +50,12 @@ func run(args []string, stdout, stderr io.Writer, now func() time.Time) int {
 		writeDiagnostic(stderr, "request rejected")
 		return emit(stdout, safeID, mode, supersedes, reason, attempt, started, now().UTC(), bindings)
 	}
-	safeID, mode, supersedes = value.ScanID, value.Mode, value.SupersedesScanID
 	if err := request.ValidateAt(value, now().UTC()); err != nil {
 		reason = request.ReasonFor(err, outcome.ReasonFailInputIntegrity)
 		writeDiagnostic(stderr, "request rejected")
 		return emit(stdout, safeID, mode, supersedes, reason, attempt, started, now().UTC(), bindings)
 	}
+	safeID, mode, supersedes = value.ScanID, value.Mode, value.SupersedesScanID
 	if err := request.ValidateBoundFiles(value); err != nil {
 		reason = request.ReasonFor(err, outcome.ReasonFailInputIntegrity)
 		writeDiagnostic(stderr, "request bindings rejected")
@@ -88,6 +89,7 @@ func run(args []string, stdout, stderr io.Writer, now func() time.Time) int {
 		writeDiagnostic(stderr, "workspace unavailable")
 		return emit(stdout, safeID, mode, supersedes, outcome.ReasonUnavailableWorkspace, attempt, started, now().UTC(), bindings)
 	}
+	defer manager.Close()
 	space, err := manager.Create(value.ScanID, attempt)
 	if err != nil {
 		writeDiagnostic(stderr, "workspace unavailable")
@@ -101,12 +103,16 @@ func run(args []string, stdout, stderr io.Writer, now func() time.Time) int {
 	return emit(stdout, safeID, mode, supersedes, outcome.ReasonUnavailableEngine, attempt, started, now().UTC(), bindings)
 }
 
+func safeAttempt(attempt int) int {
+	if attempt < 1 || attempt > 3 {
+		return 1
+	}
+	return attempt
+}
+
 func openRequest(path string, fd int) (io.Reader, func(), error) {
 	if path != "" {
-		if err := request.ValidateLocalPath(path); err != nil {
-			return nil, func() {}, err
-		}
-		file, err := os.Open(path)
+		file, err := request.OpenLocal(path)
 		if err != nil {
 			return nil, func() {}, err
 		}
@@ -115,9 +121,9 @@ func openRequest(path string, fd int) (io.Reader, func(), error) {
 	if fd < 3 {
 		return nil, func() {}, fmt.Errorf("unsafe descriptor")
 	}
-	file := os.NewFile(uintptr(fd), "request")
-	if file == nil {
-		return nil, func() {}, fmt.Errorf("descriptor unavailable")
+	file, err := request.OpenDescriptor(uintptr(fd), 5*time.Second)
+	if err != nil {
+		return nil, func() {}, err
 	}
 	return file, func() { _ = file.Close() }, nil
 }
@@ -125,11 +131,19 @@ func openRequest(path string, fd int) (io.Reader, func(), error) {
 func emit(w io.Writer, scanID, mode, supersedes string, reason outcome.ReasonCode, attempt int, start, end time.Time, bindings *outcome.Bindings) int {
 	value, err := outcome.NewTerminal(scanID, mode, reason, attempt, start, end)
 	if err != nil {
-		value, _ = outcome.NewTerminal("00000000-0000-4000-8000-000000000000", "unknown", outcome.ReasonTerminalInternalInvariant, 1, start, end)
+		value = fallbackOutcome(start, end)
 	}
 	value.Bindings = bindings
 	value.SupersedesScanID = supersedes
-	if err := outcome.Serialize(w, value); err != nil {
+	var encoded bytes.Buffer
+	if err := outcome.Serialize(&encoded, value); err != nil {
+		value = fallbackOutcome(start, end)
+		encoded.Reset()
+		if err := outcome.Serialize(&encoded, value); err != nil {
+			return 40
+		}
+	}
+	if _, err := w.Write(encoded.Bytes()); err != nil {
 		return 40
 	}
 	code, ok := outcome.ExitCode(value.State)
@@ -137,6 +151,14 @@ func emit(w io.Writer, scanID, mode, supersedes string, reason outcome.ReasonCod
 		return 40
 	}
 	return code
+}
+
+func fallbackOutcome(start, end time.Time) outcome.Outcome {
+	if end.Before(start) {
+		end = start
+	}
+	value, _ := outcome.NewTerminal("00000000-0000-4000-8000-000000000000", "unknown", outcome.ReasonTerminalInternalInvariant, 1, start, end)
+	return value
 }
 
 func writeDiagnostic(w io.Writer, message string) {

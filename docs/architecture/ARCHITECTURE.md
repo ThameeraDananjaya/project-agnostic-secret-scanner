@@ -37,8 +37,10 @@ non-pass results.
 
 Workspace paths are deterministic from a random UUIDv4 scan ID and attempt
 number beneath a trusted absolute root. Creation rejects roots, UNC/device
-names, links and collisions. Cleanup checks both filesystem identity and an
-unguessable per-workspace ownership marker before removing the bounded path.
+names, links and collisions. The manager binds the verified root to an open
+directory handle and revalidates its identity before creation and cleanup.
+Child mutations stay beneath that handle. Cleanup also checks workspace
+identity and an unguessable per-workspace ownership marker before removal.
 
 ## Product context
 

@@ -12,7 +12,7 @@
   "properties": {
     "manifestSchemaVersion": { "type": "string", "const": "1.0" },
     "releaseVersion": { "type": "string", "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+$" },
-    "sourceRevision": { "$ref": "#/$defs/digest" },
+    "sourceRevision": { "$ref": "#/$defs/gitOid" },
     "runnerVersion": { "type": "string", "minLength": 1 },
     "goToolchainVersion": { "type": "string", "pattern": "^go[0-9]+\\.[0-9]+\\.[0-9]+$" },
     "engineBinding": {
@@ -22,7 +22,7 @@
       "properties": {
         "name": { "type": "string", "const": "gitleaks" },
         "version": { "type": "string", "minLength": 1 },
-        "sourceRevision": { "$ref": "#/$defs/digest" },
+        "sourceRevision": { "$ref": "#/$defs/gitOid" },
         "binaryDigest": { "$ref": "#/$defs/digest" }
       }
     },
@@ -72,6 +72,7 @@
   },
   "$defs": {
     "digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "gitOid": { "type": "string", "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$" },
     "schemaVersion": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+$" }
   }
 }

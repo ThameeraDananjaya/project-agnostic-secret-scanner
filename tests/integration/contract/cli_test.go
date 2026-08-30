@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
@@ -155,6 +156,37 @@ func TestCorruptUnknownMajorAndInvocationInjectionFailClosed(t *testing.T) {
 	}
 }
 
+func TestInvalidRequestIdentityEmitsExactlyOneSafeOutcome(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		mutate func(map[string]any)
+	}{
+		{"scan-id", func(v map[string]any) { v["scanId"] = "invalid" }},
+		{"mode", func(v map[string]any) { v["mode"] = "invalid" }},
+		{"supersedes", func(v map[string]any) { v["supersedesScanId"] = "invalid" }},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			requestPath, _, _ := validRequestFile(t)
+			data, err := os.ReadFile(requestPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var requestObject map[string]any
+			_ = json.Unmarshal(data, &requestObject)
+			test.mutate(requestObject)
+			data, _ = json.Marshal(requestObject)
+			if err := os.WriteFile(requestPath, data, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			code, stdout, _ := runCLI(t, "--request", requestPath)
+			object := decodeOne(t, stdout)
+			if code != 10 || object["scanId"] == "invalid" || object["mode"] != "unknown" || object["supersedesScanId"] != nil || object["reasonCode"] != string(outcome.ReasonFailInputIntegrity) {
+				t.Fatalf("unsafe rejection: code=%d outcome=%#v", code, object)
+			}
+		})
+	}
+}
+
 func TestDeterministicLogicalOutcomeAndWorkspaceCollision(t *testing.T) {
 	requestPath, workspaceRoot, value := validRequestFile(t)
 	_, first, _ := runCLI(t, "--request", requestPath, "--workspace-root", workspaceRoot)
@@ -229,6 +261,28 @@ func TestScannerOwnedSchemasAreVersionedAndOutcomeReasonsExact(t *testing.T) {
 	for _, value := range values {
 		if !want[value.(string)] {
 			t.Fatalf("schema-only reason %s", value)
+		}
+	}
+}
+
+func TestGitObjectIDSchemaDefinitionsAreFullLength(t *testing.T) {
+	for _, relative := range []string{"contracts/scan-request/schema-1.0.json", "contracts/scan-outcome/schema-1.0.json", "contracts/release-manifest/schema-1.0.json"} {
+		data, err := os.ReadFile(filepath.Join(repoRoot, filepath.FromSlash(relative)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var schema map[string]any
+		if err := json.Unmarshal(data, &schema); err != nil {
+			t.Fatal(err)
+		}
+		definitions := schema["$defs"].(map[string]any)
+		pattern := definitions["gitOid"].(map[string]any)["pattern"].(string)
+		compiled, err := regexp.Compile(pattern)
+		if err != nil {
+			t.Fatalf("%s: %v", relative, err)
+		}
+		if !compiled.MatchString(strings.Repeat("a", 40)) || !compiled.MatchString(strings.Repeat("b", 64)) || compiled.MatchString(strings.Repeat("c", 12)) || compiled.MatchString(strings.Repeat("d", 63)) {
+			t.Fatalf("%s has unsafe Git object ID semantics", relative)
 		}
 	}
 }

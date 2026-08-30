@@ -50,9 +50,9 @@
         "policyDigest": { "$ref": "#/$defs/digest" },
         "allowlistDigest": { "$ref": "#/$defs/digest" },
         "requestSchemaVersion": { "type": "string", "pattern": "^1\\.[0-9]+$" },
-        "sourceBaseCommit": { "$ref": "#/$defs/digest" },
-        "sourceHeadCommit": { "$ref": "#/$defs/digest" },
-        "sourceMergeBase": { "$ref": "#/$defs/digest" },
+        "sourceBaseCommit": { "$ref": "#/$defs/gitOid" },
+        "sourceHeadCommit": { "$ref": "#/$defs/gitOid" },
+        "sourceMergeBase": { "$ref": "#/$defs/gitOid" },
         "historyRangeDigest": { "$ref": "#/$defs/digest" },
         "trackedTreeDigest": { "$ref": "#/$defs/digest" },
         "trackedSourceManifestDigest": { "$ref": "#/$defs/digest" },
@@ -73,7 +73,10 @@
       ]
     }
   },
-  "$defs": { "digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" } },
+  "$defs": {
+    "digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "gitOid": { "type": "string", "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$" }
+  },
   "allOf": [
     {
       "if": { "properties": { "state": { "const": "PASS" } }, "required": ["state"] },

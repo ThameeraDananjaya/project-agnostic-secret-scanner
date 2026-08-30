@@ -94,6 +94,33 @@ func TestLoadRejectsCorruptionAndDuplicateKeys(t *testing.T) {
 	}
 }
 
+func TestLoadRejectsMissingSchemaRequiredPresence(t *testing.T) {
+	base := validRequest(t, "release")
+	d := strings.Repeat("b", 64)
+	base.SourceBinding.FirstRelease = true
+	base.BuildContextManifest = &request.FileBinding{Path: base.TrackedSourceManifest.Path, Digest: base.TrackedSourceManifest.Digest}
+	base.ArtifactManifest = &request.ArtifactManifest{Digest: d, Entries: []request.ArtifactEntry{}}
+	for _, test := range []struct {
+		name   string
+		mutate func(map[string]any)
+	}{
+		{"offlineRequired", func(v map[string]any) { delete(v, "offlineRequired") }},
+		{"firstRelease", func(v map[string]any) { delete(v["sourceBinding"].(map[string]any), "firstRelease") }},
+		{"artifactEntries", func(v map[string]any) { delete(v["artifactManifest"].(map[string]any), "entries") }},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			data, _ := json.Marshal(base)
+			var object map[string]any
+			_ = json.Unmarshal(data, &object)
+			test.mutate(object)
+			data, _ = json.Marshal(object)
+			if _, err := request.Load(bytes.NewReader(data)); reason(t, err) != outcome.ReasonFailInputIntegrity {
+				t.Fatal("schema-required omission was accepted")
+			}
+		})
+	}
+}
+
 func TestLoadMajorMinorAndUnknownFieldRules(t *testing.T) {
 	value := validRequest(t, "pr")
 	data, _ := json.Marshal(value)
@@ -160,6 +187,47 @@ func TestValidationRejectsUnsafeAndMismatchedBindings(t *testing.T) {
 				t.Fatalf("got %s want %s", got, test.want)
 			}
 		})
+	}
+}
+
+func TestFullGitObjectIDsAcceptSHA1AndSHA256Only(t *testing.T) {
+	for _, width := range []int{40, 64} {
+		value := validRequest(t, "pr")
+		oid := strings.Repeat("a", width)
+		value.SourceBinding.BaseCommit = oid
+		value.SourceBinding.HeadCommit = oid
+		value.SourceBinding.MergeBase = oid
+		if err := request.ValidateAt(value, testNow); err != nil {
+			t.Fatalf("%d-hex full object ID rejected: %v", width, err)
+		}
+	}
+	value := validRequest(t, "pr")
+	value.SourceBinding.HeadCommit = strings.Repeat("a", 12)
+	if got := reason(t, request.ValidateAt(value, testNow)); got != outcome.ReasonFailBindingMismatch {
+		t.Fatalf("abbreviated object ID got %s", got)
+	}
+}
+
+func TestRequestInputRejectsLinksAndUnsafeDescriptorTypes(t *testing.T) {
+	root := t.TempDir()
+	target := filepath.Join(root, "request.json")
+	if err := os.WriteFile(target, []byte(`{}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(root, "request-link.json")
+	if err := os.Symlink(target, link); err == nil {
+		if file, err := request.OpenLocal(link); err == nil {
+			_ = file.Close()
+			t.Fatal("symlink request was accepted")
+		}
+	}
+	directory, err := os.Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if file, err := request.OpenDescriptor(directory.Fd(), time.Second); err == nil {
+		_ = file.Close()
+		t.Fatal("directory descriptor was accepted")
 	}
 }
 

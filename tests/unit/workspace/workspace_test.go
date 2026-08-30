@@ -20,6 +20,11 @@ func manager(t *testing.T) (*workspace.Manager, string) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() {
+		if err := value.Close(); err != nil {
+			t.Errorf("close workspace root: %v", err)
+		}
+	})
 	return value, base
 }
 
@@ -149,6 +154,49 @@ func TestWorkspaceRootRejectsSymlinkWhenSupported(t *testing.T) {
 	}
 	if _, err := workspace.NewManager(link); err == nil {
 		t.Fatal("accepted symlink workspace root")
+	}
+}
+
+func TestWorkspaceRootReplacementFailsClosed(t *testing.T) {
+	m, base := manager(t)
+	moved := base + "-original"
+	if err := os.Rename(base, moved); err != nil {
+		t.Skipf("open root cannot be renamed on this platform: %v", err)
+	}
+	if err := os.Mkdir(base, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := m.Create(scanID, 1); err == nil {
+		t.Fatal("workspace root replacement was accepted")
+	}
+	entries, err := os.ReadDir(base)
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("replacement root was mutated: %v %v", entries, err)
+	}
+}
+
+func TestWorkspaceCleanupRejectsRootReplacement(t *testing.T) {
+	m, base := manager(t)
+	space, err := m.Create(scanID, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	moved := base + "-original"
+	if err := os.Rename(base, moved); err != nil {
+		t.Skipf("open root cannot be renamed on this platform: %v", err)
+	}
+	if err := os.Mkdir(base, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	marker := filepath.Join(base, "must-survive")
+	if err := os.WriteFile(marker, []byte("replacement"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := space.Cleanup(); err == nil {
+		t.Fatal("cleanup accepted a replaced root")
+	}
+	if _, err := os.Stat(marker); err != nil {
+		t.Fatal("replacement root content was removed")
 	}
 }
 

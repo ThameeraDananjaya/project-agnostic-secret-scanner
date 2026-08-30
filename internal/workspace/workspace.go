@@ -15,11 +15,17 @@ import (
 	"github.com/ThameeraDananjaya/project-agnostic-secret-scanner/internal/request"
 )
 
-type Manager struct{ base string }
+type Manager struct {
+	base     string
+	root     *os.Root
+	identity os.FileInfo
+}
 
 type Workspace struct {
 	path     string
-	base     string
+	name     string
+	root     *os.Root
+	manager  *Manager
 	identity os.FileInfo
 	marker   [32]byte
 }
@@ -34,7 +40,25 @@ func NewManager(base string) (*Manager, error) {
 	if err := rejectLinks(base); err != nil {
 		return nil, err
 	}
-	return &Manager{base: base}, nil
+	identity, err := os.Lstat(base)
+	if err != nil || !identity.IsDir() || identity.Mode()&os.ModeSymlink != 0 {
+		return nil, errors.New("workspace root unavailable")
+	}
+	root, err := os.OpenRoot(base)
+	if err != nil {
+		return nil, errors.New("workspace root unavailable")
+	}
+	opened, err := root.Stat(".")
+	if err != nil || !os.SameFile(identity, opened) {
+		_ = root.Close()
+		return nil, errors.New("workspace root identity changed")
+	}
+	manager := &Manager{base: base, root: root, identity: identity}
+	if err := manager.validateRoot(); err != nil {
+		_ = root.Close()
+		return nil, err
+	}
+	return manager, nil
 }
 
 func createSafeDirectory(path string) error {
@@ -76,6 +100,8 @@ func createSafeDirectory(path string) error {
 
 func DefaultRoot() string { return filepath.Join(os.TempDir(), "project-agnostic-secret-scanner") }
 
+func (m *Manager) Close() error { return m.root.Close() }
+
 func (m *Manager) Create(scanID string, attempt int) (*Workspace, error) {
 	if !request.IsUUIDv4(scanID) || attempt < 1 || attempt > 3 {
 		return nil, errors.New("invalid workspace identity")
@@ -85,56 +111,78 @@ func (m *Manager) Create(scanID string, attempt int) (*Workspace, error) {
 	if err := confined(m.base, path); err != nil {
 		return nil, err
 	}
-	if err := os.Mkdir(path, 0o700); err != nil {
+	if err := m.validateRoot(); err != nil {
+		return nil, err
+	}
+	if err := m.root.Mkdir(name, 0o700); err != nil {
 		return nil, errors.New("workspace collision or unavailable")
 	}
 	for _, child := range []string{"private", "input", "output"} {
-		if err := os.Mkdir(filepath.Join(path, child), 0o700); err != nil {
-			_ = os.RemoveAll(path)
+		if err := m.root.Mkdir(filepath.Join(name, child), 0o700); err != nil {
+			_ = m.root.RemoveAll(name)
 			return nil, errors.New("workspace initialization failed")
 		}
 	}
 	var marker [32]byte
 	if _, err := rand.Read(marker[:]); err != nil {
-		_ = os.RemoveAll(path)
+		_ = m.root.RemoveAll(name)
 		return nil, errors.New("workspace ownership marker unavailable")
 	}
-	if err := os.WriteFile(filepath.Join(path, ".pscan-owned"), marker[:], 0o600); err != nil {
-		_ = os.RemoveAll(path)
+	if err := m.root.WriteFile(filepath.Join(name, ".pscan-owned"), marker[:], 0o600); err != nil {
+		_ = m.root.RemoveAll(name)
 		return nil, errors.New("workspace ownership marker unavailable")
 	}
-	identity, err := os.Lstat(path)
+	identity, err := m.root.Lstat(name)
 	if err != nil {
-		_ = os.RemoveAll(path)
+		_ = m.root.RemoveAll(name)
 		return nil, errors.New("workspace identity unavailable")
 	}
-	return &Workspace{path: path, base: m.base, identity: identity, marker: marker}, nil
+	if err := m.validateRoot(); err != nil {
+		_ = m.root.RemoveAll(name)
+		return nil, err
+	}
+	return &Workspace{path: path, name: name, root: m.root, manager: m, identity: identity, marker: marker}, nil
 }
 
 func (w *Workspace) Path() string { return w.path }
 
 func (w *Workspace) Cleanup() error {
-	if err := confined(w.base, w.path); err != nil {
+	if err := w.manager.validateRoot(); err != nil {
 		return err
 	}
-	current, err := os.Lstat(w.path)
+	current, err := w.root.Lstat(w.name)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil
 	}
 	if err != nil || current.Mode()&os.ModeSymlink != 0 || !os.SameFile(w.identity, current) {
 		return errors.New("workspace identity changed")
 	}
-	markerPath := filepath.Join(w.path, ".pscan-owned")
-	markerInfo, err := os.Lstat(markerPath)
+	markerPath := filepath.Join(w.name, ".pscan-owned")
+	markerInfo, err := w.root.Lstat(markerPath)
 	if err != nil || !markerInfo.Mode().IsRegular() || markerInfo.Mode()&os.ModeSymlink != 0 || markerInfo.Size() != int64(len(w.marker)) {
 		return errors.New("workspace ownership marker changed")
 	}
-	marker, err := os.ReadFile(markerPath)
+	marker, err := w.root.ReadFile(markerPath)
 	if err != nil || subtle.ConstantTimeCompare(marker, w.marker[:]) != 1 {
 		return errors.New("workspace ownership marker changed")
 	}
-	if err := os.RemoveAll(w.path); err != nil {
+	if err := w.root.RemoveAll(w.name); err != nil {
 		return errors.New("workspace cleanup failed")
+	}
+	return nil
+}
+
+func (m *Manager) validateRoot() error {
+	if err := rejectLinks(m.base); err != nil {
+		return errors.New("workspace root identity changed")
+	}
+	current, err := os.Lstat(m.base)
+	if err != nil || !current.IsDir() || current.Mode()&os.ModeSymlink != 0 || !os.SameFile(m.identity, current) {
+		return errors.New("workspace root identity changed")
+	}
+	opened, err := m.root.Stat(".")
+	if err != nil || !os.SameFile(m.identity, opened) {
+		return errors.New("workspace root identity changed")
 	}
 	return nil
 }

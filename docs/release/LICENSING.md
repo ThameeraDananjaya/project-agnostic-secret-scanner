@@ -31,8 +31,8 @@ Missing, stale or conflicting licence evidence blocks release.
 | Component | PSCAN-01 status | Intake owner | Release rule |
 |---|---|---|---|
 | Original Go runner and repository content | MIT selected; root licence present | PSCAN-02 onward | Preserve MIT headers/notices where required |
-| Gitleaks CLI/source | Not downloaded or pinned | PSCAN-03 | Revalidate current official source and licence before intake; record exact source/binary evidence; do not use the separately licensed GitHub Action |
-| Go toolchain/modules | Not downloaded or pinned | PSCAN-02/03/06 as applicable | Record exact toolchain/module licences and reproducible-build evidence |
+| Gitleaks CLI/source | v8.30.1 source/config/licence pinned for evaluation; acceptance blocked | PSCAN-03 | Exact MIT text and digests recorded; no binary released; separately licensed GitHub Action remains absent |
+| Go toolchain/modules | Go 1.27.0 build binding plus 63 compiled-module licence/notice sets recorded | PSCAN-02/03/06 as applicable | Intake inventory is not a release SBOM or distribution approval; reproduce and re-review at release |
 | Cosign/Sigstore tooling and bundles | Design only; no signing performed | PSCAN-06 | Revalidate official licensing and redistribution; keep bundles as signed evidence |
 | SBOM/build tooling and GitHub actions | None selected | PSCAN-06 | Pin exact versions/actions and record licence/notice evidence before workflow admission |
 | TruffleHog | Absent; no assessment performed | PSCAN-08 only if eligible | No assessment, download, integration, distribution or enablement before accepted material-gap evidence and separate technical plus AGPL legal owner approval |
@@ -46,3 +46,16 @@ notice, source binding or unresolved obligation.
 
 No document in PSCAN-01 is legal advice or final legal approval. The final
 retention schedule and every reserved legal question remain owner-controlled.
+
+## PSCAN-03 intake review
+
+On 2026-08-31, Gitleaks v8.30.1 was bound to exact commit
+`83d9cd684c87d95d656c1458ef04895a7f1cbd8e`. Its MIT licence, config and every
+root-level licence/notice file for the 63 modules in the compiled `go list
+-deps` graph were preserved with SHA-256 identities. Two Go 1.27.0 builds per
+platform were byte-identical. The upstream tag resolves to an unsigned commit,
+so the binding is digest-based and does not claim signed-tag provenance.
+
+No executable, release, SBOM, signature, publication or distribution decision
+is made here. PSCAN-03 remains unaccepted because of the material history gap,
+independently of the licence intake result.

@@ -7,7 +7,8 @@ fixture coverage.
 
 ## State
 
-Activated by the owner on 2026-08-31. Unclaimed. Not implemented.
+Activated and claimed for the 2026-08-31 implementation session. Acceptance is
+blocked by material coverage gap `GITLEAKS-GAP-001`; not completed.
 
 Implementation is authorized only in a fresh session from the exact PSCAN-03
 activation commit. This activation session contains no implementation work.
@@ -82,3 +83,14 @@ output remains private; licence evidence is complete. A possible coverage gap is
 recorded only as evidence and does not select, activate or authorize PSCAN-08.
 
 Stop after PSCAN-03 closeout with PSCAN-04 unselected.
+
+## Implementation-session stop
+
+The pinned Gitleaks v8.30.1 native Git source consumes `git log -p -U0` output.
+A generated in-range binary add/delete fixture proves Git omits the blob bytes
+from that stream. Because deleted binary content is absent from both the diff
+stream and the tracked head tree, complete required history coverage cannot be
+claimed. See `evidence/PSCAN-03/MATERIAL-GAP-001.md`.
+
+The task stopped fail-closed before acceptance. No successor is selected;
+PSCAN-04 remains unselected and PSCAN-08 remains inactive and owner-gated.

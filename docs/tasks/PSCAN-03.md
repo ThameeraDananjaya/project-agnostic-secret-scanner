@@ -7,7 +7,10 @@ fixture coverage.
 
 ## State
 
-Proposed. Unselected. Not activated. Not claimed.
+Activated by the owner on 2026-08-31. Unclaimed. Not implemented.
+
+Implementation is authorized only in a fresh session from the exact PSCAN-03
+activation commit. This activation session contains no implementation work.
 
 ## Objective
 

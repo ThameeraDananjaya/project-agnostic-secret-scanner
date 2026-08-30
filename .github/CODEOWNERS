@@ -1,0 +1,14 @@
+# Local planning authority. Server enforcement requires a separately approved
+# PSCAN-06 GitHub settings preflight and owner action.
+* @ThameeraDananjaya
+
+/AGENTS.md @ThameeraDananjaya
+/CONSTITUTION.md @ThameeraDananjaya
+/SECURITY.md @ThameeraDananjaya
+/LICENSE @ThameeraDananjaya
+/docs/spec/ @ThameeraDananjaya
+/docs/governance/ @ThameeraDananjaya
+/docs/security/ @ThameeraDananjaya
+/docs/release/ @ThameeraDananjaya
+/docs/tasks/ @ThameeraDananjaya
+/.github/ @ThameeraDananjaya

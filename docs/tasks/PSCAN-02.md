@@ -1,0 +1,85 @@
+# PSCAN-02 Task Specification
+
+## Title
+
+External schemas, reason codes, CLI skeleton, deterministic workspace, and
+content-free outcome contract.
+
+## State
+
+Proposed. Unselected. Not activated. Not claimed.
+
+## Objective
+
+Implement the scanner-owned contract boundary and a standard-library-first Go
+runner skeleton that validates requests, creates an isolated deterministic
+workspace, emits exactly one content-free outcome and contains no engine,
+artifact, policy or remote integration.
+
+## Preconditions
+
+- PSCAN-01 accepted and committed with a clean worktree.
+- Exact standalone owner activation of PSCAN-02 in an activation-only session.
+- Fresh implementation session from that activation commit.
+- Current Go/toolchain primary-source support and licence preflight before pinning.
+
+## Allowed paths
+
+```text
+go.mod
+go.sum
+cmd/scanner-runner/**
+internal/request/**
+internal/workspace/**
+internal/outcome/**
+contracts/scan-request/**
+contracts/scan-outcome/**
+contracts/release-manifest/**
+contracts/global-revocation/**
+contracts/rule-pack/**
+fixtures/clean/**
+fixtures/adversarial/request/**
+fixtures/adversarial/workspace/**
+tests/unit/request/**
+tests/unit/workspace/**
+tests/unit/outcome/**
+tests/integration/contract/**
+docs/architecture/**
+docs/validation/**
+docs/tasks/PSCAN-02.md
+docs/tasks/TRACKER.md
+docs/decisions/DEC-001-SCHEMA-OWNERSHIP.md
+evidence/PSCAN-02/**
+```
+
+## Forbidden scope
+
+No engine process or Gitleaks/TruffleHog material; no Git-range scanner; no
+artifact extraction; no policy/allowlist evaluation; no project-owned schema
+authority; no receipt signing; no workflow, remote, credential, signing,
+publication, spend or consuming-project integration.
+
+## Deliverables
+
+- Independently versioned scanner-owned schemas with strict major/minor behavior.
+- Complete state/reason/exit mapping from PASS-SPEC-001.
+- Non-interactive CLI skeleton reading local request input and emitting exactly
+  one JSON outcome.
+- Pre-engine request rejection for unsafe paths, missing/duplicate/mismatched
+  bindings, unsupported versions and corrupt payloads.
+- Fresh workspace per project/attempt with non-source-derived correlation ID,
+  bounded paths and lifecycle proof.
+- Content-free serializer that cannot represent forbidden finding metadata.
+- Unit/integration/adversarial contract evidence on Windows and Linux where
+  platform mechanics differ.
+
+## Acceptance
+
+Unknown majors and corrupt requests reject/fail closed; compatible minor rules
+are proven; every reason and exit code is exact; repeated logical inputs are
+semantically deterministic; injection cannot escape JSON/stderr constraints;
+workspaces do not collide; no engine or project authority is present; CAP-1,
+CAP-2, CAP-11, CAP-12, CAP-13 and contract portions of CAP-15 through CAP-18 are
+traceably advanced without claiming final product acceptance.
+
+Stop after PSCAN-02 closeout with PSCAN-03 unselected.

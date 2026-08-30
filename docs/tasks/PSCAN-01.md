@@ -7,8 +7,13 @@ release authority.
 
 ## State
 
-Activated. Unclaimed. Not implemented. Implementation must begin in a fresh
-session from this activation commit.
+Completed and accepted locally. Claimed and implemented in a fresh session from
+activation commit `a85a64ea7f99558857338ae26d70f81968527618`.
+
+- Accepted implementation commit:
+  `501948956060f8ea7d63f6b1da21dccac6ad4293`
+- Acceptance evidence: `evidence/PSCAN-01/ACCEPTANCE.md`
+- Successor state: none selected or activated; PSCAN-08 remains inactive
 
 ## Objective
 
@@ -103,3 +108,10 @@ contract is canonical and completely traceable, the architecture/threat/validati
 plans preserve every contract boundary, PSCAN-02 is bounded but unselected, all
 owner gates remain explicit, exact acceptance evidence exists, and no forbidden
 path or action occurred.
+
+## Closeout
+
+All required deliverables and checks passed for the documentation/governance
+scope. PSCAN-01 does not claim product implementation, product readiness,
+release readiness, remote publication, signing, or consuming-project readiness.
+The session stops after the local acceptance closeout.

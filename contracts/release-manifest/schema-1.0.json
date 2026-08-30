@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:project-agnostic-secret-scanner:release-manifest:1.0",
+  "title": "Scanner Release Manifest 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifestSchemaVersion", "releaseVersion", "sourceRevision", "runnerVersion",
+    "goToolchainVersion", "engineBinding", "rulePackDigest", "schemaVersions",
+    "releaseIdentity", "assets", "createdAt"
+  ],
+  "properties": {
+    "manifestSchemaVersion": { "type": "string", "const": "1.0" },
+    "releaseVersion": { "type": "string", "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "sourceRevision": { "$ref": "#/$defs/digest" },
+    "runnerVersion": { "type": "string", "minLength": 1 },
+    "goToolchainVersion": { "type": "string", "pattern": "^go[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "engineBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "sourceRevision", "binaryDigest"],
+      "properties": {
+        "name": { "type": "string", "const": "gitleaks" },
+        "version": { "type": "string", "minLength": 1 },
+        "sourceRevision": { "$ref": "#/$defs/digest" },
+        "binaryDigest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "rulePackDigest": { "$ref": "#/$defs/digest" },
+    "schemaVersions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scanRequest", "scanOutcome", "releaseManifest", "globalRevocation", "rulePack"],
+      "properties": {
+        "scanRequest": { "$ref": "#/$defs/schemaVersion" },
+        "scanOutcome": { "$ref": "#/$defs/schemaVersion" },
+        "releaseManifest": { "$ref": "#/$defs/schemaVersion" },
+        "globalRevocation": { "$ref": "#/$defs/schemaVersion" },
+        "rulePack": { "$ref": "#/$defs/schemaVersion" }
+      }
+    },
+    "releaseIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "workflow", "ref", "oidcIssuer"],
+      "properties": {
+        "repository": { "type": "string", "minLength": 1 },
+        "workflow": { "type": "string", "minLength": 1 },
+        "ref": { "type": "string", "minLength": 1 },
+        "oidcIssuer": { "type": "string", "format": "uri" }
+      }
+    },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "assets": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "kind", "os", "arch", "size", "sha256"],
+        "properties": {
+          "name": { "type": "string", "pattern": "^[A-Za-z0-9._+-]+$" },
+          "kind": { "type": "string", "enum": ["runner", "engine", "rules", "schema", "licence", "sbom", "documentation", "signature-bundle", "checksums"] },
+          "os": { "type": "string", "enum": ["none", "windows", "linux"] },
+          "arch": { "type": "string", "enum": ["none", "amd64"] },
+          "size": { "type": "integer", "minimum": 0 },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "schemaVersion": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+$" }
+  }
+}

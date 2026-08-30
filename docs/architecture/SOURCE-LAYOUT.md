@@ -2,9 +2,10 @@
 
 ## Status
 
-This is the complete target layout. Directories forbidden to PSCAN-01 are not
-created by this task. Their future creation is authorized only by the exact
-activated task named in the ownership table.
+This is the complete target layout. PSCAN-02 creates only its owned `cmd`,
+request, workspace, outcome, scanner-owned contract, fixture and test paths.
+Every other implementation directory remains reserved for the exact later task
+named in the ownership table.
 
 ```text
 /.github/workflows/             trusted CI and release workflows
@@ -53,6 +54,23 @@ activated task named in the ownership table.
 | Workflows, build, licences, SBOM, signing design and release verifier | PSCAN-06, subject to action-time owner gates |
 | Full acceptance, parity, performance, lifecycle and v1 release evidence | PSCAN-07, subject to publication/signing gates |
 | TruffleHog adapter/binary/fallback fixtures | PSCAN-08 only after material-gap evidence and separate technical/legal approval |
+
+## PSCAN-02 concrete files
+
+- `cmd/scanner-runner` contains the non-interactive one-object CLI skeleton.
+- `internal/request` contains bounded JSON loading, version rules, UUIDv4
+  generation, structural/binding/path/freshness/limit validation and bound-file
+  verification.
+- `internal/workspace` contains fresh deterministic attempt workspaces and
+  ownership-checked cleanup.
+- `internal/outcome` contains every state, reason code, permitted action and
+  terminal exit mapping plus the content-free serializer.
+- `contracts/*/schema-1.0.json` contains the five independently versioned
+  scanner-owned schema families.
+- `fixtures/clean`, `fixtures/adversarial/request` and
+  `fixtures/adversarial/workspace` contain synthetic non-credential inputs.
+- `tests/unit/*` and `tests/integration/contract` contain the PSCAN-02 contract
+  proof. No engine, project policy, allowlist or receipt fixture exists.
 
 ## Permanent exclusions
 

@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:project-agnostic-secret-scanner:scan-request:1.0",
+  "title": "Project-Agnostic Secret Scanner Scan Request 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "requestSchemaVersion", "scanId", "mode", "scannerReleaseDigest",
+    "engineBinding", "rulePackDigest", "policyDigest", "allowlistDigest",
+    "sourceBinding", "trackedSourceManifest", "fallbackRequirement", "limits",
+    "offlineRequired", "redactionMode", "requestedAt"
+  ],
+  "properties": {
+    "requestSchemaVersion": { "type": "string", "const": "1.0" },
+    "requiredFeatures": { "type": "array", "maxItems": 0, "items": { "type": "string" } },
+    "scanId": { "$ref": "#/$defs/uuidV4" },
+    "supersedesScanId": { "$ref": "#/$defs/uuidV4" },
+    "mode": { "type": "string", "enum": ["local", "pr", "release"] },
+    "scannerReleaseDigest": { "$ref": "#/$defs/digest" },
+    "engineBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "binaryDigest", "adapterVersion"],
+      "properties": {
+        "name": { "type": "string", "const": "gitleaks" },
+        "version": { "$ref": "#/$defs/versionToken" },
+        "binaryDigest": { "$ref": "#/$defs/digest" },
+        "adapterVersion": { "$ref": "#/$defs/versionToken" }
+      }
+    },
+    "rulePackDigest": { "$ref": "#/$defs/digest" },
+    "policyDigest": { "$ref": "#/$defs/digest" },
+    "allowlistDigest": { "$ref": "#/$defs/digest" },
+    "sourceBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["headCommit", "historyRangeDigest", "trackedTreeDigest"],
+      "properties": {
+        "baseCommit": { "$ref": "#/$defs/digest" },
+        "headCommit": { "$ref": "#/$defs/digest" },
+        "mergeBase": { "$ref": "#/$defs/digest" },
+        "firstRelease": { "type": "boolean" },
+        "historyRangeDigest": { "$ref": "#/$defs/digest" },
+        "trackedTreeDigest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "trackedSourceManifest": { "$ref": "#/$defs/fileBinding" },
+    "buildContextManifest": { "$ref": "#/$defs/fileBinding" },
+    "artifactManifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["digest", "entries"],
+      "properties": {
+        "digest": { "$ref": "#/$defs/digest" },
+        "entries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "type", "size", "digest"],
+            "properties": {
+              "path": { "type": "string", "minLength": 1 },
+              "type": { "$ref": "#/$defs/versionToken" },
+              "size": { "type": "integer", "minimum": 0 },
+              "digest": { "$ref": "#/$defs/digest" }
+            }
+          }
+        }
+      }
+    },
+    "fallbackRequirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode"],
+      "properties": { "mode": { "type": "string", "const": "disabled" } }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "timeoutSeconds", "maxArchiveDepth", "maxArchiveEntries",
+        "maxExpandedBytes", "maxFileBytes", "maxCompressionRatio",
+        "maxMemoryBytes", "maxCpuPercent"
+      ],
+      "properties": {
+        "timeoutSeconds": { "type": "integer", "minimum": 1, "maximum": 3600 },
+        "maxArchiveDepth": { "type": "integer", "minimum": 1, "maximum": 5 },
+        "maxArchiveEntries": { "type": "integer", "minimum": 1, "maximum": 100000 },
+        "maxExpandedBytes": { "type": "integer", "minimum": 1, "maximum": 10737418240 },
+        "maxFileBytes": { "type": "integer", "minimum": 1, "maximum": 536870912 },
+        "maxCompressionRatio": { "type": "integer", "minimum": 1, "maximum": 1000 },
+        "maxMemoryBytes": { "type": "integer", "minimum": 1 },
+        "maxCpuPercent": { "type": "integer", "minimum": 1, "maximum": 100 }
+      }
+    },
+    "offlineRequired": { "type": "boolean" },
+    "redactionMode": { "type": "string", "const": "full" },
+    "requestedAt": { "type": "string", "format": "date-time" }
+  },
+  "$defs": {
+    "digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "uuidV4": { "type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$" },
+    "versionToken": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._+-]{0,63}$" },
+    "fileBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "digest"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "digest": { "$ref": "#/$defs/digest" }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "mode": { "const": "pr" } }, "required": ["mode"] },
+      "then": {
+        "properties": {
+          "offlineRequired": { "const": true },
+          "sourceBinding": { "required": ["baseCommit", "headCommit", "mergeBase", "historyRangeDigest", "trackedTreeDigest"] },
+          "limits": { "properties": { "timeoutSeconds": { "maximum": 900 }, "maxExpandedBytes": { "maximum": 2147483648 } } }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "mode": { "const": "release" } }, "required": ["mode"] },
+      "then": {
+        "required": ["buildContextManifest", "artifactManifest"],
+        "properties": { "offlineRequired": { "const": true } }
+      }
+    },
+    {
+      "if": { "properties": { "mode": { "const": "release" } }, "required": ["mode"] },
+      "then": {
+        "properties": {
+          "sourceBinding": {
+            "required": ["firstRelease"],
+            "oneOf": [
+              { "properties": { "firstRelease": { "const": true } }, "not": { "required": ["baseCommit"] } },
+              { "properties": { "firstRelease": { "const": false } }, "required": ["baseCommit"] }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

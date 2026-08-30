@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:project-agnostic-secret-scanner:rule-pack:1.0",
+  "title": "Generic Scanner Rule Pack 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["rulePackSchemaVersion", "rulePackVersion", "rules"],
+  "properties": {
+    "rulePackSchemaVersion": { "type": "string", "const": "1.0" },
+    "rulePackVersion": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "rules": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "class", "blocking"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,127}$" },
+          "class": { "type": "string", "enum": ["private-key", "access-token", "password", "connection-credential", "signing-key", "authentication-material", "generic-secret"] },
+          "blocking": { "type": "boolean", "const": true }
+        }
+      }
+    }
+  }
+}

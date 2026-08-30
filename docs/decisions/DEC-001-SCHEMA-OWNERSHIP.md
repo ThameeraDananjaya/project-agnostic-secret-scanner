@@ -3,7 +3,8 @@
 - Status: accepted planning decision
 - Date: 2026-08-30
 - Authority: PASS-SPEC-001 sections 7.7, 9, 13, 16, 17 and 20
-- Implementation: deferred to PSCAN-02 and PSCAN-05
+- Implementation: scanner-owned schema families implemented by PSCAN-02;
+  project-owned projection and precedence remain deferred to PSCAN-05
 
 ## Decision
 

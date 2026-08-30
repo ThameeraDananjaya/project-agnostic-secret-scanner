@@ -116,3 +116,45 @@ PSCAN-01 acceptance performs read-only checks for:
 The reproducible command evidence and results are recorded in
 `evidence/PSCAN-01/ACCEPTANCE.md`; command output itself must remain
 content-free and must not expose sensitive material.
+
+## PSCAN-02 contract checks
+
+PSCAN-02 acceptance performs fresh checks for:
+
+1. exact activation commit `48a8bd0c30deff691a423fb558a7e45035a5fb24`
+   and clean pre-change state;
+2. unchanged external/canonical PASS-SPEC-001 bytes, line count and SHA-256;
+3. official Go release, support-policy, archive-digest and licence preflight;
+4. Go 1.27.0 standard-library-only module with no external module or `go.sum`;
+5. five unique scanner-owned schema 1.0 identifiers and valid JSON syntax;
+6. eight exact states, 24 exact reason codes and terminal exits 0/10/20/30/40;
+7. current-minor strict fields, compatible future-minor optional fields,
+   required-feature rejection and unknown-major rejection;
+8. corrupt, duplicate-key, oversized and trailing-payload rejection;
+9. exact mode, UUIDv4, freshness, digest, engine, offline, full-redaction and
+   fallback-disabled binding checks before any engine boundary;
+10. safe absolute request/manifest/artifact paths, Windows device/UNC/ADS
+    rejection, Linux path behavior and post-open file identity verification;
+11. missing, changed, non-regular, oversized or size-mismatched bound files
+    producing explicit non-pass outcomes;
+12. PR/release manifest requirements, duplicate artifact rejection and resource
+    ceilings;
+13. deterministic scan-ID/attempt workspace naming, collision refusal, link/root
+    refusal, 64-way parallel isolation and sequential-attempt isolation;
+14. ownership-marker and filesystem-identity cleanup checks that preserve a
+    replaced or colliding workspace;
+15. exactly one JSON object on stdout, fixed bounded stderr and no input path or
+    candidate-controlled text in either surface;
+16. serializer field closure, state/reason/action consistency, semantic
+    determinism and forbidden finding-metadata absence;
+17. valid pre-engine CLI completion as `UNAVAILABLE_ENGINE`/exit 30, because an
+    engine is forbidden in PSCAN-02;
+18. Linux amd64 process-level request-file and file-descriptor integration;
+19. Windows amd64 request, workspace, outcome and in-process CLI contract
+    execution plus compile proof for the standalone runner and all test suites;
+20. static absence of engine, Git-range, artifact, policy, allowlist, workflow,
+    credential, signing, remote, publication and consuming-project material.
+
+Full standalone Windows process launch remains subject to the execution host's
+application-control policy. A policy denial is recorded as a validation
+limitation and never reinterpreted as a passing process launch.

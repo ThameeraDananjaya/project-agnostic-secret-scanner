@@ -7,7 +7,9 @@ content-free outcome contract.
 
 ## State
 
-Activated by the owner on 2026-08-30. Unclaimed. Not implemented.
+Activated by the owner on 2026-08-30. Claimed and implemented locally from the
+exact activation commit. Independent acceptance is pending the bounded
+implementation commit and review.
 
 Implementation is authorized only in a fresh session from the exact PSCAN-02
 activation commit. This activation session contains no implementation work.
@@ -86,3 +88,15 @@ CAP-2, CAP-11, CAP-12, CAP-13 and contract portions of CAP-15 through CAP-18 are
 traceably advanced without claiming final product acceptance.
 
 Stop after PSCAN-02 closeout with PSCAN-03 unselected.
+
+## Implementation result
+
+- Toolchain: Go 1.27.0; standard library only; no `go.sum`.
+- Scanner-owned contracts: scan request, scan outcome, release manifest, global
+  revocation and generic rule pack, each at independent schema version 1.0.
+- Valid skeleton behavior: validate all pre-engine bindings, create and destroy
+  the isolated workspace, then emit `UNAVAILABLE_ENGINE`/exit 30.
+- Engine, Git input, artifact normalization, project policy/allowlist authority,
+  workflow and remote boundaries remain absent.
+- Exact implementation and acceptance evidence is under `evidence/PSCAN-02`.
+- PSCAN-03 remains proposed and unselected.

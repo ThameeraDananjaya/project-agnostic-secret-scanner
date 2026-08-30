@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:project-agnostic-secret-scanner:scan-outcome:1.0",
+  "title": "Project-Agnostic Secret Scanner Outcome 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "outcomeSchemaVersion", "scanId", "mode", "state",
+    "attemptNumber", "startedAt", "endedAt", "durationMillis",
+    "coverageClasses", "permittedAction"
+  ],
+  "properties": {
+    "outcomeSchemaVersion": { "type": "string", "const": "1.0" },
+    "scanId": { "type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$" },
+    "supersedesScanId": { "type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$" },
+    "mode": { "type": "string", "enum": ["local", "pr", "release", "unknown"] },
+    "state": { "type": "string", "enum": ["PENDING", "RUNNING", "PASS", "FAIL", "INDETERMINATE", "UNAVAILABLE", "RETRYING", "TERMINAL"] },
+    "reasonCode": {
+      "type": "string",
+      "enum": [
+        "PASS_NO_BLOCKING_FINDINGS",
+        "FAIL_FINDING_DETECTED", "FAIL_POLICY_DENIED", "FAIL_ALLOWLIST_INVALID",
+        "FAIL_BINDING_MISMATCH", "FAIL_INPUT_INTEGRITY", "FAIL_SCANNER_INTEGRITY",
+        "FAIL_SIGNATURE_INVALID", "FAIL_REVOKED_DEPENDENCY",
+        "INDETERMINATE_UNSUPPORTED_INPUT", "INDETERMINATE_INCOMPLETE_COVERAGE",
+        "INDETERMINATE_SCHEMA_UNSUPPORTED", "INDETERMINATE_CONFLICTING_RESULTS",
+        "INDETERMINATE_REDACTION_UNPROVEN", "INDETERMINATE_RESOURCE_LIMIT",
+        "INDETERMINATE_TIMEOUT", "UNAVAILABLE_ENGINE", "UNAVAILABLE_RUNTIME",
+        "UNAVAILABLE_REQUIRED_INPUT", "UNAVAILABLE_WORKSPACE",
+        "TERMINAL_RETRY_EXHAUSTED", "TERMINAL_TIMEOUT_EXHAUSTED",
+        "TERMINAL_UNRESOLVED_CONFLICT", "TERMINAL_INTERNAL_INVARIANT"
+      ]
+    },
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scannerReleaseDigest", "engineName", "engineVersion", "engineBinaryDigest",
+        "adapterVersion", "rulePackDigest", "policyDigest", "allowlistDigest",
+        "requestSchemaVersion", "sourceHeadCommit", "historyRangeDigest",
+        "trackedTreeDigest", "trackedSourceManifestDigest"
+      ],
+      "properties": {
+        "scannerReleaseDigest": { "$ref": "#/$defs/digest" },
+        "engineName": { "type": "string", "const": "gitleaks" },
+        "engineVersion": { "type": "string", "minLength": 1 },
+        "engineBinaryDigest": { "$ref": "#/$defs/digest" },
+        "adapterVersion": { "type": "string", "minLength": 1 },
+        "rulePackDigest": { "$ref": "#/$defs/digest" },
+        "policyDigest": { "$ref": "#/$defs/digest" },
+        "allowlistDigest": { "$ref": "#/$defs/digest" },
+        "requestSchemaVersion": { "type": "string", "pattern": "^1\\.[0-9]+$" },
+        "sourceBaseCommit": { "$ref": "#/$defs/digest" },
+        "sourceHeadCommit": { "$ref": "#/$defs/digest" },
+        "sourceMergeBase": { "$ref": "#/$defs/digest" },
+        "historyRangeDigest": { "$ref": "#/$defs/digest" },
+        "trackedTreeDigest": { "$ref": "#/$defs/digest" },
+        "trackedSourceManifestDigest": { "$ref": "#/$defs/digest" },
+        "buildContextManifestDigest": { "$ref": "#/$defs/digest" },
+        "artifactManifestDigest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "attemptNumber": { "type": "integer", "minimum": 1, "maximum": 3 },
+    "startedAt": { "type": "string", "format": "date-time" },
+    "endedAt": { "type": "string", "format": "date-time" },
+    "durationMillis": { "type": "integer", "minimum": 0 },
+    "coverageClasses": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+    "permittedAction": {
+      "type": "string",
+      "enum": [
+        "VERIFY_OTHER_GATES", "CREATE_CORRECTED_CANDIDATE", "DIAGNOSE_INPUT",
+        "RETRY_IF_ELIGIBLE", "WAIT", "STOP_AND_ESCALATE"
+      ]
+    }
+  },
+  "$defs": { "digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" } },
+  "allOf": [
+    {
+      "if": { "properties": { "state": { "const": "PASS" } }, "required": ["state"] },
+      "then": { "required": ["reasonCode"], "properties": { "reasonCode": { "const": "PASS_NO_BLOCKING_FINDINGS" }, "permittedAction": { "const": "VERIFY_OTHER_GATES" } } }
+    },
+    {
+      "if": { "properties": { "state": { "const": "FAIL" } }, "required": ["state"] },
+      "then": { "required": ["reasonCode"], "properties": { "reasonCode": { "pattern": "^FAIL_" }, "permittedAction": { "const": "CREATE_CORRECTED_CANDIDATE" } } }
+    },
+    {
+      "if": { "properties": { "state": { "const": "INDETERMINATE" } }, "required": ["state"] },
+      "then": { "required": ["reasonCode"], "properties": { "reasonCode": { "pattern": "^INDETERMINATE_" }, "permittedAction": { "const": "DIAGNOSE_INPUT" } } }
+    },
+    {
+      "if": { "properties": { "state": { "const": "UNAVAILABLE" } }, "required": ["state"] },
+      "then": { "required": ["reasonCode"], "properties": { "reasonCode": { "pattern": "^UNAVAILABLE_" }, "permittedAction": { "const": "RETRY_IF_ELIGIBLE" } } }
+    },
+    {
+      "if": { "properties": { "state": { "const": "TERMINAL" } }, "required": ["state"] },
+      "then": { "required": ["reasonCode"], "properties": { "reasonCode": { "pattern": "^TERMINAL_" }, "permittedAction": { "const": "STOP_AND_ESCALATE" } } }
+    },
+    {
+      "if": { "properties": { "state": { "enum": ["PENDING", "RUNNING", "RETRYING"] } }, "required": ["state"] },
+      "then": { "not": { "required": ["reasonCode"] }, "properties": { "permittedAction": { "const": "WAIT" } } }
+    }
+  ]
+}

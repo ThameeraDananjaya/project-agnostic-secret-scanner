@@ -2,9 +2,43 @@
 
 ## Status and scope
 
-This document defines the target architecture required by PASS-SPEC-001. It is
-planning authority, not proof that any component exists. PSCAN-01 implements no
-product code, schema, workflow, engine, or release asset.
+This document defines the target architecture required by PASS-SPEC-001.
+PSCAN-02 implements only the contract, request, outcome, workspace and CLI
+skeleton boundaries identified below. Every engine, Git input, artifact,
+policy, redaction, workflow, release and consuming-project boundary remains
+unimplemented and outside PSCAN-02.
+
+## PSCAN-02 realized boundary
+
+```text
+trusted local request path or file descriptor
+    -> bounded JSON read and duplicate-key rejection
+    -> independent major/minor compatibility gate
+    -> strict known-field, binding, freshness, limit and path validation
+    -> bound-file identity, size and SHA-256 verification
+    -> deterministic scan-ID/attempt workspace
+    -> workspace ownership verification and cleanup
+    -> UNAVAILABLE_ENGINE content-free outcome
+```
+
+The Go 1.27.0 standard library is the only implementation dependency. The CLI
+does not contain or invoke an engine, Git command, shell, artifact normalizer,
+policy evaluator, network client or project adapter. A valid PSCAN-02 request
+therefore stops at `UNAVAILABLE_ENGINE` with exit 30 after proving the complete
+pre-engine boundary. This is intentional evidence of scope containment, not a
+claim that scanning exists.
+
+Schema 1.0 readers reject unknown fields. A reader accepts a future `1.x`
+payload only when it has no declared unknown required feature; unknown major
+versions and required future semantics are indeterminate. Duplicate JSON keys,
+unsafe local paths, stale requests, weakened offline/redaction bindings,
+missing inputs, digest mismatches and resource-limit violations are explicit
+non-pass results.
+
+Workspace paths are deterministic from a random UUIDv4 scan ID and attempt
+number beneath a trusted absolute root. Creation rejects roots, UNC/device
+names, links and collisions. Cleanup checks both filesystem identity and an
+unguessable per-workspace ownership marker before removing the bounded path.
 
 ## Product context
 

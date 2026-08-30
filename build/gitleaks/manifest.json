@@ -2,8 +2,15 @@
   "schemaVersion": "1.0",
   "engine": "gitleaks",
   "version": "8.30.1",
-  "adapterVersion": "1.0.0",
+  "adapterVersion": "1.1.0",
   "outputBinding": "json-v8.30.1",
+  "rules": {
+    "productConfig": "rules/generic/gitleaks-v8.30.1.toml",
+    "productConfigSha256": "2a9e75e17a09a1e3b06c6c232395cef85eb61448ef0298611162825f7da6c044",
+    "coverageRuleId": "pscan-projection-coverage",
+    "ignoreFile": "rules/generic/gitleaks-ignore-empty-v1.txt",
+    "ignoreFileSha256": "3cdd737e34cb301ffc19861f903cf59441ff57453ddf70bd5b8c1bd63389aebe"
+  },
   "releaseUrl": "https://github.com/gitleaks/gitleaks/releases/tag/v8.30.1",
   "source": {
     "commit": "83d9cd684c87d95d656c1458ef04895a7f1cbd8e",

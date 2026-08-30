@@ -2,11 +2,15 @@
 
 History repositories are generated only in private test directories so no
 `.git` authority, object database, hook or repository identity is committed.
-The generator in `tests/unit/gitinput/git_test.go` creates:
+The generators in `tests/unit/gitinput` and `tests/integration/gitleaks` create:
 
 - a clean range base;
-- an in-range synthetic binary file with a NUL marker;
-- a later in-range deletion of that file;
-- exact base, head, merge-base, ordered-history and tracked-tree bindings.
+- in-range synthetic text and NUL-containing binary files;
+- later in-range deletion of both files;
+- branches, a merge and a rename;
+- exact base, head, merge-base, ordered-history, parent-edge, blob and tracked
+  tree bindings;
+- deterministic raw and framed projection digests;
+- a same-invocation Gitleaks coverage finding for every admitted projection.
 
 The binary value is fabricated and is not a credential.

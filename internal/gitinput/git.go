@@ -37,6 +37,7 @@ type RangeBinding struct {
 	HistoryRangeDigest string
 	TrackedTreeDigest  string
 	CommitCount        int
+	Commits            []string
 }
 
 // PrepareBare creates a new, non-local bare clone with an empty template and a
@@ -92,45 +93,13 @@ func (g Git) BindRange(ctx context.Context, repository, base, head string, first
 	if !safeAbsolute(repository) || !safeAbsolute(privateHome) || !oidPattern.MatchString(head) {
 		return RangeBinding{}, errors.New("invalid Git binding")
 	}
-	resolvedHead, err := g.resolveCommit(ctx, repository, head, privateHome)
-	if err != nil || resolvedHead != head {
-		return RangeBinding{}, errors.New("head commit mismatch")
-	}
-	binding := RangeBinding{Head: head, FirstRelease: firstRelease}
-	var revListArgs []string
-	if firstRelease {
-		if base != "" {
-			return RangeBinding{}, errors.New("first release must not bind a base")
-		}
-		revListArgs = []string{"-C", repository, "rev-list", "--reverse", "--topo-order", head}
-	} else {
-		if !oidPattern.MatchString(base) || base == head {
-			return RangeBinding{}, errors.New("invalid base commit")
-		}
-		resolvedBase, resolveErr := g.resolveCommit(ctx, repository, base, privateHome)
-		if resolveErr != nil || resolvedBase != base {
-			return RangeBinding{}, errors.New("base commit mismatch")
-		}
-		mergeBaseRaw, runErr := g.run(ctx, "", privateHome, "-C", repository, "merge-base", "--", base, head)
-		if runErr != nil {
-			return RangeBinding{}, errors.New("cannot establish merge base")
-		}
-		mergeBase := strings.TrimSpace(string(mergeBaseRaw))
-		if mergeBase != base {
-			return RangeBinding{}, errors.New("base is not an ancestor of head")
-		}
-		binding.Base, binding.MergeBase = base, mergeBase
-		revListArgs = []string{"-C", repository, "rev-list", "--reverse", "--topo-order", base + ".." + head}
-	}
-	commitsRaw, err := g.run(ctx, "", privateHome, revListArgs...)
+	commits, mergeBase, err := g.enumerateRange(ctx, repository, base, head, firstRelease, privateHome)
 	if err != nil {
-		return RangeBinding{}, errors.New("cannot enumerate exact history range")
+		return RangeBinding{}, err
 	}
-	commits, err := parseCommitList(commitsRaw)
-	if err != nil || len(commits) == 0 {
-		return RangeBinding{}, errors.New("empty or invalid history range")
-	}
+	binding := RangeBinding{Base: base, Head: head, MergeBase: mergeBase, FirstRelease: firstRelease}
 	binding.CommitCount = len(commits)
+	binding.Commits = append([]string(nil), commits...)
 	binding.HistoryRangeDigest = digestDomain("pscan.git-history.v1", []byte(strings.Join(commits, "\x00")))
 	treeRaw, err := g.run(ctx, "", privateHome, "-C", repository, "ls-tree", "-r", "-z", "--full-tree", head)
 	if err != nil || len(treeRaw) == 0 {
@@ -138,6 +107,47 @@ func (g Git) BindRange(ctx context.Context, repository, base, head string, first
 	}
 	binding.TrackedTreeDigest = digestDomain("pscan.git-tree.v1", treeRaw)
 	return binding, nil
+}
+
+func (g Git) enumerateRange(ctx context.Context, repository, base, head string, firstRelease bool, privateHome string) ([]string, string, error) {
+	resolvedHead, err := g.resolveCommit(ctx, repository, head, privateHome)
+	if err != nil || resolvedHead != head {
+		return nil, "", errors.New("head commit mismatch")
+	}
+	var revListArgs []string
+	mergeBase := ""
+	if firstRelease {
+		if base != "" {
+			return nil, "", errors.New("first release must not bind a base")
+		}
+		revListArgs = []string{"-C", repository, "rev-list", "--reverse", "--topo-order", head}
+	} else {
+		if !oidPattern.MatchString(base) || base == head {
+			return nil, "", errors.New("invalid base commit")
+		}
+		resolvedBase, resolveErr := g.resolveCommit(ctx, repository, base, privateHome)
+		if resolveErr != nil || resolvedBase != base {
+			return nil, "", errors.New("base commit mismatch")
+		}
+		mergeBaseRaw, runErr := g.run(ctx, "", privateHome, "-C", repository, "merge-base", "--", base, head)
+		if runErr != nil {
+			return nil, "", errors.New("cannot establish merge base")
+		}
+		mergeBase = strings.TrimSpace(string(mergeBaseRaw))
+		if mergeBase != base {
+			return nil, "", errors.New("base is not an ancestor of head")
+		}
+		revListArgs = []string{"-C", repository, "rev-list", "--reverse", "--topo-order", base + ".." + head}
+	}
+	commitsRaw, err := g.run(ctx, "", privateHome, revListArgs...)
+	if err != nil {
+		return nil, "", errors.New("cannot enumerate exact history range")
+	}
+	commits, err := parseCommitList(commitsRaw)
+	if err != nil || len(commits) == 0 {
+		return nil, "", errors.New("empty or invalid history range")
+	}
+	return commits, mergeBase, nil
 }
 
 func (g Git) resolveCommit(ctx context.Context, repository, oid, privateHome string) (string, error) {

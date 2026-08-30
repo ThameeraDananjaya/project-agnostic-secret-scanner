@@ -1,1 +1,1 @@
-synthetic_api_key = "pscan_fixture_83e08b4f9be9467ba5c614c51d7f2a90"
+PSCAN_SYNTHETIC_SECRET_83e08b4f9be9467ba5c614c51d7f2a9083e08b4f9be9467ba5c614c51d7f2a90

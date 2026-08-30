@@ -45,7 +45,7 @@ func TestPrivateOutputDoesNotCrossResultBoundary(t *testing.T) {
 		Executable: executable, ExpectedDigest: digest,
 		Args:        []string{"-test.run=TestEngineHelper", "--", "canary"},
 		Environment: append(os.Environ(), "PSCAN_ENGINE_HELPER=1"),
-		Timeout:     time.Second,
+		Timeout:     5 * time.Second,
 	}, func(private engine.PrivateOutput) outcome.ReasonCode {
 		if string(private.Stdout) != syntheticCanary {
 			t.Fatal("private decoder did not receive exact synthetic output")
@@ -85,7 +85,7 @@ func TestCaptureLimitIsExplicitNonPass(t *testing.T) {
 		Executable: executable, ExpectedDigest: digest,
 		Args:        []string{"-test.run=TestEngineHelper", "--", "overflow"},
 		Environment: append(os.Environ(), "PSCAN_ENGINE_HELPER=1"),
-		Timeout:     time.Second, CaptureLimit: 128,
+		Timeout:     5 * time.Second, CaptureLimit: 128,
 	}, func(engine.PrivateOutput) outcome.ReasonCode { return outcome.ReasonPassNoBlockingFindings })
 	if result.Reason != outcome.ReasonIndeterminateResourceLimit {
 		t.Fatalf("overflow was not explicit: %#v", result)

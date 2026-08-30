@@ -23,6 +23,7 @@ func TestAdapterClassifiesPrivateOutputAndPreservesArguments(t *testing.T) {
 		t.Fatal(err)
 	}
 	configDigest := digestFile(t, config)
+	ignoreFile, privateHome := supportFiles(t)
 	target := filepath.Join(t.TempDir(), "candidate;$(not-a-command) --help")
 	if err := os.Mkdir(target, 0o700); err != nil {
 		t.Fatal(err)
@@ -43,7 +44,8 @@ func TestAdapterClassifiesPrivateOutputAndPreservesArguments(t *testing.T) {
 			env := append(os.Environ(), "PSCAN_FAKE_MODE="+test.mode, "PSCAN_EXPECTED_TARGET="+target)
 			adapter := gitleaks.Adapter{Binding: gitleaks.Binding{
 				Executable: executable, ExecutableDigest: executableDigest,
-				Config: config, ConfigDigest: configDigest, Environment: env,
+				Config: config, ConfigDigest: configDigest,
+				IgnoreFile: ignoreFile, IgnoreFileDigest: digestFile(t, ignoreFile), PrivateHome: privateHome, Environment: env,
 			}}
 			result := adapter.ScanDirectory(context.Background(), target, 2*time.Second, 8<<20)
 			if result.Reason != test.reason {
@@ -63,9 +65,11 @@ func TestBindingAndRuntimeVersionMismatchFailBeforeScan(t *testing.T) {
 		t.Fatal(err)
 	}
 	target := t.TempDir()
+	ignoreFile, privateHome := supportFiles(t)
 	adapter := gitleaks.Adapter{Binding: gitleaks.Binding{
 		Executable: executable, ExecutableDigest: executableDigest,
 		Config: config, ConfigDigest: digestFile(t, config),
+		IgnoreFile: ignoreFile, IgnoreFileDigest: digestFile(t, ignoreFile), PrivateHome: privateHome,
 		Environment: append(os.Environ(), "PSCAN_FAKE_MODE=wrong-version"),
 	}}
 	if result := adapter.ScanDirectory(context.Background(), target, time.Second, 1<<20); result.Reason != outcome.ReasonFailBindingMismatch {
@@ -83,9 +87,11 @@ func TestParentDeadlineIsExplicitTimeout(t *testing.T) {
 	if err := os.WriteFile(config, []byte("# synthetic\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	ignoreFile, privateHome := supportFiles(t)
 	adapter := gitleaks.Adapter{Binding: gitleaks.Binding{
 		Executable: executable, ExecutableDigest: executableDigest,
 		Config: config, ConfigDigest: digestFile(t, config),
+		IgnoreFile: ignoreFile, IgnoreFileDigest: digestFile(t, ignoreFile), PrivateHome: privateHome,
 		Environment: append(os.Environ(), "PSCAN_FAKE_MODE=timeout"),
 	}}
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
@@ -95,18 +101,40 @@ func TestParentDeadlineIsExplicitTimeout(t *testing.T) {
 	}
 }
 
+func supportFiles(t *testing.T) (string, string) {
+	t.Helper()
+	dir := t.TempDir()
+	ignore := filepath.Join(dir, "empty.gitleaksignore")
+	home := filepath.Join(dir, "home")
+	if err := os.WriteFile(ignore, []byte{}, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(home, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	return ignore, home
+}
+
 func buildFakeGitleaks(t *testing.T) (string, string) {
 	t.Helper()
 	dir := t.TempDir()
 	source := filepath.Join(dir, "main.go")
 	program := `package main
-import("encoding/json";"fmt";"os";"time")
+import("encoding/json";"fmt";"os";"strings";"time")
 func main(){
  mode:=os.Getenv("PSCAN_FAKE_MODE")
  if len(os.Args)>1 && os.Args[1]=="version" { if mode=="wrong-version" {fmt.Print("8.29.0")} else {fmt.Print("8.30.1")}; return }
  if len(os.Args)==0 || os.Args[len(os.Args)-1]!=os.Getenv("PSCAN_EXPECTED_TARGET") && os.Getenv("PSCAN_EXPECTED_TARGET")!="" {fmt.Fprint(os.Stderr,"argument mismatch");os.Exit(2)}
+	 if strings.HasPrefix(mode,"projection-") {
+  paths:=strings.Split(os.Getenv("PSCAN_COVERAGE_PATHS"),"|")
+  if mode=="projection-missing" && len(paths)>0 {paths=paths[:len(paths)-1]}
+  findings:=[]map[string]string{}
+  for _,p:=range paths {findings=append(findings,map[string]string{"Secret":"REDACTED","RuleID":"pscan-projection-coverage","File":p})}
+  b,_:=json.Marshal(findings);fmt.Print(string(b));if len(findings)>0 {os.Exit(11)};return
+ }
  switch mode {
  case "clean": fmt.Print("[]")
+ case "projection-clean","projection-missing": fmt.Print("[]")
  case "finding": b,_:=json.Marshal([]map[string]string{{"Secret":"REDACTED","RuleID":"synthetic"}});fmt.Print(string(b));os.Exit(11)
  case "unredacted": b,_:=json.Marshal([]map[string]string{{"Secret":"PSCAN_SYNTHETIC_CANARY_NOT_A_CREDENTIAL"}});fmt.Print(string(b));os.Exit(11)
  case "malformed": fmt.Print("{not-json")

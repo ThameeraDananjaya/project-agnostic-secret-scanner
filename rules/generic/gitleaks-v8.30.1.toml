@@ -3207,3 +3207,17 @@ description = "Detected a Zendesk Secret Key, risking unauthorized access to cus
 regex = '''(?i)[\w.-]{0,50}?(?:zendesk)(?:[ \t\w.-]{0,20})[\s'"]{0,3}(?:=|>|:{1,3}=|\|\||:|=>|\?=|,)[\x60'"\s=]{0,5}([a-z0-9]{40})(?:[\x60'"\s;]|\\[nr]|$)'''
 keywords = ["zendesk"]
 
+# PSCAN-03 strict local extension. This private synthetic rule is evaluated in
+# the same invocation as every product rule and proves that no admitted
+# projection was silently skipped by path, type, size, or engine behavior.
+[[rules]]
+id = "pscan-projection-coverage"
+description = "Private proof that one projected Git blob reached Gitleaks"
+regex = '''PSCAN_COVERAGE_MARKER_[0-9a-f]{64}'''
+keywords = ["PSCAN_COVERAGE_MARKER_"]
+
+[[rules]]
+id = "pscan-synthetic-fixture-v1"
+description = "Invalid-by-construction PSCAN acceptance fixture marker"
+regex = '''PSCAN_SYNTHETIC_SECRET_[0-9a-f]{64}'''
+keywords = ["PSCAN_SYNTHETIC_SECRET_"]

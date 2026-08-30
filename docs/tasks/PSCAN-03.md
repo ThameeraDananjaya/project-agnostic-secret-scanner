@@ -7,8 +7,9 @@ fixture coverage.
 
 ## State
 
-Activated and claimed for the 2026-08-31 implementation session. Acceptance is
-blocked by material coverage gap `GITLEAKS-GAP-001`; not completed.
+Activated and claimed for the 2026-08-31 implementation session. Correction C1
+implements exact blob-object coverage for `GITLEAKS-GAP-001`; independent
+acceptance is pending.
 
 Implementation is authorized only in a fresh session from the exact PSCAN-03
 activation commit. This activation session contains no implementation work.
@@ -84,13 +85,15 @@ recorded only as evidence and does not select, activate or authorize PSCAN-08.
 
 Stop after PSCAN-03 closeout with PSCAN-04 unselected.
 
-## Implementation-session stop
+## Historical stop and correction C1
 
-The pinned Gitleaks v8.30.1 native Git source consumes `git log -p -U0` output.
-A generated in-range binary add/delete fixture proves Git omits the blob bytes
-from that stream. Because deleted binary content is absent from both the diff
-stream and the tracked head tree, complete required history coverage cannot be
-claimed. See `evidence/PSCAN-03/MATERIAL-GAP-001.md`.
+`evidence/PSCAN-03/MATERIAL-GAP-001.md` remains the immutable proof that native
+Gitleaks `git log -p -U0` input omits deleted binary blob bytes. Correction C1
+does not rewrite that evidence or use the incomplete input form. It enumerates
+exact in-range commits, every parent-edge pre/post blob and the head tree,
+materializes deterministic path-preserving binary-safe projections, and uses a
+same-invocation Gitleaks coverage rule to make every skip non-pass.
 
-The task stopped fail-closed before acceptance. No successor is selected;
-PSCAN-04 remains unselected and PSCAN-08 remains inactive and owner-gated.
+Native patch mode remains fail-closed. TruffleHog is absent. No successor is
+selected; PSCAN-04 remains unselected and PSCAN-08 remains inactive and
+owner-gated.

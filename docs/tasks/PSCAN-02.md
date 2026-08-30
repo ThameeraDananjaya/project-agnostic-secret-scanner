@@ -7,7 +7,10 @@ content-free outcome contract.
 
 ## State
 
-Proposed. Unselected. Not activated. Not claimed.
+Activated by the owner on 2026-08-30. Unclaimed. Not implemented.
+
+Implementation is authorized only in a fresh session from the exact PSCAN-02
+activation commit. This activation session contains no implementation work.
 
 ## Objective
 

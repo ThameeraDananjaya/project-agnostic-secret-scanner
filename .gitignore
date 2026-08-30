@@ -1,0 +1,21 @@
+# Build and test outputs
+/dist/
+/coverage/
+/tmp/
+/graphify-out/
+
+# Local tools and editor state
+/.tools/
+/.vscode/
+*.exe
+*.test
+*.out
+
+# Sensitive or project-owned inputs must never be committed
+*.key
+*.pem
+*.p12
+*.pfx
+*.secret
+.env
+.env.*

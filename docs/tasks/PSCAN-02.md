@@ -7,12 +7,13 @@ content-free outcome contract.
 
 ## State
 
-Activated by the owner on 2026-08-30. Claimed and implemented locally from the
-exact activation commit. Independent acceptance is pending the bounded
-implementation commit and review.
+Completed and independently accepted locally on 2026-08-31 at
+`98768cce7e89f55bce2ed269c073985d60618dea`. The implementation began from the
+exact activation commit, two failed-closed reviews were corrected within this
+task, and the final independent review reported no actionable findings.
 
-Implementation is authorized only in a fresh session from the exact PSCAN-02
-activation commit. This activation session contains no implementation work.
+The activation-only session contained no implementation work. This closeout
+does not select, activate, claim, or begin a successor.
 
 ## Objective
 
@@ -99,4 +100,7 @@ Stop after PSCAN-02 closeout with PSCAN-03 unselected.
 - Engine, Git input, artifact normalization, project policy/allowlist authority,
   workflow and remote boundaries remain absent.
 - Exact implementation and acceptance evidence is under `evidence/PSCAN-02`.
+- Fresh Windows standalone execution remains blocked by host Application
+  Control and is not claimed as a pass; current Windows targets compile and the
+  exact limitation is recorded in acceptance evidence.
 - PSCAN-03 remains proposed and unselected.

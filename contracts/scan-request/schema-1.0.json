@@ -51,7 +51,10 @@
       "additionalProperties": false,
       "required": ["digest", "entries"],
       "properties": {
-        "digest": { "$ref": "#/$defs/digest" },
+        "digest": {
+          "$ref": "#/$defs/digest",
+          "$comment": "SHA-256 of the PSCAN-ARTIFACT-MANIFEST-1 binary preimage defined in docs/architecture/ARCHITECTURE.md"
+        },
         "entries": {
           "type": "array",
           "items": {
@@ -95,7 +98,7 @@
     },
     "offlineRequired": { "type": "boolean" },
     "redactionMode": { "type": "string", "const": "full" },
-    "requestedAt": { "type": "string", "format": "date-time" }
+    "requestedAt": { "type": "string", "format": "date-time", "pattern": "Z$" }
   },
   "$defs": {
     "digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },

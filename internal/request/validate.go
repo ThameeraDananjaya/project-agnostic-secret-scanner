@@ -2,8 +2,9 @@ package request
 
 import (
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
-	"encoding/json"
+	"hash"
 	"io"
 	"os"
 	"path/filepath"
@@ -60,7 +61,7 @@ func ValidateAt(value ScanRequest, now time.Time) error {
 		return reject(outcome.ReasonFailBindingMismatch)
 	}
 	requestedAt, err := time.Parse(time.RFC3339, value.RequestedAt)
-	if err != nil || requestedAt.Before(now.Add(-maxRequestAge)) || requestedAt.After(now.Add(maxFutureSkew)) {
+	if err != nil || !strings.HasSuffix(value.RequestedAt, "Z") || requestedAt.Before(now.Add(-maxRequestAge)) || requestedAt.After(now.Add(maxFutureSkew)) {
 		return reject(outcome.ReasonFailInputIntegrity)
 	}
 	if value.Mode == "pr" {
@@ -109,16 +110,38 @@ func ValidateAt(value ScanRequest, now time.Time) error {
 			}
 			seen[key] = struct{}{}
 		}
-		encoded, err := json.Marshal(value.ArtifactManifest.Entries)
-		if err != nil {
-			return reject(outcome.ReasonFailInputIntegrity)
-		}
-		digest := sha256.Sum256(encoded)
-		if hex.EncodeToString(digest[:]) != value.ArtifactManifest.Digest {
+		if ArtifactEntriesDigest(value.ArtifactManifest.Entries) != value.ArtifactManifest.Digest {
 			return reject(outcome.ReasonFailBindingMismatch)
 		}
 	}
 	return nil
+}
+
+// ArtifactEntriesDigest returns the language-neutral, domain-separated digest
+// defined by the scanner-owned request contract.
+func ArtifactEntriesDigest(entries []ArtifactEntry) string {
+	digest := sha256.New()
+	_, _ = digest.Write([]byte("PSCAN-ARTIFACT-MANIFEST-1\x00"))
+	writeUint64(digest, uint64(len(entries)))
+	for _, entry := range entries {
+		writeField(digest, entry.Path)
+		writeField(digest, entry.Type)
+		writeUint64(digest, uint64(entry.Size))
+		writeField(digest, entry.Digest)
+	}
+	return hex.EncodeToString(digest.Sum(nil))
+}
+
+func writeField(target hash.Hash, value string) {
+	bytes := []byte(value)
+	writeUint64(target, uint64(len(bytes)))
+	_, _ = target.Write(bytes)
+}
+
+func writeUint64(target hash.Hash, value uint64) {
+	var encoded [8]byte
+	binary.BigEndian.PutUint64(encoded[:], value)
+	_, _ = target.Write(encoded[:])
 }
 
 func ValidateBoundFiles(value ScanRequest) error {

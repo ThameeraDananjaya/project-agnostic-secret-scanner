@@ -173,6 +173,9 @@ func TestValidationRejectsUnsafeAndMismatchedBindings(t *testing.T) {
 		{"redaction weakened", func(v *request.ScanRequest) { v.RedactionMode = "partial" }, outcome.ReasonFailBindingMismatch},
 		{"stale request", func(v *request.ScanRequest) { v.RequestedAt = testNow.Add(-25 * time.Hour).Format(time.RFC3339) }, outcome.ReasonFailInputIntegrity},
 		{"future request", func(v *request.ScanRequest) { v.RequestedAt = testNow.Add(6 * time.Minute).Format(time.RFC3339) }, outcome.ReasonFailInputIntegrity},
+		{"positive timestamp offset", func(v *request.ScanRequest) { v.RequestedAt = "2026-08-31T00:00:00+04:00" }, outcome.ReasonFailInputIntegrity},
+		{"negative timestamp offset", func(v *request.ScanRequest) { v.RequestedAt = "2026-08-30T15:00:00-05:00" }, outcome.ReasonFailInputIntegrity},
+		{"zero timestamp offset without Z", func(v *request.ScanRequest) { v.RequestedAt = "2026-08-30T20:00:00+00:00" }, outcome.ReasonFailInputIntegrity},
 		{"unclean path", func(v *request.ScanRequest) {
 			v.TrackedSourceManifest.Path = filepath.Dir(v.TrackedSourceManifest.Path) + string(filepath.Separator) + "child" + string(filepath.Separator) + ".." + string(filepath.Separator) + filepath.Base(v.TrackedSourceManifest.Path)
 		}, outcome.ReasonFailInputIntegrity},
@@ -205,6 +208,23 @@ func TestFullGitObjectIDsAcceptSHA1AndSHA256Only(t *testing.T) {
 	value.SourceBinding.HeadCommit = strings.Repeat("a", 12)
 	if got := reason(t, request.ValidateAt(value, testNow)); got != outcome.ReasonFailBindingMismatch {
 		t.Fatalf("abbreviated object ID got %s", got)
+	}
+}
+
+func TestArtifactEntriesDigestIsDeterministicAndFramed(t *testing.T) {
+	entries := []request.ArtifactEntry{{Path: "/tmp/a", Type: "file", Size: 7, Digest: strings.Repeat("a", 64)}}
+	first := request.ArtifactEntriesDigest(entries)
+	second := request.ArtifactEntriesDigest(entries)
+	if first != second || len(first) != 64 {
+		t.Fatalf("artifact digest is not deterministic SHA-256: %q %q", first, second)
+	}
+	changed := append([]request.ArtifactEntry(nil), entries...)
+	changed[0].Path = "/tmp/aa"
+	if request.ArtifactEntriesDigest(changed) == first {
+		t.Fatal("length-framed artifact field change did not change digest")
+	}
+	if request.ArtifactEntriesDigest(append(entries, entries[0])) == first {
+		t.Fatal("artifact entry count/order preimage is not bound")
 	}
 }
 
@@ -250,9 +270,7 @@ func TestReleaseRequiresCompleteUniqueBindings(t *testing.T) {
 	if got := reason(t, request.ValidateAt(value, testNow)); got != outcome.ReasonFailBindingMismatch {
 		t.Fatalf("mismatched artifact-manifest digest got %s", got)
 	}
-	encoded, _ := json.Marshal(value.ArtifactManifest.Entries)
-	digest := sha256.Sum256(encoded)
-	value.ArtifactManifest.Digest = hex.EncodeToString(digest[:])
+	value.ArtifactManifest.Digest = request.ArtifactEntriesDigest(value.ArtifactManifest.Entries)
 	if err := request.ValidateAt(value, testNow); err != nil {
 		t.Fatalf("valid first-release binding rejected: %v", err)
 	}

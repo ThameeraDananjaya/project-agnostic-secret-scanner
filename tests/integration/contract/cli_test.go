@@ -286,3 +286,18 @@ func TestGitObjectIDSchemaDefinitionsAreFullLength(t *testing.T) {
 		}
 	}
 }
+
+func TestRequestSchemaRequiresCanonicalUTC(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join(repoRoot, "contracts", "scan-request", "schema-1.0.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var schema map[string]any
+	if err := json.Unmarshal(data, &schema); err != nil {
+		t.Fatal(err)
+	}
+	requestedAt := schema["properties"].(map[string]any)["requestedAt"].(map[string]any)
+	if requestedAt["format"] != "date-time" || requestedAt["pattern"] != "Z$" {
+		t.Fatalf("requestedAt does not require canonical UTC: %#v", requestedAt)
+	}
+}

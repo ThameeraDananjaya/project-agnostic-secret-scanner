@@ -42,6 +42,15 @@ directory handle and revalidates its identity before creation and cleanup.
 Child mutations stay beneath that handle. Cleanup also checks workspace
 identity and an unguessable per-workspace ownership marker before removal.
 
+`requestedAt` uses canonical RFC 3339 UTC text ending in `Z`; numeric timezone
+offsets, including `+00:00`, fail closed. The artifact-manifest digest is
+language-neutral SHA-256 over this binary preimage: ASCII domain separator
+`PSCAN-ARTIFACT-MANIFEST-1` plus NUL; unsigned 64-bit big-endian entry count;
+then, in declared entry order, each UTF-8 `path`, UTF-8 `type`, and lowercase
+ASCII digest prefixed by its unsigned 64-bit big-endian byte length, with file
+size between type and digest as unsigned 64-bit big-endian. Entry sizes are
+validated as non-negative before the digest is compared.
+
 ## Product context
 
 ```mermaid

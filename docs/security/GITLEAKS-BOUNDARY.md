@@ -1,6 +1,6 @@
 # Gitleaks Security Boundary
 
-PSCAN-03 correction C1 launches an exact absolute executable through Go's
+PSCAN-03 correction C1 candidate launches an exact absolute executable through Go's
 argument-array API. It never invokes a shell. Executable, product-config and
 empty-ignore digests, runtime version, exact lowercase Git OIDs and local
 absolute paths are validated before scanning. Engine output is bounded in
@@ -29,4 +29,9 @@ or an unredacted candidate is explicit non-pass.
 
 The historical native-patch defect remains valid evidence in
 `evidence/PSCAN-03/MATERIAL-GAP-001.md`. Native Gitleaks Git input is not the
-corrected authoritative path and cannot return pass. TruffleHog remains absent.
+corrected authoritative path and cannot return pass. The framed candidate is
+also not accepted: one prefix marker cannot prove later internal fragments,
+framing can mask archive identity, and combined text/binary aggregate failure
+does not independently prove binary detection. Projected directory mode also
+does not satisfy the controlling Git-mode requirement. Exact review evidence is in
+`evidence/PSCAN-03/REVIEW-C1.md`. TruffleHog remains absent.

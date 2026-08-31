@@ -7,9 +7,10 @@ fixture coverage.
 
 ## State
 
-Activated and claimed for the 2026-08-31 implementation session. Correction C1
-implements exact blob-object coverage for `GITLEAKS-GAP-001`; independent
-acceptance is pending.
+Activated and claimed. Correction C1 candidate `6cd22a3` was independently
+rejected on 2026-08-31. Exact blob enumeration is implemented, but the
+same-run per-blob marker does not prove complete Gitleaks fragment coverage.
+PSCAN-03 remains blocked and is not accepted.
 
 Implementation is authorized only in a fresh session from the exact PSCAN-03
 activation commit. This activation session contains no implementation work.
@@ -93,6 +94,17 @@ does not rewrite that evidence or use the incomplete input form. It enumerates
 exact in-range commits, every parent-edge pre/post blob and the head tree,
 materializes deterministic path-preserving binary-safe projections, and uses a
 same-invocation Gitleaks coverage rule to make every skip non-pass.
+
+Independent review proved that Gitleaks v8.30.1 can split a product-rule match
+at its 125,000-byte no-whitespace boundary while reporting the single prefix
+coverage marker. The pinned rule pack also contains unbounded whole-match
+expressions, so no finite overlap establishes a complete maximum-span proof.
+Recognized archives can likewise be masked by framing unless raw archive
+classification is complete. These are acceptance blockers recorded in
+`evidence/PSCAN-03/REVIEW-C1.md`; the correction candidate is non-authoritative.
+The candidate also replaces PASS-SPEC-001 section 7.2's required Gitleaks Git
+mode for exact history/range scanning with directory mode over projections.
+The correction authorization did not waive that controlling requirement.
 
 Native patch mode remains fail-closed. TruffleHog is absent. No successor is
 selected; PSCAN-04 remains unselected and PSCAN-08 remains inactive and

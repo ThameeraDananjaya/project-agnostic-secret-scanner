@@ -2,9 +2,10 @@
 
 ## Status
 
-PSCAN-03 correction C1 implemented; independent acceptance pending. The
-historical `GITLEAKS-GAP-001` record remains immutable and native Gitleaks
-patch mode remains prohibited from producing pass.
+PSCAN-03 correction C1 candidate `6cd22a3` is independently rejected and is not
+an authoritative pass-capable path. The historical `GITLEAKS-GAP-001` record
+remains immutable and native Gitleaks patch mode remains prohibited from
+producing pass.
 
 ## Corrected Git and tree boundary
 
@@ -49,6 +50,17 @@ files. Links, special files, traversal, extra files, missing files, size changes
 and digest changes fail validation.
 
 ## Deferred boundary
+
+The per-blob marker proves that Gitleaks opened a framed file, but it does not
+prove that all internal fragments were inspected. Gitleaks v8.30.1 reads a
+100,000-byte buffer and at most 25,000 additional bytes without overlap. A
+synthetic product match split at byte 125,000 produced only the coverage
+finding. Because the pinned product rules include unbounded whole-match spans,
+no finite overlap is currently a complete proof. Raw archive classification is
+also required before framing can be authoritative. Therefore this candidate
+must not produce an accepted scanner path; see `evidence/PSCAN-03/REVIEW-C1.md`.
+It also uses Gitleaks directory mode for projected history, conflicting with
+PASS-SPEC-001 section 7.2's explicit Git-mode requirement.
 
 The scanner CLI is intentionally unchanged because `cmd/scanner-runner/**` is
 outside PSCAN-03's allowed paths. No public product path can claim the adapter

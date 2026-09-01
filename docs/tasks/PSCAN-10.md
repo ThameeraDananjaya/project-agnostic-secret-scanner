@@ -7,8 +7,10 @@ scan inputs.
 
 ## State
 
-Proposed. Unselected. Not activated. Not claimed. This planning label is not
-authority to implement.
+Activated by the owner's exact `ACTIVATE PSCAN-10` command on 2026-09-01.
+Unclaimed and not implemented. This activation bundle authorizes only a fresh
+implementation session from the exact activation commit; the session creating
+the bundle must stop without claiming or implementing PSCAN-10.
 
 ## Objective
 
@@ -19,18 +21,35 @@ Gitleaks inspection for every admitted byte under bounded declared profiles.
 
 ## Preconditions
 
-- PSCAN-09 accepted, committed and clean.
-- Exact PSCAN-10 owner selection and activation in an activation-only session,
-  followed by a fresh implementation session from that activation commit.
+- PSCAN-09 accepted, committed and clean at activation parent
+  `7c15c4574c06f34f98b79c07548baee16c0d176c`.
+- Exact PSCAN-10 owner selection and activation recorded in
+  `evidence/PSCAN-10/ACTIVATION.md`, followed by a fresh implementation session
+  from that activation commit.
 - Current exact Gitleaks source, binary, rules, detector span/stream/archive
   behavior, Go toolchain/module build and licence facts revalidated from primary
   sources before any intake or rebuild.
 - A bounded design proves finite maximum rule spans or a complete streaming path
   before any pass-capable projection is implemented.
 
-## Provisional allowed paths
+## Activation-only bundle
 
-These paths become authoritative only in a future activation bundle:
+This session may change and commit only:
+
+```text
+docs/tasks/PSCAN-10.md
+docs/tasks/PSCAN-10-READING-MAP.md
+docs/tasks/TRACKER.md
+evidence/PSCAN-10/ACTIVATION.md
+```
+
+No implementation, dependency intake, scanner/toolchain execution, test run or
+successor work is authorized in the activation session.
+
+## Allowed implementation paths
+
+These paths are authoritative only for a fresh PSCAN-10 implementation session
+from the exact activation commit:
 
 ```text
 go.mod
@@ -60,11 +79,21 @@ evidence/PSCAN-10/**
 
 ## Forbidden scope
 
-No Gitleaks GitHub Action; no TruffleHog assessment or material; no artifact/
-OCI normalizer beyond raw classification needed to fail closed; no final
-redaction/offline-container claim; no project policy, allowlist, receipt,
-workflow, remote, signing, publication, credential, spending or project data.
-No reuse of rejected PSCAN-03 evidence as acceptance.
+- No modification of PASS-OUTCOME-SPEC-001, PASS-SPEC-001, their source record,
+  or PSCAN-01 through PSCAN-03 and PSCAN-09 historical acceptance evidence.
+- No Gitleaks GitHub Action and no TruffleHog assessment, legal work, download,
+  material, integration, distribution or enablement.
+- No artifact or OCI normalizer beyond raw classification needed to fail
+  closed; no final redaction, offline-container, release or consumer-readiness
+  claim.
+- No project policy, allowlist, receipt, workflow, identity, finding,
+  credential, customer data, repository identity, statistics or project data.
+- No remote creation, push, publication, release, signing, GitHub-setting
+  change, credential handling, spending, deployment, production or go-live.
+- No reuse of rejected PSCAN-03 implementation or evidence as acceptance; it is
+  historical defect evidence only.
+- No selection, activation, claim or implementation of PSCAN-04, PSCAN-08 or
+  any other successor.
 
 ## Required deliverables
 

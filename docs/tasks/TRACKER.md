@@ -11,7 +11,7 @@
 | PSCAN-07 | Proposed; unselected; signing/publication gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-06 |
 | PSCAN-08 | Inactive; technically and legally gated | Material-gap evidence plus separate owner approval required |
 | PSCAN-09 | Completed and independently accepted locally | Activation `f486989`; accepted closeout commit |
-| PSCAN-10 | Proposed; unselected | PASS-OUTCOME-SPEC-001 primary-coverage boundary |
+| PSCAN-10 | Activated; unclaimed; not implemented | Owner command plus PSCAN-10 activation bundle |
 
 PSCAN-02 completed its activated lifecycle within bounded paths and is accepted
 locally. Its exact limitations remain recorded in `evidence/PSCAN-02`.
@@ -25,8 +25,10 @@ PSCAN-09. PSCAN-09 is now independently accepted and closed. It preserved
 PASS-SPEC-001 and all PSCAN-01 through PSCAN-03 history, established
 PASS-OUTCOME-SPEC-001 through DEC-002, and did not rehabilitate PSCAN-03.
 
-PSCAN-10 is the single proposed bounded primary-coverage successor. It is
-unselected, not activated, not claimed and not implemented. PSCAN-04 through
-PSCAN-07 remain proposed and unselected. PSCAN-08 remains inactive, unselected
-and ineligible pending accepted material-gap evidence plus separate technical
-and AGPL owner approval. No successor is selected or activated.
+The owner exactly activated PSCAN-10 on 2026-09-01 as the bounded
+primary-coverage successor. PSCAN-10 is the only activated task and remains
+unclaimed and not implemented; implementation requires a fresh session from
+the activation commit. PSCAN-04 through PSCAN-07 remain proposed and
+unselected. PSCAN-08 remains inactive, unselected and ineligible pending
+accepted material-gap evidence plus separate technical and AGPL owner approval.
+No successor to PSCAN-10 is selected or activated.

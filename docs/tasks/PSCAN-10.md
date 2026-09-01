@@ -7,10 +7,12 @@ scan inputs.
 
 ## State
 
-Activated by the owner's exact `ACTIVATE PSCAN-10` command on 2026-09-01 and
+Completed and independently accepted locally on 2026-09-01. The task was
 claimed in a fresh implementation session from exact clean activation commit
-`9053b37d799b19e3d98aeca0ae853296971ab09d`. Implementation is in progress and
-is bounded to this specification's allowed paths. No successor is selected.
+`9053b37d799b19e3d98aeca0ae853296971ab09d`; accepted implementation commits are
+`47508b00b35d394412b5b2ffb2bf25b203bc9264` and
+`d10df991d72e3fcc40b378830b50d1f258e16654`. Review, acceptance and closeout are
+recorded in `evidence/PSCAN-10`. No successor is selected.
 
 ## Objective
 

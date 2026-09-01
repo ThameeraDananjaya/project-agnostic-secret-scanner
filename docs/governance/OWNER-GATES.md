@@ -36,9 +36,12 @@ Public repository creation remains scheduled for PSCAN-06 after a read-only
 capability, settings, identity, and cost preflight and the owner's separate
 approval.
 
+The PSCAN-09 mechanism-to-outcome decision authorizes none of these actions.
+PASS-OUTCOME-SPEC-001 preserves every gate and the zero-spend ceiling.
+
 ## TruffleHog gate
 
-PSCAN-08 remains inactive. If accepted tests prove a material Gitleaks coverage
-gap, work must stop and return to the owner for a separate technical and AGPL
+PSCAN-08 remains inactive. If accepted PSCAN-10 or PSCAN-07 tests prove a
+material Gitleaks coverage gap, work must stop and return to the owner for a separate technical and AGPL
 legal-approval decision before downloading, integrating, distributing, or
 enabling TruffleHog. No legal assessment begins before that evidence exists.

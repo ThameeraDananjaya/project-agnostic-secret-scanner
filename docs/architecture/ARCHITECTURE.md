@@ -2,11 +2,11 @@
 
 ## Status and scope
 
-This document defines the target architecture required by PASS-SPEC-001.
-PSCAN-02 implements only the contract, request, outcome, workspace and CLI
-skeleton boundaries identified below. Every engine, Git input, artifact,
-policy, redaction, workflow, release and consuming-project boundary remains
-unimplemented and outside PSCAN-02.
+This document defines the target architecture required by
+PASS-OUTCOME-SPEC-001. PSCAN-02 implements only the contract, request, outcome,
+workspace and CLI skeleton boundaries identified below. PSCAN-03 and correction
+C1 are rejected historical candidates. No accepted pass-capable engine or Git
+input path exists. PSCAN-10 is proposed and unselected.
 
 ## PSCAN-02 realized boundary
 
@@ -71,6 +71,29 @@ owns request construction, retries, policy and allowlist authority, receipt
 issuance and verification, revocations, evidence custody, merge and deployment
 gates, credential response, retention, and go-live decisions.
 
+## Outcome-proved primary coverage
+
+```mermaid
+flowchart LR
+    Bind[Exact base/head/merge-base/range/tree] --> Enum[Enumerate required Git objects]
+    Enum --> Class[Classify raw bytes before transformation]
+    Class --> Ledger[Admission ledger: object, bytes, digest, class]
+    Ledger --> Prep[Byte-conserving preparation]
+    Prep --> Detect[Pinned Gitleaks inspection]
+    Detect --> Proof[Per-object and every-byte inspection proof]
+    Proof --> Gate{All classes, spans and profiles proved?}
+    Gate -->|yes| Private[Private finding classification]
+    Gate -->|no| NonPass[Explicit non-pass]
+```
+
+Exact Git-object enumeration and deterministic projections are mechanisms, not
+coverage authority. A pass requires a bijection between required inputs and the
+private admission ledger; byte-conserving mappings; raw classification before
+framing; exact proof of the pinned detector's buffer, fragment, overlap, stream,
+archive and maximum-rule-span behavior; named bounded resource profiles; and
+isolated adversarial evidence for each claimed class. Prefix markers, file-open
+events, aggregate failures or clean engine exit cannot prove inspection.
+
 ## Acquisition and execution separation
 
 ```mermaid
@@ -93,7 +116,7 @@ write-capable repository token.
 | CLI entry point | Non-interactive invocation, one outcome object, exit mapping | Findings, retry scheduling, CI-provider behavior |
 | Request validator | Schema, version, freshness, digest and path validation before scan | Project policy authorship |
 | Workspace manager | Fresh per-project/per-attempt workspace, safe mounts, resource bounds, destruction | Shared project cache or persistent findings |
-| Git input preparer | Safe exact range/tree preparation with hostile Git features disabled | Candidate execution or dependency installation |
+| Git input preparer | Safe exact range/tree/object admission and every-byte proof with hostile Git features disabled | Candidate execution, dependency installation or unproved projection pass |
 | Artifact normalizer | Safe deterministic archive/OCI expansion and explicit limit rejection | Silent skip, archive execution, unsafe extraction |
 | Engine orchestrator | Exact adapter selection, pinned binding verification, argument-array subprocesses | Shell interpolation or direct upstream resolution |
 | Gitleaks adapter | Exact primary-engine Git and file scans with private capture | Gitleaks GitHub Action or raw external output |
@@ -190,3 +213,8 @@ they pass equivalent acceptance.
 10. Public release trust and project receipt trust remain separate.
 11. No scanner result grants merge, deployment, production, legal or go-live
     authority.
+12. Raw classification precedes transformation and cannot be masked by framing.
+13. Every admitted byte is bound to actual detector inspection under a proved
+    pinned detector/rule span or stream model.
+14. Resource profiles are bounded and every claimed class has isolated
+    adversarial evidence.

@@ -12,7 +12,7 @@ reserved.
 
 ## Objective
 
-Run the complete PASS-SPEC-001 acceptance matrix on the frozen release candidate,
+Run the complete PASS-OUTCOME-SPEC-001 acceptance matrix on the frozen release candidate,
 independently verify first-consumer readiness, establish lifecycle evidence and,
 only after exact owner approvals, sign and publish immutable `v1.0.0`.
 
@@ -58,7 +58,8 @@ become eligible, separately approved, implemented and accepted.
 ## Deliverables
 
 - Fresh proof for all CAP-1 through CAP-20 and AT-01 through AT-31 on the exact
-  candidate, including Windows/Linux parity and declared performance profiles.
+  candidate, including every-byte detector inspection, raw classification,
+  Windows/Linux parity and declared performance profiles.
 - Coverage map and explicit CAP-6 decision: no material gap and fallback absent,
   or fail-closed referral to PSCAN-08 before readiness.
 - Mock external project adapter/issuer proof using synthetic data and an

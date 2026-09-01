@@ -7,10 +7,10 @@ successor contract.
 
 ## State
 
-Activated by the owner on 2026-09-01. Unclaimed. Not implemented.
-
-Implementation is authorized only in a fresh session from the exact PSCAN-09
-activation commit. This activation session contains no implementation work.
+Completed and independently accepted locally on 2026-09-01. The implementation
+began in a fresh session from exact activation commit
+`f48698922c174411f05124b066772753a2b8dd1e`. No successor is selected,
+activated, claimed or implemented.
 
 ## Objective
 
@@ -157,3 +157,15 @@ Its inclusion does not select, activate or authorize PSCAN-10.
 
 Stop after PSCAN-09 closeout. Do not select or activate PSCAN-10, PSCAN-04 or
 any other successor.
+
+## Accepted closeout
+
+PSCAN-09 established PASS-OUTCOME-SPEC-001 as the controlling successor through
+DEC-002 and complete transition traceability. PASS-SPEC-001, its external source
+and PSCAN-01 through PSCAN-03 records remain immutable history. PSCAN-03 and
+correction C1 remain rejected. Exact implementation, independent review,
+validation and closeout evidence is in `evidence/PSCAN-09`.
+
+PSCAN-10 is proposed only. PSCAN-04 through PSCAN-07 remain proposed and
+unselected. PSCAN-08 remains inactive, unselected, technically gated and AGPL
+owner-gated. No successor activated automatically.

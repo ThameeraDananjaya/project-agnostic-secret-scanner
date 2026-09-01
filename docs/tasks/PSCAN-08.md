@@ -11,7 +11,7 @@ Inactive. Unselected. Not eligible. Not activated. Not claimed.
 
 ## Eligibility and owner gates
 
-PSCAN-08 cannot be selected or activated unless accepted PSCAN-03/07 evidence
+PSCAN-08 cannot be selected or activated unless accepted PSCAN-10/07 evidence
 proves a material required input class cannot be covered by Gitleaks. Work then
 stops for one consolidated owner decision covering:
 

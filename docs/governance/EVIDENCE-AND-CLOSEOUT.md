@@ -21,6 +21,11 @@ Every implementation task records:
 Evidence is content-free. It never stores candidate source, findings, paths from
 a consuming project, credentials, keys, receipt material or customer data.
 
+For an authority transition, evidence also records predecessor canonical,
+external-source and historical-record hashes; the explicit successor identity;
+complete requirement dispositions; and agreement of every changed living
+authority. Predecessor files remain immutable.
+
 ## Acceptance rules
 
 Acceptance requires reproducible evidence for every task success criterion and
@@ -60,3 +65,5 @@ project integration always require their own applicable authority.
 Historical evidence is immutable. A correction creates a new bounded record
 that references the earlier record; it does not rewrite an accepted or rejected
 fact. Revocation is append-only and restoration requires new clean evidence.
+Decommissioning a contract's current authority likewise preserves its bytes and
+does not accept a rejected implementation produced under it.

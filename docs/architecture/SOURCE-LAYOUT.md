@@ -2,10 +2,10 @@
 
 ## Status
 
-This is the complete target layout. PSCAN-02 creates only its owned `cmd`,
-request, workspace, outcome, scanner-owned contract, fixture and test paths.
-Every other implementation directory remains reserved for the exact later task
-named in the ownership table.
+This is the complete target layout under PASS-OUTCOME-SPEC-001. PSCAN-02 created
+its bounded contract/workspace skeleton. Rejected PSCAN-03 paths remain in
+history but are not authoritative. PSCAN-10 is the proposed, unselected owner of
+the replacement primary-coverage boundary.
 
 ```text
 /.github/workflows/             trusted CI and release workflows
@@ -48,7 +48,7 @@ named in the ownership table.
 |---|---|
 | Governance, architecture, threat, validation and task documents | PSCAN-01 |
 | `cmd/`, request/outcome/workspace internals, initial scanner-owned schemas | PSCAN-02 |
-| Gitleaks intake, engine orchestration, Git/file input and primary fixtures | PSCAN-03 |
+| Outcome-proved Gitleaks intake, exact Git-object admission, inspection proof and primary fixtures | PSCAN-10 |
 | Artifact, redaction, cleanup and offline-sandbox implementation | PSCAN-04 |
 | Policy projection, allowlist validation, compatibility and isolation | PSCAN-05 |
 | Workflows, build, licences, SBOM, signing design and release verifier | PSCAN-06, subject to action-time owner gates |

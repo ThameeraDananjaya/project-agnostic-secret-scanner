@@ -32,3 +32,9 @@ record:
 
 If evidence is missing, inconsistent, or cannot prove the task's complete
 boundary, the task is not accepted.
+
+An authority-transition task additionally preserves every predecessor contract
+and historical record byte-for-byte, assigns the successor a distinct identity,
+maps every predecessor requirement explicitly and changes living authority only
+through independently accepted closeout. A rejected implementation is never
+rehabilitated by a governance transition.

@@ -29,6 +29,11 @@ execution is network-disabled. Findings are transient and fully redacted.
 14. All CAP-1 through CAP-20 criteria and the complete acceptance matrix must
     pass before first-consumer readiness.
 15. No successor task activates automatically.
+16. Exact Git-object or projected input is pass-capable only when every admitted
+    byte is bound to actual detector inspection.
+17. Raw classification precedes framing, extraction or transformation.
+18. Pinned detector span/stream behavior, declared resource profiles and each
+    claimed input class require isolated adversarial proof.
 
 ## Standing owner decisions
 
@@ -47,3 +52,5 @@ execution is network-disabled. Findings are transient and fully redacted.
   separate technical and AGPL legal decision is approved.
 - Final runbook: plain English Markdown with clear Mermaid diagrams and complete
   input/output parameter and payload documentation.
+- Controlling contract after PSCAN-09 closeout: `PASS-OUTCOME-SPEC-001`;
+  `PASS-SPEC-001` remains immutable historical evidence.

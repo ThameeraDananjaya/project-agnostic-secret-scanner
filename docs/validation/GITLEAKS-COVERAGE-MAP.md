@@ -1,21 +1,33 @@
-# Gitleaks v8.30.1 Coverage Map
+# Gitleaks Primary Coverage Map
 
-| Required class | Correction C1 observation | PSCAN-03 disposition |
+## Current status
+
+No input class is currently accepted as pass-capable. PSCAN-03 and correction
+C1 remain rejected historical evidence. This map states the proof required by
+PASS-OUTCOME-SPEC-001 for proposed, unselected PSCAN-10; it does not claim
+implementation or execute a scanner.
+
+| Required class | Immutable historical fact | Required successor proof |
 |---|---|---|
-| Ordinary tracked head files | Exact `ls-tree -r -z --full-tree` blob enumeration and framed Gitleaks directory projection | Enumeration is implemented; detector-fragment completeness is unproved, so candidate is not accepted |
-| Text additions/deletions in exact Git range | Raw parent-edge OIDs admit both pre-image and post-image blobs | Exact range binding passed, but a match split at byte 125,000 escaped product detection |
-| Binary-classified blobs present at head | Binary bytes are preserved after a deterministic text frame | Aggregate text-plus-binary fail did not isolate binary detection |
-| Binary-classified blob added/deleted only in history | Exact blob-object projection bypasses incomplete textual patches | Exact bytes are projected, but independent binary-only Gitleaks proof is absent from the committed candidate |
-| Merge and rename history | Every in-range commit and every merge-parent edge is enumerated; renames are represented as delete/add | Deterministic parent/path-preserving projections proved |
-| Finding outside declared range and absent at head | Neither an in-range edge nor the head tree admits the object | Clean exact-range test passes without misattribution |
-| Gitleaks path/type/fragment skip | Same-run coverage rule requires one prefix marker per file | Path skip is non-pass; later internal-fragment omission can still falsely pass |
-| File/count/total above declared maximum | Rejected during object-size/count/aggregate preflight | Resource-limit non-pass before Gitleaks launch |
-| Nested archives and container layers | Framing masks raw signatures while adapter forces archive depth zero | Unsupported in PSCAN-03 and must fail before framing; source-complete classification is absent |
-| Git metadata | Only trusted fixed Git commands enumerate identities and blobs | Candidate metadata is not executed or emitted |
-| Required engine mode | History blobs are passed to Gitleaks directory mode | Conflicts with PASS-SPEC-001 section 7.2 Git-mode requirement |
-| Symlink, gitlink, special, unsafe, unreadable, conflicting or unbound source | Admission and integrity gates reject before or during projection verification | Explicit non-pass |
+| Ordinary tracked head files | C1 enumerated head blobs but did not prove later detector fragments | Exact head-tree/object/byte ledger plus per-byte pinned-detector inspection |
+| Text additions/deletions in exact range | Parent-edge OIDs were exact; a match split at byte 125,000 escaped | Exact pre/post admission plus first/last/internal/no-whitespace span-edge proof |
+| Binary-classified head blobs | Bytes were framed; aggregate fail did not isolate binary detection | Raw binary classification before framing and binary-only clean/finding evidence |
+| Binary-classified added/deleted history | Native patch omitted bytes; C1 projected objects without isolated proof | Exact object bytes plus deleted-binary-only inspection and detection proof |
+| Merge and rename history | C1 deterministically enumerated parent edges/delete-add identities | Fresh exact range/edge/object proof under the accepted successor implementation |
+| Out-of-range and absent-at-head object | C1 did not admit it | Fresh negative proof that it is neither admitted nor attributed while range stays bound |
+| Detector path/type/fragment behavior | Prefix marker could pass while later fragment missed | Exact pinned skip/span/stream behavior and per-byte inspection; marker alone forbidden |
+| File/count/total maximum | C1 preflighted some limits; overlap experiment introduced unbound limits | Named PR/release profiles with all resource bounds tested below/at/above |
+| Archives/compression/container signatures | Framing could mask raw identity | Complete raw pre-transformation classification, ambiguity/polyglot handling and non-pass |
+| Git metadata and hostile configuration | Fixed commands disabled many hostile features | Fresh proof for config/hooks/attributes/filters/pagers/diffs/textconv/prompts |
+| Required detector input form | Native Git mode was incomplete; C1 directory mode conflicted with predecessor | Input form is mechanism-neutral only after complete outcome proof |
+| Unsafe/special/unreadable/conflicting source | C1 rejected known unsafe classes | Fresh exhaustive admission rejection and class-isolated evidence |
+| Rule maximum span | Pinned rules included unbounded whole matches | Finite proved span for every blocking rule or complete streaming proof; otherwise non-pass |
+| Admission-to-inspection binding | Per-file prefix marker was not enough | One-to-one ledger rows binding every required original byte to actual inspection |
 
-`MATERIAL-GAP-001.md` remains the immutable reproduction for ordinary native
-patch input. Correction C1 does not use that input form, but its replacement is
-also rejected. No fallback engine is selected or authorized. PSCAN-08 remains
-inactive.
+## Decision boundary
+
+PSCAN-10 must fail closed unless every claimed class above is independently
+proved under exact pins and declared profiles. Any remaining material required-
+class gap is recorded as evidence and stops first-consumer readiness. It does
+not select, activate or approve PSCAN-08. TruffleHog remains absent pending a
+separate technical and AGPL owner decision.

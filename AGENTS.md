@@ -2,14 +2,17 @@
 
 ## Controlling authority
 
-PASS-SPEC-001 is the controlling product contract. Work may add stricter
-controls but must not weaken, reinterpret, omit, or silently replace any
-capability, constraint, non-goal, security boundary, schema boundary,
-acceptance test, owner gate, or definition-of-done requirement.
+PASS-OUTCOME-SPEC-001 is the controlling product contract after the accepted
+PSCAN-09 authority transition. Work may add stricter controls but must not
+weaken, reinterpret, omit or silently replace any capability, constraint,
+non-goal, security boundary, schema boundary, acceptance test, owner gate or
+definition-of-done requirement.
 
-The source document and verified digest are recorded in
-`docs/spec/PASS-SPEC-001-SOURCE.md`. PSCAN-01 must place the canonical contract
-inside this repository without changing its meaning.
+PASS-SPEC-001, its source record, its owner-provided external source and all
+PSCAN-01 through PSCAN-03 records are immutable historical audit evidence. The
+exact transition and every predecessor disposition are recorded in
+`docs/spec/TRACEABILITY.md`. Historical PSCAN-03 and correction C1 remain
+rejected and non-authoritative.
 
 ## Product independence
 
@@ -47,3 +50,9 @@ authorized for that exact action.
 
 Every missing, stale, incomplete, conflicting, unsupported, or untrustworthy
 condition fails closed.
+
+Exact Git-object enumeration or deterministic projections are authoritative
+only with exact object/range/tree identity, every-byte admission and detector-
+inspection proof, raw classification before transformation, proved pinned
+detector span/stream behavior, bounded declared profiles and class-isolated
+adversarial evidence.

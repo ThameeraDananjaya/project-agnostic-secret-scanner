@@ -31,6 +31,10 @@ source binding, tracked-source manifest, release build-context and artifact
 manifests, fallback requirement, limits, `offlineRequired`, `redactionMode`,
 `requestedAt` and future compatible-field behavior.
 
+It must also document the exact-object admission-ledger, raw-classifier,
+preparation/projection, declared-profile and detector-inspection-proof bindings
+introduced by PASS-OUTCOME-SPEC-001, including which conditions are non-pass.
+
 ## Required output documentation
 
 Document stdout, stderr and process exit behavior. Stdout emits exactly one

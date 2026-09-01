@@ -18,7 +18,7 @@ network or credentials.
 
 ## Preconditions
 
-- PSCAN-03 accepted and clean.
+- PSCAN-10 outcome-proved primary coverage accepted and clean.
 - Exact PSCAN-04 activation and fresh implementation session.
 - Supported archive/OCI parsing choices and licences reviewed before admission.
 

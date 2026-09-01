@@ -19,7 +19,7 @@ revocation reference verification, and prove that no state crosses projects.
 
 - PSCAN-04 accepted and clean.
 - Exact PSCAN-05 activation and fresh implementation session.
-- DEC-001 remains consistent with the canonical contract.
+- DEC-001 remains consistent with PASS-OUTCOME-SPEC-001.
 
 ## Allowed paths
 

@@ -2,9 +2,10 @@
 
 ## Current status
 
-This repository currently contains governance and design authority only. There
-is no runnable scanner or published release. PASS-SPEC-001 and the threat model
-are the controlling security requirements.
+This repository has no accepted pass-capable scanner or published release.
+PASS-OUTCOME-SPEC-001 and the threat model are the controlling security
+requirements. PASS-SPEC-001 and PSCAN-01 through PSCAN-03 remain immutable
+historical evidence; rejected PSCAN-03 code is not an authoritative scan path.
 
 ## Reporting
 
@@ -27,6 +28,9 @@ content-free.
 - Raw or partially raw findings remain inside the private process boundary.
 - Unsupported, incomplete, skipped, stale, conflicting, or untrusted evidence
   produces a non-pass outcome.
+- Exact objects and projections require every-byte detector-inspection proof,
+  raw classification before transformation, proved detector span/stream
+  behavior, bounded profiles and isolated adversarial class evidence.
 - A scanner pass is evidence only and never authorizes merge, deployment,
   production, compliance, or go-live.
 - Consuming projects retain authority for policies, allowlists, receipts,

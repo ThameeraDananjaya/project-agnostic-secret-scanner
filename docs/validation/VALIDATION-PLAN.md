@@ -11,6 +11,12 @@ failure to accept.
 All fixtures contain synthetic non-credentials. Tests must never scan real
 project data or depend on online provider verification.
 
+PASS-OUTCOME-SPEC-001 additionally requires exact object/range/tree identity,
+one admission-ledger row per required input, every-byte detector-inspection
+proof, raw classification before transformation, a pinned detector span/stream
+model, named bounded profiles and isolated adversarial evidence for every
+claimed input class.
+
 ## Validation layers
 
 | Layer | Purpose | Minimum evidence |
@@ -19,6 +25,7 @@ project data or depend on online provider verification.
 | Static | Reject project identity, unsafe commands, forbidden outputs, unpinned references and authority drift | Path/content scans and schema validation |
 | Unit | Prove validation, normalization, classification, redaction and cleanup invariants | Deterministic component tests |
 | Integration | Prove trusted component boundaries and engine behavior | Generated fixtures with exact bindings |
+| Inspection | Prove every admitted byte reached the exact detector stream/span | Ledger-to-object and ledger-to-detector bijection plus boundary canaries |
 | Adversarial | Challenge injection, traversal, bombs, leakage, conflicts, rollback and contamination | Negative-test corpus with non-pass assertions |
 | Supply chain | Prove source-to-asset, manifest, licence, SBOM, identity and digest binding | Offline verifier evidence |
 | Platform | Prove logical parity and supported execution | Windows amd64 and Linux amd64 results |
@@ -158,3 +165,38 @@ PSCAN-02 acceptance performs fresh checks for:
 Full standalone Windows process launch remains subject to the execution host's
 application-control policy. A policy denial is recorded as a validation
 limitation and never reinterpreted as a passing process launch.
+
+## Outcome-proved primary coverage checks
+
+PSCAN-10 and final PSCAN-07 acceptance must prove:
+
+1. exact base/head/merge-base/range/parent-edge/head-tree identities;
+2. every required object/artifact appears exactly once in the admission ledger;
+3. exact OID, type, mode, length, SHA-256 and byte equality;
+4. raw archive/compression/container/text/binary/ambiguous classification before
+   any framing or transformation;
+5. byte-conserving preparation with an exact original-to-detector mapping;
+6. pinned detector buffer/peek/fragment/overlap/stream/archive/report behavior;
+7. finite maximum required span for every rule or a complete streaming proof;
+8. first, last and internal fragment-boundary findings, including no-whitespace
+   and maximum-span cases;
+9. one-to-one proof that every original byte reached actual detector inspection;
+10. named PR/release profiles with every bound tested at, below and above;
+11. isolated text, binary, deleted-history, head-tree, merge, rename, archive-
+    class, maximum-size and skip-path clean/finding/non-pass evidence; and
+12. explicit non-pass for every missing, duplicate, unbound, skipped,
+    unsupported, over-limit or otherwise unproved condition.
+
+Prefix markers, file-open events, counts, aggregate failures and clean detector
+exit are insufficient on their own.
+
+## PSCAN-09 authority-transition checks
+
+PSCAN-09 acceptance performs read-only checks for exact activation HEAD; clean
+pre-state; unchanged 977-line canonical and external PASS-SPEC-001 bytes/digest;
+unchanged source record and all PSCAN-01 through PSCAN-03 task/evidence files;
+complete CAP, AT, invariant, boundary, non-goal, definition-of-done, owner-gate
+and historical dispositions; one coherent successor identity; living-document
+agreement; exact allowed-path containment; absence of product implementation,
+downloads, tool execution and remote actions; independent review; path-bounded
+commit; clean post-state; and every successor unselected with PSCAN-08 inactive.

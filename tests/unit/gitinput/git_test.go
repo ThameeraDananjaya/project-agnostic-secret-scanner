@@ -72,6 +72,16 @@ func TestSafeBareCloneAndExactRangeBinding(t *testing.T) {
 	if projection.EntryCount != 3 || plan.Range.HistoryRangeDigest != binding.HistoryRangeDigest || len(plan.PlanDigest) != 64 || len(projection.ContentDigest) != 64 || len(projection.ProbeDigest) != 64 {
 		t.Fatalf("wrong projection binding: plan=%#v projection=%#v", plan, projection)
 	}
+	if projection.ObjectCount != len(projection.Ledger) || projection.ObjectCount >= projection.EntryCount || len(projection.LedgerDigest) != 64 {
+		t.Fatalf("object admissions were not exactly-once: %#v", projection.Ledger)
+	}
+	seenObjects := map[string]bool{}
+	for _, row := range projection.Ledger {
+		if seenObjects[row.OID] {
+			t.Fatal("duplicate object admission")
+		}
+		seenObjects[row.OID] = true
+	}
 	var foundDeletedBinary bool
 	for i, entry := range plan.Entries {
 		if entry.Path != "deleted.bin" {

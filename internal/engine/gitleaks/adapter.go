@@ -24,7 +24,7 @@ const (
 	AdapterVersion    = "2.0.0"
 	OutputBinding     = "json-v8.30.1"
 	FindingExitCode   = 11
-	MaximumReportSize = 256 << 20
+	MaximumReportSize = 1 << 30
 	CoverageRuleID    = "pscan-projection-coverage"
 )
 
@@ -83,14 +83,17 @@ func (a Adapter) ScanProjection(ctx context.Context, projection gitinput.Materia
 }
 
 func (a Adapter) ScanProjectionProfile(ctx context.Context, projection gitinput.MaterializedProjection, profile gitinput.CoverageProfile) engine.Result {
+	if err := gitinput.VerifyMaterializedProjection(projection); err != nil {
+		return engine.Result{Reason: outcome.ReasonFailInputIntegrity, ExitCode: -1}
+	}
 	var total int64
-	for _, file := range projection.Files {
-		if profile.AdmitBlob(file.Size) != nil || file.Size > profile.MaxTotalBytes-total {
+	for _, object := range projection.Ledger {
+		if profile.AdmitBlob(object.Size) != nil || object.Size > profile.MaxTotalBytes-total {
 			return engine.Result{Reason: outcome.ReasonIndeterminateResourceLimit, ExitCode: -1}
 		}
-		total += file.Size
+		total += object.Size
 	}
-	if profile.Admit(total, projection.EntryCount, len(projection.ExpectedProbeFiles)) != nil {
+	if profile.Admit(total, projection.ObjectCount, len(projection.ExpectedProbeFiles)) != nil {
 		return engine.Result{Reason: outcome.ReasonIndeterminateResourceLimit, ExitCode: -1}
 	}
 	if profile.AdmitRuntime(profile.Timeout, profile.MaxMemoryBytes, 1, profile.MaxReportBytes, gitinput.MaximumDetectorFile-1) != nil {
@@ -100,10 +103,13 @@ func (a Adapter) ScanProjectionProfile(ctx context.Context, projection gitinput.
 	if timeout <= 0 || projection.EntryCount <= 0 {
 		return engine.Result{Reason: outcome.ReasonFailInputIntegrity, ExitCode: -1}
 	}
-	if err := gitinput.VerifyMaterializedProjection(projection); err != nil {
-		return engine.Result{Reason: outcome.ReasonFailInputIntegrity, ExitCode: -1}
+	profileContext, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	probeTimeout := 5 * time.Second
+	if timeout < probeTimeout {
+		probeTimeout = timeout
 	}
-	if probe := a.probe(ctx, timeout); probe.Reason != outcome.ReasonPassNoBlockingFindings {
+	if probe := a.probe(profileContext, probeTimeout); probe.Reason != outcome.ReasonPassNoBlockingFindings {
 		return probe
 	}
 	expected, ok := normalizeExpectedPaths(projection.ExpectedProbeFiles)
@@ -111,7 +117,7 @@ func (a Adapter) ScanProjectionProfile(ctx context.Context, projection gitinput.
 		return engine.Result{Reason: outcome.ReasonFailInputIntegrity, ExitCode: -1}
 	}
 	args := append(a.commonArgs(a.Binding.Config, timeout, gitinput.MaximumDetectorFile), ".")
-	return a.runProfile(ctx, append([]string{"dir"}, args...), projection.ProbeRoot, profile, decodeProjection(expected))
+	return a.runProfile(profileContext, append([]string{"dir"}, args...), projection.ProbeRoot, profile, decodeProjection(expected))
 }
 
 func (a Adapter) runProfile(ctx context.Context, args []string, directory string, profile gitinput.CoverageProfile, decoder engine.Decoder) engine.Result {
@@ -126,7 +132,7 @@ func (a Adapter) runProfile(ctx context.Context, args []string, directory string
 	return engine.RunPrivate(ctx, engine.Command{
 		Executable: a.Binding.Executable, ExpectedDigest: a.Binding.ExecutableDigest,
 		Args: args, Dir: directory, Environment: environment,
-		Timeout: profile.Timeout + 5*time.Second, CaptureLimit: profile.MaxReportBytes,
+		Timeout: profile.Timeout, CaptureLimit: profile.MaxReportBytes / 2,
 	}, decoder)
 }
 

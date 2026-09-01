@@ -18,14 +18,14 @@ var (
 	PRProfile = CoverageProfile{
 		Name: "pr", MaxBlobBytes: 512 << 20, MaxBlobCount: 100_000,
 		MaxTotalBytes: 2 << 30, MaxDetectorFiles: 125_000,
-		MaxReportBytes: 256 << 20, Timeout: 15 * time.Minute,
-		MaxMemoryBytes: 2 << 30, MaxProcesses: 1,
+		MaxReportBytes: 1 << 30, Timeout: 15 * time.Minute,
+		MaxMemoryBytes: 4 << 30, MaxProcesses: 1,
 	}
 	ReleaseProfile = CoverageProfile{
 		Name: "release", MaxBlobBytes: 512 << 20, MaxBlobCount: 100_000,
 		MaxTotalBytes: 10 << 30, MaxDetectorFiles: 125_000,
-		MaxReportBytes: 256 << 20, Timeout: 60 * time.Minute,
-		MaxMemoryBytes: 4 << 30, MaxProcesses: 1,
+		MaxReportBytes: 1 << 30, Timeout: 60 * time.Minute,
+		MaxMemoryBytes: 8 << 30, MaxProcesses: 1,
 	}
 )
 

@@ -15,10 +15,11 @@ root-level licence and notice file and its digest, are preserved under
 module versions and evidence files. This inventory is intake evidence, not a
 release SBOM or legal approval.
 
-The runner directly uses `github.com/mholt/archives` v0.1.2 and its pinned
-transitive graph to classify exact raw bytes before preparation. Those licence
-files are a subset of the same 63-module inventory and were freshly reproduced
-without differences during PSCAN-10.
+The PSCAN-10 packages directly use `github.com/mholt/archives` v0.1.2,
+`github.com/h2non/filetype` v1.1.3 and their pinned transitive graph to classify
+exact raw bytes before preparation. Those licence files are a subset of the
+same 63-module inventory and were freshly reproduced without differences during
+PSCAN-10.
 
 Before any third-party material is admitted, the responsible task must verify
 the exact source revision, licence text, redistribution obligations, notices,

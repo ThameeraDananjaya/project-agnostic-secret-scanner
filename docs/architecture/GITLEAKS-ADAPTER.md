@@ -38,8 +38,9 @@ exact base, head, merge base, ordered range and every parent edge
 ```
 
 The implemented v2 preparation writes each exact raw blob to a private ledger,
-classifies it with every registered `github.com/mholt/archives` v0.1.2 family,
-and admits only ordinary text or binary. It then writes unchanged payload bytes
+classifies it with every registered `github.com/mholt/archives` v0.1.2 family
+and the exact `github.com/h2non/filetype` v1.1.3 application-MIME matcher used
+by Gitleaks, and admits only ordinary text or binary. It then writes unchanged payload bytes
 into 90,000-byte overlapping chunks. Adjacent chunks overlap by 4,019 bytes;
 each complete detector file is below the pinned 100,000-byte Gitleaks base
 buffer and contains a unique same-invocation inspection witness. Original path
@@ -77,8 +78,8 @@ by the pinned stack. Framing cannot hide or change that authority. Unsupported,
 encrypted, malformed or conflicting classes fail before a projection can pass.
 
 Declared PR and release profiles bind 512 MiB per blob, 100,000 objects,
-2/10 GiB total bytes, 125,000 detector files, 256 MiB private report capture,
-15/60 minute time, 2/4 GiB Go memory limit and one detector process. At/below/above boundary tests and separate text,
+2/10 GiB total bytes, 125,000 detector files, 1 GiB aggregate private report
+capture, 15/60 minute time, 4/8 GiB Go memory limit and one detector process. At/below/above boundary tests and separate text,
 binary, deleted-history, head-tree, merge, rename, archive-class and span-edge
 fixtures are mandatory. Combined failures do not prove an individual class.
 

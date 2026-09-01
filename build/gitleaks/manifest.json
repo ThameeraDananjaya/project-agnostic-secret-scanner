@@ -6,7 +6,7 @@
   "outputBinding": "json-v8.30.1",
   "rules": {
     "productConfig": "rules/generic/gitleaks-v8.30.1.toml",
-    "productConfigSha256": "51e903dac96834d1dc87999e05971cf9a30c2a3ba3d8aaa57d34f494e8a942c9",
+    "productConfigSha256": "cebfe007ae88a55540e42ccb8e042848d089fe2f59bcf604c5fd4904d6460792",
     "coverageRuleId": "pscan-projection-coverage",
     "ignoreFile": "rules/generic/gitleaks-ignore-empty-v1.txt",
     "ignoreFileSha256": "3cdd737e34cb301ffc19861f903cf59441ff57453ddf70bd5b8c1bd63389aebe"
@@ -30,6 +30,28 @@
   "outputs": {
     "windowsAmd64Sha256": "b2094b3534ce0abf9c74a4b251153f5a23ebb4e74d5ae4f6d6ceeb428aaf0178",
     "linuxAmd64Sha256": "657ddddfb98e21052fb1a60d5d4e7d7534897347cb7df0031f13258a3f800586"
+  },
+  "profiles": {
+    "pr": {
+      "maxBlobBytes": 536870912,
+      "maxBlobCount": 100000,
+      "maxTotalBytes": 2147483648,
+      "maxDetectorFiles": 125000,
+      "maxReportBytes": 1073741824,
+      "timeoutSeconds": 900,
+      "maxMemoryBytes": 4294967296,
+      "maxProcesses": 1
+    },
+    "release": {
+      "maxBlobBytes": 536870912,
+      "maxBlobCount": 100000,
+      "maxTotalBytes": 10737418240,
+      "maxDetectorFiles": 125000,
+      "maxReportBytes": 1073741824,
+      "timeoutSeconds": 3600,
+      "maxMemoryBytes": 8589934592,
+      "maxProcesses": 1
+    }
   },
   "reproducibility": {
     "independentBuilds": 2,

@@ -83,8 +83,25 @@ type MaterializedProjection struct {
 	ContentDigest      string
 	ProbeDigest        string
 	EntryCount         int
+	ObjectCount        int
+	LedgerDigest       string
+	Ledger             []AdmissionLedgerRow
 	ExpectedProbeFiles []string
 	Files              []MaterializedFile
+}
+
+type AdmissionLedgerRow struct {
+	OID        string
+	Type       string
+	Size       int64
+	Digest     string
+	RawClass   RawClass
+	References []AdmissionReference
+}
+
+type AdmissionReference struct {
+	RelativePath string
+	Mode         string
 }
 
 type MaterializedFile struct {
@@ -205,17 +222,21 @@ func (g Git) PlanRange(ctx context.Context, repository, base, head string, first
 	if len(plan.Entries) == 0 {
 		return CoveragePlan{}, fmt.Errorf("%w: no admitted blobs", ErrIncompleteCoverage)
 	}
-	if len(plan.Entries) > limits.MaxBlobCount {
-		return CoveragePlan{}, fmt.Errorf("%w: admitted blob count exceeds maximum", ErrResourceLimit)
-	}
 	var totalBytes int64
 	seen := make(map[string]struct{}, len(plan.Entries))
 	seenFolded := make(map[string]string, len(plan.Entries))
+	seenObjects := make(map[string]struct{}, len(plan.Entries))
 	for _, entry := range plan.Entries {
-		if entry.Size > limits.MaxTotalBytes-totalBytes {
-			return CoveragePlan{}, fmt.Errorf("%w: admitted blob bytes exceed maximum", ErrResourceLimit)
+		if _, admitted := seenObjects[entry.OID]; !admitted {
+			if len(seenObjects) == limits.MaxBlobCount {
+				return CoveragePlan{}, fmt.Errorf("%w: admitted blob count exceeds maximum", ErrResourceLimit)
+			}
+			if entry.Size > limits.MaxTotalBytes-totalBytes {
+				return CoveragePlan{}, fmt.Errorf("%w: admitted blob bytes exceed maximum", ErrResourceLimit)
+			}
+			totalBytes += entry.Size
+			seenObjects[entry.OID] = struct{}{}
 		}
-		totalBytes += entry.Size
 		if _, exists := seen[entry.RelativePath]; exists {
 			return CoveragePlan{}, fmt.Errorf("%w: conflicting projection", ErrIncompleteCoverage)
 		}
@@ -251,6 +272,8 @@ func (g Git) Materialize(ctx context.Context, repository, privateHome, scanRoot,
 	contentHash, probeHash := sha256.New(), sha256.New()
 	expected := []string{}
 	files := make([]MaterializedFile, 0, len(plan.Entries))
+	ledger := make([]AdmissionLedgerRow, 0, len(plan.Entries))
+	ledgerIndex := make(map[string]int, len(plan.Entries))
 	for entryIndex, entry := range plan.Entries {
 		if !safeProjectionRelative(entry.RelativePath) {
 			return MaterializedProjection{}, fmt.Errorf("%w: unsafe projection path", ErrIncompleteCoverage)
@@ -274,6 +297,17 @@ func (g Git) Materialize(ctx context.Context, repository, privateHome, scanRoot,
 		if classErr != nil {
 			return MaterializedProjection{}, fmt.Errorf("%w: %s", ErrUnsupportedRawClass, rawClass)
 		}
+		reference := AdmissionReference{RelativePath: entry.RelativePath, Mode: entry.Mode}
+		if index, exists := ledgerIndex[entry.OID]; exists {
+			row := &ledger[index]
+			if row.Size != entry.Size || row.Digest != contentDigest || row.RawClass != rawClass {
+				return MaterializedProjection{}, fmt.Errorf("%w: conflicting object admission", ErrIncompleteCoverage)
+			}
+			row.References = append(row.References, reference)
+		} else {
+			ledgerIndex[entry.OID] = len(ledger)
+			ledger = append(ledger, AdmissionLedgerRow{OID: entry.OID, Type: "blob", Size: entry.Size, Digest: contentDigest, RawClass: rawClass, References: []AdmissionReference{reference}})
+		}
 		bound := MaterializedFile{RelativePath: entry.RelativePath, OID: entry.OID, Mode: entry.Mode, Size: entry.Size, Digest: contentDigest, RawClass: rawClass, Preparation: PreparationVersion}
 		chunks, chunkErr := writeDetectorChunks(target, probeRoot, entry.Path, plan.PlanDigest, entryIndex, entry.OID, entry.Size)
 		if chunkErr != nil {
@@ -287,7 +321,19 @@ func (g Git) Materialize(ctx context.Context, repository, privateHome, scanRoot,
 		}
 		files = append(files, bound)
 	}
-	return MaterializedProjection{ScanRoot: scanRoot, ProbeRoot: probeRoot, PlanDigest: plan.PlanDigest, ContentDigest: hex.EncodeToString(contentHash.Sum(nil)), ProbeDigest: hex.EncodeToString(probeHash.Sum(nil)), EntryCount: len(files), ExpectedProbeFiles: expected, Files: files}, nil
+	return MaterializedProjection{ScanRoot: scanRoot, ProbeRoot: probeRoot, PlanDigest: plan.PlanDigest, ContentDigest: hex.EncodeToString(contentHash.Sum(nil)), ProbeDigest: hex.EncodeToString(probeHash.Sum(nil)), EntryCount: len(files), ObjectCount: len(ledger), LedgerDigest: digestAdmissionLedger(ledger), Ledger: ledger, ExpectedProbeFiles: expected, Files: files}, nil
+}
+
+func digestAdmissionLedger(ledger []AdmissionLedgerRow) string {
+	h := sha256.New()
+	writeDigestRecord(h, "pscan.admission-ledger.v1", strconv.Itoa(len(ledger)))
+	for _, row := range ledger {
+		writeDigestRecord(h, row.OID, row.Type, strconv.FormatInt(row.Size, 10), row.Digest, string(row.RawClass), strconv.Itoa(len(row.References)))
+		for _, reference := range row.References {
+			writeDigestRecord(h, reference.RelativePath, reference.Mode)
+		}
+	}
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 func writeDetectorChunks(source, root, originalPath, planDigest string, entryIndex int, oid string, size int64) ([]DetectorChunk, error) {
@@ -353,12 +399,32 @@ func writeDetectorChunks(source, root, originalPath, planDigest string, entryInd
 // VerifyMaterializedProjection proves raw-ledger and prepared-chunk bijections,
 // exact integrity, finite-overlap continuity, and absence of unbound files.
 func VerifyMaterializedProjection(projection MaterializedProjection) error {
-	if projection.EntryCount <= 0 || projection.EntryCount != len(projection.Files) || len(projection.ExpectedProbeFiles) == 0 || !lowerHexDigest(projection.PlanDigest) || !lowerHexDigest(projection.ContentDigest) || !lowerHexDigest(projection.ProbeDigest) {
+	if projection.EntryCount <= 0 || projection.EntryCount != len(projection.Files) || projection.ObjectCount <= 0 || projection.ObjectCount != len(projection.Ledger) || len(projection.ExpectedProbeFiles) == 0 || !lowerHexDigest(projection.PlanDigest) || !lowerHexDigest(projection.ContentDigest) || !lowerHexDigest(projection.ProbeDigest) || !lowerHexDigest(projection.LedgerDigest) || projection.LedgerDigest != digestAdmissionLedger(projection.Ledger) {
 		return errors.New("invalid materialized projection")
 	}
 	contentHash, probeHash := sha256.New(), sha256.New()
 	rawExpected := make(map[string]fileBinding, len(projection.Files))
 	chunkExpected := make(map[string]fileBinding, len(projection.ExpectedProbeFiles))
+	ledgerObjects := make(map[string]bool, projection.ObjectCount)
+	ledgerReferences := make(map[string]ledgerReferenceBinding, projection.EntryCount)
+	for _, row := range projection.Ledger {
+		if !oidPattern.MatchString(row.OID) || row.Type != "blob" || row.Size < 0 || !lowerHexDigest(row.Digest) || row.RawClass != RawText && row.RawClass != RawBinary || len(row.References) == 0 || ledgerObjects[row.OID] {
+			return errors.New("invalid admission-ledger row")
+		}
+		ledgerObjects[row.OID] = true
+		for _, reference := range row.References {
+			if !safeProjectionRelative(reference.RelativePath) || !regularGitMode(reference.Mode) {
+				return errors.New("invalid admission-ledger reference")
+			}
+			if _, exists := ledgerReferences[reference.RelativePath]; exists {
+				return errors.New("duplicate admission-ledger reference")
+			}
+			ledgerReferences[reference.RelativePath] = ledgerReferenceBinding{oid: row.OID, mode: reference.Mode, size: row.Size, digest: row.Digest, rawClass: row.RawClass}
+		}
+	}
+	if len(ledgerReferences) != projection.EntryCount {
+		return errors.New("admission ledger is incomplete")
+	}
 	expectedIndex := 0
 	for _, file := range projection.Files {
 		if !safeProjectionRelative(file.RelativePath) || !oidPattern.MatchString(file.OID) || !regularGitMode(file.Mode) || !lowerHexDigest(file.Digest) || file.Size < 0 || file.Preparation != PreparationVersion || file.RawClass != RawText && file.RawClass != RawBinary || len(file.Chunks) == 0 {
@@ -367,6 +433,11 @@ func VerifyMaterializedProjection(projection MaterializedProjection) error {
 		if _, exists := rawExpected[file.RelativePath]; exists {
 			return errors.New("duplicate projection file binding")
 		}
+		ledgerReference, exists := ledgerReferences[file.RelativePath]
+		if !exists || ledgerReference.oid != file.OID || ledgerReference.mode != file.Mode || ledgerReference.size != file.Size || ledgerReference.digest != file.Digest || ledgerReference.rawClass != file.RawClass {
+			return errors.New("projection does not match admission ledger")
+		}
+		delete(ledgerReferences, file.RelativePath)
 		rawExpected[file.RelativePath] = fileBinding{size: file.Size, digest: file.Digest}
 		writeDigestRecord(contentHash, file.RelativePath, file.OID, file.Mode, strconv.FormatInt(file.Size, 10), file.Digest, string(file.RawClass), file.Preparation)
 		previousEnd := int64(0)
@@ -389,7 +460,7 @@ func VerifyMaterializedProjection(projection MaterializedProjection) error {
 			return errors.New("detector chunk mapping is incomplete")
 		}
 	}
-	if expectedIndex != len(projection.ExpectedProbeFiles) || hex.EncodeToString(contentHash.Sum(nil)) != projection.ContentDigest || hex.EncodeToString(probeHash.Sum(nil)) != projection.ProbeDigest {
+	if len(ledgerReferences) != 0 || expectedIndex != len(projection.ExpectedProbeFiles) || hex.EncodeToString(contentHash.Sum(nil)) != projection.ContentDigest || hex.EncodeToString(probeHash.Sum(nil)) != projection.ProbeDigest {
 		return errors.New("projection aggregate digest mismatch")
 	}
 	if err := verifyBoundRoot(projection.ScanRoot, rawExpected); err != nil {
@@ -401,6 +472,14 @@ func VerifyMaterializedProjection(projection MaterializedProjection) error {
 type fileBinding struct {
 	size   int64
 	digest string
+}
+
+type ledgerReferenceBinding struct {
+	oid      string
+	mode     string
+	size     int64
+	digest   string
+	rawClass RawClass
 }
 
 func verifyBoundRoot(root string, expected map[string]fileBinding) error {

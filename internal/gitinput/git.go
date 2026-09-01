@@ -19,7 +19,7 @@ import (
 	"github.com/ThameeraDananjaya/project-agnostic-secret-scanner/internal/engine"
 )
 
-const outputLimit = 32 << 20
+const outputLimit = 256 << 20
 
 var oidPattern = regexp.MustCompile(`^(?:[0-9a-f]{40}|[0-9a-f]{64})$`)
 

@@ -7,8 +7,10 @@ import (
 	"errors"
 	"io"
 	"os"
+	"strings"
 	"unicode/utf8"
 
+	"github.com/h2non/filetype"
 	"github.com/mholt/archives"
 )
 
@@ -29,6 +31,12 @@ var ErrUnsupportedRawClass = errors.New("unsupported raw input class")
 type rawMatcher struct {
 	format archives.Format
 	class  RawClass
+}
+
+type rawClassificationMatch struct {
+	class     RawClass
+	extension string
+	byStream  bool
 }
 
 // These are every independently registered archive/compression family in the
@@ -56,7 +64,7 @@ func ClassifyRawFile(path, logicalPath string) (RawClass, error) {
 	if err != nil || !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 {
 		return RawAmbiguous, ErrUnsupportedRawClass
 	}
-	matches := make([]RawClass, 0, 2)
+	matches := make([]rawClassificationMatch, 0, 2)
 	for _, matcher := range rawMatchers {
 		f, openErr := os.Open(path)
 		if openErr != nil {
@@ -68,14 +76,8 @@ func ClassifyRawFile(path, logicalPath string) (RawClass, error) {
 			return RawAmbiguous, ErrUnsupportedRawClass
 		}
 		if result.Matched() {
-			matches = append(matches, matcher.class)
+			matches = append(matches, rawClassificationMatch{class: matcher.class, extension: strings.TrimPrefix(matcher.format.Extension(), "."), byStream: result.ByStream})
 		}
-	}
-	if len(matches) > 1 {
-		return RawAmbiguous, ErrUnsupportedRawClass
-	}
-	if len(matches) == 1 {
-		return matches[0], ErrUnsupportedRawClass
 	}
 	f, err := os.Open(path)
 	if err != nil {
@@ -83,11 +85,30 @@ func ClassifyRawFile(path, logicalPath string) (RawClass, error) {
 	}
 	defer f.Close()
 	reader := bufio.NewReader(f)
-	peek, _ := reader.Peek(16)
+	peek, _ := reader.Peek(261)
+	containerMatch := false
+	containerExtension := ""
+	if len(peek) > 0 {
+		kind, matchErr := filetype.Match(peek)
+		if matchErr != nil {
+			return RawAmbiguous, ErrUnsupportedRawClass
+		}
+		containerMatch = kind.MIME.Type == "application"
+		containerExtension = kind.Extension
+	}
 	for _, header := range containerHeaders {
 		if bytes.HasPrefix(peek, header) {
-			return RawContainer, ErrUnsupportedRawClass
+			containerMatch = true
 		}
+	}
+	if len(matches) > 1 || len(matches) == 1 && containerMatch && (!matches[0].byStream || matches[0].extension != containerExtension) {
+		return RawAmbiguous, ErrUnsupportedRawClass
+	}
+	if len(matches) == 1 {
+		return matches[0].class, ErrUnsupportedRawClass
+	}
+	if containerMatch {
+		return RawContainer, ErrUnsupportedRawClass
 	}
 	validText := true
 	buffer := make([]byte, 64<<10)

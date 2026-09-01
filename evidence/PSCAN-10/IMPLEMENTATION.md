@@ -18,9 +18,10 @@ live primary-source preflight were completed. No successor was selected.
 - Exact version canary returned `8.30.1`; an invalid-by-construction synthetic
   finding returned the configured finding exit `11`; a clean input returned
   exit `0` and an empty JSON array.
-- All 223 admitted regexes parsed under Go's selected standard-library regex
-  engine. Machine analysis found zero unbounded expressions and a conservative
-  maximum UTF-8 byte span of 4,020 bytes.
+- At claim, all 223 admitted regexes parsed under Go's selected standard-
+  library regex engine with zero unbounded expressions and conservative maximum
+  UTF-8 byte span 4,020. The final pack adds one invalid-by-construction exact-
+  maximum-span fixture rule; all final 224 rules retain the same proved bound.
 - The preparation design uses detector files smaller than the pinned 100,000
   byte base buffer and overlap of maximum span minus one. Every chunk contains
   one deterministic coverage witness and a byte-offset mapping. Therefore no

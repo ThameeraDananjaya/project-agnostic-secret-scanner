@@ -2,7 +2,10 @@ module github.com/ThameeraDananjaya/project-agnostic-secret-scanner
 
 go 1.27.0
 
-require github.com/mholt/archives v0.1.2
+require (
+	github.com/h2non/filetype v1.1.3
+	github.com/mholt/archives v0.1.2
+)
 
 require (
 	github.com/STARRY-S/zip v0.2.1 // indirect

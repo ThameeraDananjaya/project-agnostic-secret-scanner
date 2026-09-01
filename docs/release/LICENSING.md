@@ -72,7 +72,8 @@ On 2026-09-01, PSCAN-10 freshly revalidated the exact Gitleaks source commit,
 MIT licence, Go 1.27.0 toolchain and compiled 63-module licence graph. The
 stdlib-regex Windows/Linux amd64 builds were independently repeated and were
 byte-identical per platform. The runner directly imports
-`github.com/mholt/archives` v0.1.2 for raw classification; that module and its
-compiled transitive licence files are already a subset of the same recorded
-Gitleaks graph. No binary, release, SBOM, signature, publication or legal
+`github.com/mholt/archives` v0.1.2 and `github.com/h2non/filetype` v1.1.3 for
+raw classification; those modules and their compiled transitive licence files
+are already a subset of the same recorded Gitleaks graph. No binary, release,
+SBOM, signature, publication or legal
 approval is created by PSCAN-10.

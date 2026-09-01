@@ -27,6 +27,82 @@ func TestPinnedGitleaksProjectionCoverage(t *testing.T) {
 		t.Fatalf("wrong actual Gitleaks version: %q", got)
 	}
 
+	t.Run("text-head", func(t *testing.T) {
+		root, repository := newActualRepository(t, gitBinary)
+		writeActual(t, filepath.Join(repository, "clean.txt"), []byte("clean\n"))
+		commitActual(t, gitBinary, repository, "base", "clean.txt")
+		base := strings.TrimSpace(runActualDir(t, repository, gitBinary, "rev-parse", "HEAD"))
+		writeActual(t, filepath.Join(repository, "text.txt"), []byte(actualSyntheticCanary))
+		commitActual(t, gitBinary, repository, "text", "text.txt")
+		head := strings.TrimSpace(runActualDir(t, repository, gitBinary, "rev-parse", "HEAD"))
+		assertActualFinding(t, root, repository, gitBinary, binary, config, ignore, base, head)
+	})
+
+	t.Run("binary-head", func(t *testing.T) {
+		root, repository := newActualRepository(t, gitBinary)
+		writeActual(t, filepath.Join(repository, "clean.txt"), []byte("clean\n"))
+		commitActual(t, gitBinary, repository, "base", "clean.txt")
+		base := strings.TrimSpace(runActualDir(t, repository, gitBinary, "rev-parse", "HEAD"))
+		writeActual(t, filepath.Join(repository, "binary.bin"), append(append([]byte{0, 1, 2}, actualSyntheticCanary...), 0xff))
+		commitActual(t, gitBinary, repository, "binary", "binary.bin")
+		head := strings.TrimSpace(runActualDir(t, repository, gitBinary, "rev-parse", "HEAD"))
+		assertActualFinding(t, root, repository, gitBinary, binary, config, ignore, base, head)
+	})
+
+	t.Run("deleted-binary-history", func(t *testing.T) {
+		root, repository := newActualRepository(t, gitBinary)
+		writeActual(t, filepath.Join(repository, "clean.txt"), []byte("clean\n"))
+		commitActual(t, gitBinary, repository, "base", "clean.txt")
+		base := strings.TrimSpace(runActualDir(t, repository, gitBinary, "rev-parse", "HEAD"))
+		writeActual(t, filepath.Join(repository, "deleted.bin"), append(append([]byte{0, 1}, actualSyntheticCanary...), 0xff))
+		commitActual(t, gitBinary, repository, "add binary", "deleted.bin")
+		if err := os.Remove(filepath.Join(repository, "deleted.bin")); err != nil {
+			t.Fatal(err)
+		}
+		runActualDir(t, repository, gitBinary, "add", "-u", "--", "deleted.bin")
+		runActualDir(t, repository, gitBinary, "commit", "--quiet", "-m", "delete binary")
+		head := strings.TrimSpace(runActualDir(t, repository, gitBinary, "rev-parse", "HEAD"))
+		assertActualFinding(t, root, repository, gitBinary, binary, config, ignore, base, head)
+	})
+
+	t.Run("head-tree-unchanged", func(t *testing.T) {
+		root, repository := newActualRepository(t, gitBinary)
+		writeActual(t, filepath.Join(repository, "unchanged.txt"), []byte(actualSyntheticCanary))
+		commitActual(t, gitBinary, repository, "base finding", "unchanged.txt")
+		base := strings.TrimSpace(runActualDir(t, repository, gitBinary, "rev-parse", "HEAD"))
+		writeActual(t, filepath.Join(repository, "clean.txt"), []byte("clean\n"))
+		commitActual(t, gitBinary, repository, "clean head", "clean.txt")
+		head := strings.TrimSpace(runActualDir(t, repository, gitBinary, "rev-parse", "HEAD"))
+		assertActualFinding(t, root, repository, gitBinary, binary, config, ignore, base, head)
+	})
+
+	t.Run("rename", func(t *testing.T) {
+		root, repository := newActualRepository(t, gitBinary)
+		writeActual(t, filepath.Join(repository, "old.txt"), []byte(actualSyntheticCanary))
+		commitActual(t, gitBinary, repository, "base", "old.txt")
+		base := strings.TrimSpace(runActualDir(t, repository, gitBinary, "rev-parse", "HEAD"))
+		runActualDir(t, repository, gitBinary, "mv", "--", "old.txt", "new.txt")
+		runActualDir(t, repository, gitBinary, "commit", "--quiet", "-m", "rename")
+		head := strings.TrimSpace(runActualDir(t, repository, gitBinary, "rev-parse", "HEAD"))
+		assertActualFinding(t, root, repository, gitBinary, binary, config, ignore, base, head)
+	})
+
+	t.Run("merge-parent-edge", func(t *testing.T) {
+		root, repository := newActualRepository(t, gitBinary)
+		writeActual(t, filepath.Join(repository, "clean.txt"), []byte("clean\n"))
+		commitActual(t, gitBinary, repository, "base", "clean.txt")
+		base := strings.TrimSpace(runActualDir(t, repository, gitBinary, "rev-parse", "HEAD"))
+		runActualDir(t, repository, gitBinary, "checkout", "--quiet", "-b", "feature")
+		writeActual(t, filepath.Join(repository, "feature.txt"), []byte(actualSyntheticCanary))
+		commitActual(t, gitBinary, repository, "feature", "feature.txt")
+		runActualDir(t, repository, gitBinary, "checkout", "--quiet", "main")
+		writeActual(t, filepath.Join(repository, "main.txt"), []byte("clean main\n"))
+		commitActual(t, gitBinary, repository, "main", "main.txt")
+		runActualDir(t, repository, gitBinary, "merge", "--quiet", "--no-ff", "feature", "-m", "merge")
+		head := strings.TrimSpace(runActualDir(t, repository, gitBinary, "rev-parse", "HEAD"))
+		assertActualFinding(t, root, repository, gitBinary, binary, config, ignore, base, head)
+	})
+
 	t.Run("deleted-text-and-binary", func(t *testing.T) {
 		root, repository := newActualRepository(t, gitBinary)
 		writeActual(t, filepath.Join(repository, "clean.txt"), []byte("clean\n"))
@@ -48,7 +124,7 @@ func TestPinnedGitleaksProjectionCoverage(t *testing.T) {
 		head := strings.TrimSpace(runActualDir(t, repository, gitBinary, "rev-parse", "HEAD"))
 		adapter, projection := actualProjection(t, root, repository, gitBinary, binary, config, ignore, base, head)
 		t.Logf("bindings plan=%s content=%s coverage=%s entries=%d", projection.PlanDigest, projection.ContentDigest, projection.ProbeDigest, projection.EntryCount)
-		result := adapter.ScanProjection(context.Background(), projection, 30*time.Second, 1<<20)
+		result := adapter.ScanProjectionProfile(context.Background(), projection, gitinput.PRProfile)
 		if result.Reason != outcome.ReasonFailFindingDetected {
 			t.Fatalf("deleted text/binary canaries were not detected: %#v", result)
 		}
@@ -73,10 +149,82 @@ func TestPinnedGitleaksProjectionCoverage(t *testing.T) {
 		head := strings.TrimSpace(runActualDir(t, repository, gitBinary, "rev-parse", "HEAD"))
 		adapter, projection := actualProjection(t, root, repository, gitBinary, binary, config, ignore, base, head)
 		t.Logf("bindings plan=%s content=%s coverage=%s entries=%d", projection.PlanDigest, projection.ContentDigest, projection.ProbeDigest, projection.EntryCount)
-		result := adapter.ScanProjection(context.Background(), projection, 30*time.Second, 1<<20)
+		result := adapter.ScanProjectionProfile(context.Background(), projection, gitinput.PRProfile)
 		if result.Reason != outcome.ReasonPassNoBlockingFindings {
 			t.Fatalf("clean exact range did not pass: %#v", result)
 		}
+	})
+
+	for _, boundary := range []struct {
+		name     string
+		position int
+	}{
+		{name: "first-byte", position: 0},
+		{name: "internal-fragment-boundary-no-whitespace", position: 89990},
+		{name: "last-byte", position: 200000 - len(actualSyntheticCanary)},
+	} {
+		t.Run("span-"+boundary.name, func(t *testing.T) {
+			root, repository := newActualRepository(t, gitBinary)
+			writeActual(t, filepath.Join(repository, "clean.txt"), []byte("clean\n"))
+			commitActual(t, gitBinary, repository, "base", "clean.txt")
+			base := strings.TrimSpace(runActualDir(t, repository, gitBinary, "rev-parse", "HEAD"))
+			payload := []byte(strings.Repeat("x", 200000))
+			copy(payload[boundary.position:], actualSyntheticCanary)
+			writeActual(t, filepath.Join(repository, "boundary.bin"), payload)
+			commitActual(t, gitBinary, repository, "boundary", "boundary.bin")
+			head := strings.TrimSpace(runActualDir(t, repository, gitBinary, "rev-parse", "HEAD"))
+			adapter, projection := actualProjection(t, root, repository, gitBinary, binary, config, ignore, base, head)
+			if result := adapter.ScanProjectionProfile(context.Background(), projection, gitinput.PRProfile); result.Reason != outcome.ReasonFailFindingDetected {
+				t.Fatalf("boundary finding was not inspected: %#v", result)
+			}
+		})
+	}
+
+	t.Run("exact-maximum-span-crosses-fragment-boundary", func(t *testing.T) {
+		root, repository := newActualRepository(t, gitBinary)
+		writeActual(t, filepath.Join(repository, "clean.txt"), []byte("clean\n"))
+		commitActual(t, gitBinary, repository, "base", "clean.txt")
+		base := strings.TrimSpace(runActualDir(t, repository, gitBinary, "rev-parse", "HEAD"))
+		payload := []byte(strings.Repeat("x", 200000))
+		canary := "PSCAN_MAX_SPAN_BEGIN_" + strings.Repeat("A", 3995) + "_END"
+		if len(canary) != int(gitinput.MaximumRuleSpan) {
+			t.Fatal("maximum-span fixture has wrong length")
+		}
+		copy(payload[87990:], canary)
+		writeActual(t, filepath.Join(repository, "maximum-span.bin"), payload)
+		commitActual(t, gitBinary, repository, "maximum span", "maximum-span.bin")
+		head := strings.TrimSpace(runActualDir(t, repository, gitBinary, "rev-parse", "HEAD"))
+		adapter, projection := actualProjection(t, root, repository, gitBinary, binary, config, ignore, base, head)
+		if result := adapter.ScanProjectionProfile(context.Background(), projection, gitinput.PRProfile); result.Reason != outcome.ReasonFailFindingDetected {
+			t.Fatalf("maximum-span finding was not inspected: %#v", result)
+		}
+	})
+
+	t.Run("declared-maximum-blob", func(t *testing.T) {
+		if os.Getenv("PSCAN_RUN_MAXIMUM_SIZE") != "1" {
+			t.Skip("set PSCAN_RUN_MAXIMUM_SIZE=1 for the bounded 512 MiB fixture")
+		}
+		root, repository := newActualRepository(t, gitBinary)
+		writeActual(t, filepath.Join(repository, "clean.txt"), []byte("clean\n"))
+		commitActual(t, gitBinary, repository, "base", "clean.txt")
+		base := strings.TrimSpace(runActualDir(t, repository, gitBinary, "rev-parse", "HEAD"))
+		path := filepath.Join(repository, "maximum.bin")
+		f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR|os.O_EXCL, 0o600)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := f.Truncate(gitinput.PRProfile.MaxBlobBytes); err == nil {
+			_, err = f.WriteAt([]byte(actualSyntheticCanary), gitinput.PRProfile.MaxBlobBytes-int64(len(actualSyntheticCanary)))
+		}
+		if closeErr := f.Close(); err == nil {
+			err = closeErr
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		commitActual(t, gitBinary, repository, "maximum blob", "maximum.bin")
+		head := strings.TrimSpace(runActualDir(t, repository, gitBinary, "rev-parse", "HEAD"))
+		assertActualFinding(t, root, repository, gitBinary, binary, config, ignore, base, head)
 	})
 
 	t.Run("path-skip-is-non-pass", func(t *testing.T) {
@@ -89,9 +237,9 @@ func TestPinnedGitleaksProjectionCoverage(t *testing.T) {
 		head := strings.TrimSpace(runActualDir(t, repository, gitBinary, "rev-parse", "HEAD"))
 		adapter, projection := actualProjection(t, root, repository, gitBinary, binary, config, ignore, base, head)
 		t.Logf("bindings plan=%s content=%s coverage=%s entries=%d", projection.PlanDigest, projection.ContentDigest, projection.ProbeDigest, projection.EntryCount)
-		result := adapter.ScanProjection(context.Background(), projection, 30*time.Second, 1<<20)
-		if result.Reason != outcome.ReasonIndeterminateIncompleteCoverage {
-			t.Fatalf("Gitleaks path allowlist skip was not fail-closed: %#v", result)
+		result := adapter.ScanProjectionProfile(context.Background(), projection, gitinput.PRProfile)
+		if result.Reason != outcome.ReasonPassNoBlockingFindings {
+			t.Fatalf("binary-extension path was not inspected: %#v", result)
 		}
 	})
 }
@@ -104,7 +252,7 @@ func actualProjection(t *testing.T, root, repository, gitBinary, gitleaksBinary,
 	if err := git.PrepareBare(context.Background(), repository, bare, private); err != nil {
 		t.Fatal(err)
 	}
-	plan, err := git.PlanRange(context.Background(), bare, base, head, false, filepath.Join(private, "home"), gitinput.ProjectionLimits{MaxBlobBytes: 1 << 20, MaxBlobCount: 1000, MaxTotalBytes: 32 << 20})
+	plan, err := git.PlanRange(context.Background(), bare, base, head, false, filepath.Join(private, "home"), gitinput.PRProfile.ProjectionLimits())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,6 +271,14 @@ func actualProjection(t *testing.T, root, repository, gitBinary, gitleaksBinary,
 		PrivateHome: home, Environment: engine.SafeEnvironment(filepath.Dir(gitleaksBinary), home),
 	}}
 	return adapter, projection
+}
+
+func assertActualFinding(t *testing.T, root, repository, gitBinary, binary, config, ignore, base, head string) {
+	t.Helper()
+	adapter, projection := actualProjection(t, root, repository, gitBinary, binary, config, ignore, base, head)
+	if result := adapter.ScanProjectionProfile(context.Background(), projection, gitinput.PRProfile); result.Reason != outcome.ReasonFailFindingDetected {
+		t.Fatalf("isolated required class was not detected: %#v", result)
+	}
 }
 
 func newActualRepository(t *testing.T, gitBinary string) (string, string) {

@@ -31,8 +31,8 @@ Missing, stale or conflicting licence evidence blocks release.
 | Component | PSCAN-01 status | Intake owner | Release rule |
 |---|---|---|---|
 | Original Go runner and repository content | MIT selected; root licence present | PSCAN-02 onward | Preserve MIT headers/notices where required |
-| Gitleaks CLI/source | v8.30.1 historical source/config/licence intake retained; PSCAN-03 rejected | PSCAN-10 | Revalidate exact current primary sources and licence before new intake; no binary released; separately licensed GitHub Action remains absent |
-| Go toolchain/modules | Go 1.27.0 historical build binding plus 63 compiled-module licence/notice sets recorded | PSCAN-02/10/06 as applicable | Historical intake is not a release SBOM or distribution approval; reproduce and re-review when rebuilt and at release |
+| Gitleaks CLI/source | v8.30.1 exact source/config/licence revalidated by PSCAN-10; no binary committed | PSCAN-10 | Exact source-built stdlib-regex assets are evaluation inputs only; separately licensed GitHub Action remains absent |
+| Go toolchain/modules | Go 1.27.0 and the exact 63-module compiled graph freshly reproduced by PSCAN-10 | PSCAN-02/10/06 as applicable | Intake is not a release SBOM or distribution approval; reproduce and re-review at release |
 | Cosign/Sigstore tooling and bundles | Design only; no signing performed | PSCAN-06 | Revalidate official licensing and redistribution; keep bundles as signed evidence |
 | SBOM/build tooling and GitHub actions | None selected | PSCAN-06 | Pin exact versions/actions and record licence/notice evidence before workflow admission |
 | TruffleHog | Absent; no assessment performed | PSCAN-08 only if eligible | No assessment, download, integration, distribution or enablement before accepted material-gap evidence and separate technical plus AGPL legal owner approval |
@@ -63,5 +63,16 @@ independently of the licence intake result.
 The PSCAN-09 authority transition performs no intake, download, build,
 execution, distribution or legal assessment. PASS-OUTCOME-SPEC-001 preserves
 the MIT runner, exact third-party evidence, zero-spend and TruffleHog owner-gate
-boundaries. A future activated PSCAN-10 must revalidate Gitleaks rather than
-treating historical PSCAN-03 intake as current distribution approval.
+boundaries. PSCAN-10 therefore revalidated Gitleaks rather than treating
+historical PSCAN-03 intake as current distribution approval.
+
+## PSCAN-10 revalidation
+
+On 2026-09-01, PSCAN-10 freshly revalidated the exact Gitleaks source commit,
+MIT licence, Go 1.27.0 toolchain and compiled 63-module licence graph. The
+stdlib-regex Windows/Linux amd64 builds were independently repeated and were
+byte-identical per platform. The runner directly imports
+`github.com/mholt/archives` v0.1.2 for raw classification; that module and its
+compiled transitive licence files are already a subset of the same recorded
+Gitleaks graph. No binary, release, SBOM, signature, publication or legal
+approval is created by PSCAN-10.

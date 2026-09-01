@@ -8,8 +8,8 @@ non-authoritative historical candidates. Their exact evidence remains immutable
 in `evidence/PSCAN-03`.
 
 Gitleaks remains the primary detector and the separately licensed Gitleaks
-GitHub Action remains prohibited. PSCAN-10 is proposed and unselected; this
-document does not authorize implementation, intake, build or execution.
+GitHub Action remains prohibited. PSCAN-10 implements adapter `2.0.0` from its
+exact activation boundary; no successor is selected.
 
 ## Historical defect boundary
 
@@ -37,6 +37,14 @@ exact base, head, merge base, ordered range and every parent edge
   -> privately classify product findings and emit one content-free outcome
 ```
 
+The implemented v2 preparation writes each exact raw blob to a private ledger,
+classifies it with every registered `github.com/mholt/archives` v0.1.2 family,
+and admits only ordinary text or binary. It then writes unchanged payload bytes
+into 90,000-byte overlapping chunks. Adjacent chunks overlap by 4,019 bytes;
+each complete detector file is below the pinned 100,000-byte Gitleaks base
+buffer and contains a unique same-invocation inspection witness. Original path
+suffixes are retained for path-bound rules.
+
 Trusted fixed Git commands disable inherited configuration, hooks, attributes,
 filters, pagers, prompts, external diffs, text conversion and interactive
 helpers. Missing parents, unexpected types or modes, links, gitlinks, unsafe or
@@ -50,7 +58,9 @@ output format and decoder are digest-bound. A pass-capable design proves the
 pinned detector's buffer, peek, fragment, overlap, streaming, archive, decoding,
 path/type/size and report behavior. Every blocking rule has a finite proved
 maximum required span, or the detector path has a complete streaming proof.
-Unbounded matches cannot be justified by finite overlap.
+Unbounded matches cannot be justified by finite overlap. The admitted rule pack
+contains 224 rules, parses under the selected Go standard-library regex engine,
+has no unbounded expression and has conservative maximum UTF-8 byte span 4,020.
 
 Inspection evidence is one-to-one with admission-ledger rows and proves the
 first, last and every internal byte under the declared profile. A marker,
@@ -66,8 +76,9 @@ compression, container, text, binary, ambiguous and polyglot family recognized
 by the pinned stack. Framing cannot hide or change that authority. Unsupported,
 encrypted, malformed or conflicting classes fail before a projection can pass.
 
-Declared PR and release profiles bind file, object, byte, fragment, report,
-time, memory and process limits. At/below/above boundary tests and separate text,
+Declared PR and release profiles bind 512 MiB per blob, 100,000 objects,
+2/10 GiB total bytes, 125,000 detector files, 256 MiB private report capture,
+15/60 minute time, 2/4 GiB Go memory limit and one detector process. At/below/above boundary tests and separate text,
 binary, deleted-history, head-tree, merge, rename, archive-class and span-edge
 fixtures are mandatory. Combined failures do not prove an individual class.
 

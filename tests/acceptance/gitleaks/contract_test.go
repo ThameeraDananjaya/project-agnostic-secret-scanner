@@ -15,14 +15,14 @@ import (
 )
 
 func TestExactAdapterContract(t *testing.T) {
-	if err := gitleaks.ValidateBinding("gitleaks", "8.30.1", "1.1.0", "json-v8.30.1"); err != nil {
+	if err := gitleaks.ValidateBinding("gitleaks", "8.30.1", "2.0.0", "json-v8.30.1"); err != nil {
 		t.Fatal(err)
 	}
 	invalid := [][]string{
-		{"other", "8.30.1", "1.1.0", "json-v8.30.1"},
-		{"gitleaks", "latest", "1.1.0", "json-v8.30.1"},
-		{"gitleaks", "8.30.1", "2.0.0", "json-v8.30.1"},
-		{"gitleaks", "8.30.1", "1.1.0", "json"},
+		{"other", "8.30.1", "2.0.0", "json-v8.30.1"},
+		{"gitleaks", "latest", "2.0.0", "json-v8.30.1"},
+		{"gitleaks", "8.30.1", "1.1.0", "json-v8.30.1"},
+		{"gitleaks", "8.30.1", "2.0.0", "json"},
 	}
 	for _, binding := range invalid {
 		if gitleaks.ValidateBinding(binding[0], binding[1], binding[2], binding[3]) == nil {

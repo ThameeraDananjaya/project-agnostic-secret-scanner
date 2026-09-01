@@ -19,7 +19,12 @@ import (
 
 const (
 	coverageProbePrefix = "PSCAN_COVERAGE_MARKER_"
-	projectionHeader    = "PSCAN_GITLEAKS_PROJECTION_V1"
+	projectionHeader    = "PSCAN_GITLEAKS_PROJECTION_V2"
+	PreparationVersion  = "pscan.byte-overlap.v2"
+	MaximumRuleSpan     = int64(4020)
+	DetectorPayloadSize = int64(90_000)
+	DetectorOverlap     = MaximumRuleSpan - 1
+	MaximumDetectorFile = int64(100_000)
 )
 
 var (
@@ -57,9 +62,16 @@ type BlobProjection struct {
 }
 
 type CoveragePlan struct {
-	Range      RangeBinding
-	Entries    []BlobProjection
-	PlanDigest string
+	Range       RangeBinding
+	ParentEdges []ParentEdge
+	Entries     []BlobProjection
+	PlanDigest  string
+}
+
+type ParentEdge struct {
+	Commit string
+	Parent string
+	Index  int
 }
 
 // MaterializedProjection exposes only private roots, deterministic bindings,
@@ -81,8 +93,19 @@ type MaterializedFile struct {
 	Mode         string
 	Size         int64
 	Digest       string
-	ProbeSize    int64
-	ProbeDigest  string
+	RawClass     RawClass
+	Preparation  string
+	Chunks       []DetectorChunk
+}
+
+type DetectorChunk struct {
+	RelativePath string
+	Start        int64
+	End          int64
+	PayloadSize  int64
+	FileSize     int64
+	Digest       string
+	Marker       string
 }
 
 type rawChange struct {
@@ -125,6 +148,7 @@ func (g Git) PlanRange(ctx context.Context, repository, base, head string, first
 			parents = []string{""}
 		}
 		for parentIndex, parent := range parents {
+			plan.ParentEdges = append(plan.ParentEdges, ParentEdge{Commit: commit, Parent: parent, Index: parentIndex + 1})
 			args := []string{"-C", repository, "diff-tree", "--raw", "-r", "-z", "--no-commit-id", "--no-renames", "--no-ext-diff", "--no-textconv", "--abbrev=64"}
 			if parent == "" {
 				args = append(args, "--root", commit, "--")
@@ -206,8 +230,9 @@ func (g Git) PlanRange(ctx context.Context, repository, base, head string, first
 	return plan, nil
 }
 
-// Materialize writes each admitted blob byte-for-byte and a parallel probe copy
-// containing a deterministic Gitleaks coverage canary. Both roots must be new.
+// Materialize writes an exact private raw ledger and overlapping detector
+// chunks. Each detector file stays below the pinned 100,000-byte fragment and
+// preserves the original basename for path-bound rules.
 func (g Git) Materialize(ctx context.Context, repository, privateHome, scanRoot, probeRoot string, plan CoveragePlan) (MaterializedProjection, error) {
 	if err := g.verify(); err != nil {
 		return MaterializedProjection{}, err
@@ -223,98 +248,166 @@ func (g Git) Materialize(ctx context.Context, repository, privateHome, scanRoot,
 			return MaterializedProjection{}, errors.New("cannot create projection root")
 		}
 	}
-	contentHash := sha256.New()
-	probeHash := sha256.New()
-	expected := make([]string, 0, len(plan.Entries))
+	contentHash, probeHash := sha256.New(), sha256.New()
+	expected := []string{}
 	files := make([]MaterializedFile, 0, len(plan.Entries))
-	for _, entry := range plan.Entries {
+	for entryIndex, entry := range plan.Entries {
 		if !safeProjectionRelative(entry.RelativePath) {
 			return MaterializedProjection{}, fmt.Errorf("%w: unsafe projection path", ErrIncompleteCoverage)
 		}
 		target := filepath.Join(scanRoot, filepath.FromSlash(entry.RelativePath))
-		probeTarget := filepath.Join(probeRoot, filepath.FromSlash(entry.RelativePath))
 		if err := makePrivateParent(scanRoot, target); err != nil {
-			return MaterializedProjection{}, err
-		}
-		if err := makePrivateParent(probeRoot, probeTarget); err != nil {
 			return MaterializedProjection{}, err
 		}
 		if err := g.writeBlob(ctx, repository, privateHome, entry.OID, entry.Size, target); err != nil {
 			return MaterializedProjection{}, err
 		}
+		oidRaw, oidErr := g.run(ctx, "", privateHome, "-C", repository, "hash-object", "--no-filters", "--", target)
+		if oidErr != nil || strings.TrimSpace(string(oidRaw)) != entry.OID {
+			return MaterializedProjection{}, fmt.Errorf("%w: projected blob OID mismatch", ErrIncompleteCoverage)
+		}
 		contentDigest, err := fileDigest(target)
 		if err != nil {
 			return MaterializedProjection{}, fmt.Errorf("%w: cannot bind projected blob", ErrIncompleteCoverage)
 		}
-		writeDigestRecord(contentHash, entry.RelativePath, entry.OID, entry.Mode, strconv.FormatInt(entry.Size, 10), contentDigest)
-		marker := coverageProbeMarker(plan.PlanDigest, entry.RelativePath, entry.OID)
-		if err := copyWithMarker(target, probeTarget, marker); err != nil {
-			return MaterializedProjection{}, fmt.Errorf("%w: cannot create coverage probe", ErrIncompleteCoverage)
+		rawClass, classErr := ClassifyRawFile(target, entry.Path)
+		if classErr != nil {
+			return MaterializedProjection{}, fmt.Errorf("%w: %s", ErrUnsupportedRawClass, rawClass)
 		}
-		probeInfo, infoErr := os.Lstat(probeTarget)
-		probeFileDigest, digestErr := fileDigest(probeTarget)
-		if infoErr != nil || digestErr != nil || !probeInfo.Mode().IsRegular() {
-			return MaterializedProjection{}, fmt.Errorf("%w: cannot bind coverage probe", ErrIncompleteCoverage)
+		bound := MaterializedFile{RelativePath: entry.RelativePath, OID: entry.OID, Mode: entry.Mode, Size: entry.Size, Digest: contentDigest, RawClass: rawClass, Preparation: PreparationVersion}
+		chunks, chunkErr := writeDetectorChunks(target, probeRoot, entry.Path, plan.PlanDigest, entryIndex, entry.OID, entry.Size)
+		if chunkErr != nil {
+			return MaterializedProjection{}, chunkErr
 		}
-		writeDigestRecord(probeHash, entry.RelativePath, marker, strconv.FormatInt(probeInfo.Size(), 10), probeFileDigest)
-		expected = append(expected, entry.RelativePath)
-		files = append(files, MaterializedFile{RelativePath: entry.RelativePath, OID: entry.OID, Mode: entry.Mode, Size: entry.Size, Digest: contentDigest, ProbeSize: probeInfo.Size(), ProbeDigest: probeFileDigest})
+		bound.Chunks = chunks
+		writeDigestRecord(contentHash, entry.RelativePath, entry.OID, entry.Mode, strconv.FormatInt(entry.Size, 10), contentDigest, string(rawClass), PreparationVersion)
+		for _, chunk := range chunks {
+			writeDigestRecord(probeHash, chunk.RelativePath, strconv.FormatInt(chunk.Start, 10), strconv.FormatInt(chunk.End, 10), chunk.Marker, chunk.Digest)
+			expected = append(expected, chunk.RelativePath)
+		}
+		files = append(files, bound)
 	}
-	return MaterializedProjection{
-		ScanRoot: scanRoot, ProbeRoot: probeRoot, PlanDigest: plan.PlanDigest,
-		ContentDigest: hex.EncodeToString(contentHash.Sum(nil)), ProbeDigest: hex.EncodeToString(probeHash.Sum(nil)),
-		EntryCount: len(plan.Entries), ExpectedProbeFiles: expected, Files: files,
-	}, nil
+	return MaterializedProjection{ScanRoot: scanRoot, ProbeRoot: probeRoot, PlanDigest: plan.PlanDigest, ContentDigest: hex.EncodeToString(contentHash.Sum(nil)), ProbeDigest: hex.EncodeToString(probeHash.Sum(nil)), EntryCount: len(files), ExpectedProbeFiles: expected, Files: files}, nil
 }
 
-// VerifyMaterializedProjection re-opens every projected file and proves there
-// are no missing, additional, linked, special, resized, or mutated inputs.
+func writeDetectorChunks(source, root, originalPath, planDigest string, entryIndex int, oid string, size int64) ([]DetectorChunk, error) {
+	in, err := os.Open(source)
+	if err != nil {
+		return nil, fmt.Errorf("%w: cannot read raw ledger", ErrIncompleteCoverage)
+	}
+	defer in.Close()
+	chunks := []DetectorChunk{}
+	step := DetectorPayloadSize - DetectorOverlap
+	for start, chunkIndex := int64(0), 0; start < size || size == 0 && chunkIndex == 0; start, chunkIndex = start+step, chunkIndex+1 {
+		end := start + DetectorPayloadSize
+		if end > size {
+			end = size
+		}
+		path := filepath.ToSlash(filepath.Join("chunks", fmt.Sprintf("%08d", entryIndex), fmt.Sprintf("%08d", chunkIndex), filepath.FromSlash(originalPath)))
+		if !safeProjectionRelative(path) {
+			return nil, fmt.Errorf("%w: unsafe detector path", ErrIncompleteCoverage)
+		}
+		marker := coverageProbeMarker(planDigest, path, oid)
+		header := fmt.Sprintf("%s\n%s\nentry=%08d chunk=%08d start=%d end=%d\n", projectionHeader, marker, entryIndex, chunkIndex, start, end)
+		if int64(len(header))+(end-start) >= MaximumDetectorFile {
+			return nil, fmt.Errorf("%w: detector chunk exceeds pinned fragment", ErrIncompleteCoverage)
+		}
+		target := filepath.Join(root, filepath.FromSlash(path))
+		if err := makePrivateParent(root, target); err != nil {
+			return nil, err
+		}
+		out, err := os.OpenFile(target, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+		if err != nil {
+			return nil, fmt.Errorf("%w: cannot create detector chunk", ErrIncompleteCoverage)
+		}
+		ok := false
+		if _, err = io.WriteString(out, header); err == nil {
+			_, err = in.Seek(start, io.SeekStart)
+		}
+		if err == nil {
+			_, err = io.CopyN(out, in, end-start)
+		}
+		if closeErr := out.Close(); err == nil {
+			err = closeErr
+		}
+		if err == nil {
+			ok = true
+		}
+		if !ok {
+			_ = os.Remove(target)
+			return nil, fmt.Errorf("%w: cannot seal detector chunk", ErrIncompleteCoverage)
+		}
+		info, err := os.Lstat(target)
+		digest, digestErr := fileDigest(target)
+		if err != nil || digestErr != nil || !info.Mode().IsRegular() || info.Size() >= MaximumDetectorFile {
+			return nil, fmt.Errorf("%w: cannot bind detector chunk", ErrIncompleteCoverage)
+		}
+		chunks = append(chunks, DetectorChunk{RelativePath: path, Start: start, End: end, PayloadSize: end - start, FileSize: info.Size(), Digest: digest, Marker: marker})
+		if end == size {
+			break
+		}
+	}
+	return chunks, nil
+}
+
+// VerifyMaterializedProjection proves raw-ledger and prepared-chunk bijections,
+// exact integrity, finite-overlap continuity, and absence of unbound files.
 func VerifyMaterializedProjection(projection MaterializedProjection) error {
-	if projection.EntryCount <= 0 || projection.EntryCount != len(projection.Files) || projection.EntryCount != len(projection.ExpectedProbeFiles) {
+	if projection.EntryCount <= 0 || projection.EntryCount != len(projection.Files) || len(projection.ExpectedProbeFiles) == 0 || !lowerHexDigest(projection.PlanDigest) || !lowerHexDigest(projection.ContentDigest) || !lowerHexDigest(projection.ProbeDigest) {
 		return errors.New("invalid materialized projection")
 	}
-	if !lowerHexDigest(projection.PlanDigest) || !lowerHexDigest(projection.ContentDigest) || !lowerHexDigest(projection.ProbeDigest) {
-		return errors.New("invalid projection digest binding")
-	}
-	contentHash := sha256.New()
-	probeHash := sha256.New()
-	seen := make(map[string]struct{}, len(projection.Files))
-	for index, file := range projection.Files {
-		if projection.ExpectedProbeFiles[index] != file.RelativePath || !safeProjectionRelative(file.RelativePath) || !oidPattern.MatchString(file.OID) || !regularGitMode(file.Mode) || !lowerHexDigest(file.Digest) || !lowerHexDigest(file.ProbeDigest) || file.Size < 0 || file.ProbeSize <= file.Size {
+	contentHash, probeHash := sha256.New(), sha256.New()
+	rawExpected := make(map[string]fileBinding, len(projection.Files))
+	chunkExpected := make(map[string]fileBinding, len(projection.ExpectedProbeFiles))
+	expectedIndex := 0
+	for _, file := range projection.Files {
+		if !safeProjectionRelative(file.RelativePath) || !oidPattern.MatchString(file.OID) || !regularGitMode(file.Mode) || !lowerHexDigest(file.Digest) || file.Size < 0 || file.Preparation != PreparationVersion || file.RawClass != RawText && file.RawClass != RawBinary || len(file.Chunks) == 0 {
 			return errors.New("invalid projection file binding")
 		}
-		if _, exists := seen[file.RelativePath]; exists {
+		if _, exists := rawExpected[file.RelativePath]; exists {
 			return errors.New("duplicate projection file binding")
 		}
-		seen[file.RelativePath] = struct{}{}
-		writeDigestRecord(contentHash, file.RelativePath, file.OID, file.Mode, strconv.FormatInt(file.Size, 10), file.Digest)
-		marker := coverageProbeMarker(projection.PlanDigest, file.RelativePath, file.OID)
-		writeDigestRecord(probeHash, file.RelativePath, marker, strconv.FormatInt(file.ProbeSize, 10), file.ProbeDigest)
+		rawExpected[file.RelativePath] = fileBinding{size: file.Size, digest: file.Digest}
+		writeDigestRecord(contentHash, file.RelativePath, file.OID, file.Mode, strconv.FormatInt(file.Size, 10), file.Digest, string(file.RawClass), file.Preparation)
+		previousEnd := int64(0)
+		for index, chunk := range file.Chunks {
+			if expectedIndex >= len(projection.ExpectedProbeFiles) || projection.ExpectedProbeFiles[expectedIndex] != chunk.RelativePath || !safeProjectionRelative(chunk.RelativePath) || !lowerHexDigest(chunk.Digest) || !strings.HasPrefix(chunk.Marker, coverageProbePrefix) || chunk.PayloadSize != chunk.End-chunk.Start || chunk.FileSize >= MaximumDetectorFile || chunk.Start < 0 || chunk.End < chunk.Start || chunk.End > file.Size {
+				return errors.New("invalid detector chunk binding")
+			}
+			if index == 0 && chunk.Start != 0 || index > 0 && chunk.Start != previousEnd-DetectorOverlap || index < len(file.Chunks)-1 && chunk.PayloadSize != DetectorPayloadSize {
+				return errors.New("detector chunk mapping has a gap")
+			}
+			previousEnd = chunk.End
+			if _, exists := chunkExpected[chunk.RelativePath]; exists {
+				return errors.New("duplicate detector chunk binding")
+			}
+			chunkExpected[chunk.RelativePath] = fileBinding{size: chunk.FileSize, digest: chunk.Digest}
+			writeDigestRecord(probeHash, chunk.RelativePath, strconv.FormatInt(chunk.Start, 10), strconv.FormatInt(chunk.End, 10), chunk.Marker, chunk.Digest)
+			expectedIndex++
+		}
+		if previousEnd != file.Size {
+			return errors.New("detector chunk mapping is incomplete")
+		}
 	}
-	if hex.EncodeToString(contentHash.Sum(nil)) != projection.ContentDigest || hex.EncodeToString(probeHash.Sum(nil)) != projection.ProbeDigest {
+	if expectedIndex != len(projection.ExpectedProbeFiles) || hex.EncodeToString(contentHash.Sum(nil)) != projection.ContentDigest || hex.EncodeToString(probeHash.Sum(nil)) != projection.ProbeDigest {
 		return errors.New("projection aggregate digest mismatch")
 	}
-	if err := verifyProjectionRoot(projection.ScanRoot, projection.Files, false); err != nil {
+	if err := verifyBoundRoot(projection.ScanRoot, rawExpected); err != nil {
 		return err
 	}
-	if err := verifyProjectionRoot(projection.ProbeRoot, projection.Files, true); err != nil {
-		return err
-	}
-	return nil
+	return verifyBoundRoot(projection.ProbeRoot, chunkExpected)
 }
 
-func verifyProjectionRoot(root string, files []MaterializedFile, probe bool) error {
+type fileBinding struct {
+	size   int64
+	digest string
+}
+
+func verifyBoundRoot(root string, expected map[string]fileBinding) error {
 	if !safeAbsolute(root) {
 		return errors.New("invalid projection root")
 	}
-	expected := make(map[string]MaterializedFile, len(files))
-	for _, file := range files {
-		if !safeProjectionRelative(file.RelativePath) {
-			return errors.New("invalid projection file binding")
-		}
-		expected[file.RelativePath] = file
-	}
-	seen := make(map[string]struct{}, len(files))
+	seen := map[string]bool{}
 	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return errors.New("projection cannot be traversed")
@@ -322,34 +415,20 @@ func verifyProjectionRoot(root string, files []MaterializedFile, probe bool) err
 		if path == root || entry.IsDir() {
 			return nil
 		}
-		rel, relErr := filepath.Rel(root, path)
-		if relErr != nil {
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
 			return errors.New("projection path cannot be normalized")
 		}
-		rel = filepath.ToSlash(rel)
-		bound, ok := expected[rel]
-		if !ok {
-			return errors.New("projection contains an unbound file")
-		}
+		bound, ok := expected[filepath.ToSlash(rel)]
 		info, infoErr := entry.Info()
-		if infoErr != nil || !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 {
-			return errors.New("projection contains unsupported input")
-		}
-		size, digest := bound.Size, bound.Digest
-		if probe {
-			size, digest = bound.ProbeSize, bound.ProbeDigest
-		}
-		actual, digestErr := fileDigest(path)
-		if digestErr != nil || info.Size() != size || actual != digest {
+		digest, digestErr := fileDigest(path)
+		if !ok || infoErr != nil || digestErr != nil || !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 || info.Size() != bound.size || digest != bound.digest {
 			return errors.New("projection integrity mismatch")
 		}
-		seen[rel] = struct{}{}
+		seen[filepath.ToSlash(rel)] = true
 		return nil
 	})
-	if err != nil {
-		return err
-	}
-	if len(seen) != len(expected) {
+	if err != nil || len(seen) != len(expected) {
 		return errors.New("projection is incomplete")
 	}
 	return nil
@@ -570,7 +649,10 @@ func copyWithMarker(source, destination, marker string) error {
 
 func digestProjectionPlan(plan CoveragePlan) string {
 	h := sha256.New()
-	writeDigestRecord(h, "pscan.git-blob-plan.v1", plan.Range.Base, plan.Range.Head, plan.Range.MergeBase, strconv.FormatBool(plan.Range.FirstRelease), plan.Range.HistoryRangeDigest, plan.Range.TrackedTreeDigest)
+	writeDigestRecord(h, "pscan.git-blob-plan.v2", plan.Range.Base, plan.Range.Head, plan.Range.MergeBase, strconv.FormatBool(plan.Range.FirstRelease), plan.Range.HistoryRangeDigest, plan.Range.TrackedTreeDigest, plan.Range.HeadTreeOID)
+	for _, edge := range plan.ParentEdges {
+		writeDigestRecord(h, edge.Commit, edge.Parent, strconv.Itoa(edge.Index))
+	}
 	for _, entry := range plan.Entries {
 		writeDigestRecord(h, string(entry.Class), entry.Commit, entry.Parent, strconv.Itoa(entry.ParentIndex), entry.Path, entry.OID, entry.Mode, strconv.FormatInt(entry.Size, 10), entry.RelativePath)
 	}

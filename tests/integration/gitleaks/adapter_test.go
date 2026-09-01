@@ -18,10 +18,7 @@ import (
 
 func TestAdapterClassifiesPrivateOutputAndPreservesArguments(t *testing.T) {
 	executable, executableDigest := buildFakeGitleaks(t)
-	config := filepath.Join(t.TempDir(), "gitleaks.toml")
-	if err := os.WriteFile(config, []byte("# synthetic test config\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	config := pinnedConfig(t)
 	configDigest := digestFile(t, config)
 	ignoreFile, privateHome := supportFiles(t)
 	target := filepath.Join(t.TempDir(), "candidate;$(not-a-command) --help")
@@ -60,10 +57,7 @@ func TestAdapterClassifiesPrivateOutputAndPreservesArguments(t *testing.T) {
 
 func TestBindingAndRuntimeVersionMismatchFailBeforeScan(t *testing.T) {
 	executable, executableDigest := buildFakeGitleaks(t)
-	config := filepath.Join(t.TempDir(), "gitleaks.toml")
-	if err := os.WriteFile(config, []byte("# synthetic\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	config := pinnedConfig(t)
 	target := t.TempDir()
 	ignoreFile, privateHome := supportFiles(t)
 	adapter := gitleaks.Adapter{Binding: gitleaks.Binding{
@@ -83,10 +77,7 @@ func TestBindingAndRuntimeVersionMismatchFailBeforeScan(t *testing.T) {
 
 func TestParentDeadlineIsExplicitTimeout(t *testing.T) {
 	executable, executableDigest := buildFakeGitleaks(t)
-	config := filepath.Join(t.TempDir(), "gitleaks.toml")
-	if err := os.WriteFile(config, []byte("# synthetic\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	config := pinnedConfig(t)
 	ignoreFile, privateHome := supportFiles(t)
 	adapter := gitleaks.Adapter{Binding: gitleaks.Binding{
 		Executable: executable, ExecutableDigest: executableDigest,
@@ -113,6 +104,15 @@ func supportFiles(t *testing.T) (string, string) {
 		t.Fatal(err)
 	}
 	return ignore, home
+}
+
+func pinnedConfig(t *testing.T) string {
+	t.Helper()
+	path, err := filepath.Abs(filepath.Join("..", "..", "..", "rules", "generic", "gitleaks-v8.30.1.toml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return path
 }
 
 func buildFakeGitleaks(t *testing.T) (string, string) {

@@ -36,6 +36,7 @@ type RangeBinding struct {
 	FirstRelease       bool
 	HistoryRangeDigest string
 	TrackedTreeDigest  string
+	HeadTreeOID        string
 	CommitCount        int
 	Commits            []string
 }
@@ -106,6 +107,11 @@ func (g Git) BindRange(ctx context.Context, repository, base, head string, first
 		return RangeBinding{}, errors.New("cannot bind tracked tree")
 	}
 	binding.TrackedTreeDigest = digestDomain("pscan.git-tree.v1", treeRaw)
+	treeOID, err := g.run(ctx, "", privateHome, "-C", repository, "rev-parse", "--verify", head+"^{tree}")
+	if err != nil || !oidPattern.MatchString(strings.TrimSpace(string(treeOID))) {
+		return RangeBinding{}, errors.New("cannot bind head tree object")
+	}
+	binding.HeadTreeOID = strings.TrimSpace(string(treeOID))
 	return binding, nil
 }
 

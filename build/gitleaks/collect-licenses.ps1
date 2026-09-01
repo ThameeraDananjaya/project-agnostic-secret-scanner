@@ -27,7 +27,8 @@ foreach ($line in ($lines | Sort-Object -Unique)) {
     foreach ($license in ($licenseFiles | Sort-Object Name)) {
         $target = Join-Path $moduleDestination $license.Name
         if (Test-Path -LiteralPath $target) { Set-ItemProperty -LiteralPath $target -Name IsReadOnly -Value $false }
-        Copy-Item -LiteralPath $license.FullName -Destination $target -Force
+        $licenseText = [IO.File]::ReadAllText($license.FullName).Replace("`r`n", "`n")
+        [IO.File]::WriteAllText($target, $licenseText, [Text.UTF8Encoding]::new($false))
         Set-ItemProperty -LiteralPath $target -Name IsReadOnly -Value $false
         $licenses += [ordered]@{
             file = $license.Name
@@ -39,7 +40,7 @@ foreach ($line in ($lines | Sort-Object -Unique)) {
 
 $manifest = [ordered]@{
     schemaVersion = '1.0'
-    scope = 'modules compiled by github.com/zricethezav/gitleaks/v8 at 83d9cd684c87d95d656c1458ef04895a7f1cbd8e'
+    scope = 'LF-normalized licence texts for modules compiled by github.com/zricethezav/gitleaks/v8 at 83d9cd684c87d95d656c1458ef04895a7f1cbd8e'
     moduleCount = $modules.Count
     modules = $modules
 }

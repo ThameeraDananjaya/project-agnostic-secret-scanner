@@ -2,9 +2,10 @@
 
 ## Status
 
-No accepted pass-capable Gitleaks path exists. PSCAN-03 native patch mode and
-correction C1 remain immutable rejected history. PASS-OUTCOME-SPEC-001 controls
-the future boundary and PSCAN-10 is proposed, unselected and unauthorized.
+PSCAN-03 native patch mode and correction C1 remain immutable rejected history.
+PASS-OUTCOME-SPEC-001 controls the boundary. PSCAN-10 adapter `2.0.0` is the
+only pass-capable primary path after its acceptance evidence is reproduced;
+native Git mode and unnamed projection limits remain explicit non-pass.
 
 ## Mandatory preparation controls
 
@@ -33,7 +34,10 @@ blocking rule has a finite proved maximum span or a complete streaming proof.
 
 Every original byte is bound to actual detector inspection. A prefix marker,
 file-open event, aggregate count, exit code or clean report is insufficient.
-Per-row evidence must be complete and unique. Any skip, timeout, overflow,
+Adapter v2 uses 90,000-byte byte-preserving payload windows, 4,019-byte overlap,
+files below the pinned 100,000-byte base fragment, and one unique witness in
+each same-invocation chunk. The rule-span verifier requires exactly 224 rules,
+zero unbounded regexes and maximum span 4,020 bytes. Per-row evidence must be complete and unique. Any skip, timeout, overflow,
 unexpected stderr, malformed output, missing/duplicate proof, unbound result or
 redaction uncertainty is non-pass.
 

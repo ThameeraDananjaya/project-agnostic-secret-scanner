@@ -7,10 +7,10 @@ scan inputs.
 
 ## State
 
-Activated by the owner's exact `ACTIVATE PSCAN-10` command on 2026-09-01.
-Unclaimed and not implemented. This activation bundle authorizes only a fresh
-implementation session from the exact activation commit; the session creating
-the bundle must stop without claiming or implementing PSCAN-10.
+Activated by the owner's exact `ACTIVATE PSCAN-10` command on 2026-09-01 and
+claimed in a fresh implementation session from exact clean activation commit
+`9053b37d799b19e3d98aeca0ae853296971ab09d`. Implementation is in progress and
+is bounded to this specification's allowed paths. No successor is selected.
 
 ## Objective
 

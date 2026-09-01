@@ -21,10 +21,10 @@ import (
 const (
 	EngineName        = "gitleaks"
 	EngineVersion     = "8.30.1"
-	AdapterVersion    = "1.1.0"
+	AdapterVersion    = "2.0.0"
 	OutputBinding     = "json-v8.30.1"
 	FindingExitCode   = 11
-	MaximumReportSize = 16 << 20
+	MaximumReportSize = 256 << 20
 	CoverageRuleID    = "pscan-projection-coverage"
 )
 
@@ -48,6 +48,9 @@ func (a Adapter) Verify() error {
 		return err
 	}
 	if err := engine.VerifyRegularFile(a.Binding.Config, a.Binding.ConfigDigest); err != nil {
+		return err
+	}
+	if _, err := ProveRuleSpans(a.Binding.Config, a.Binding.ConfigDigest); err != nil {
 		return err
 	}
 	if err := engine.VerifyRegularFile(a.Binding.IgnoreFile, a.Binding.IgnoreFileDigest); err != nil {
@@ -75,7 +78,26 @@ func (a Adapter) ScanDirectory(ctx context.Context, target string, timeout time.
 // and the private coverage rule. A skip therefore removes the expected marker
 // from the same run and cannot become pass.
 func (a Adapter) ScanProjection(ctx context.Context, projection gitinput.MaterializedProjection, timeout time.Duration, maxFileBytes int64) engine.Result {
-	if timeout <= 0 || maxFileBytes <= 0 || projection.EntryCount <= 0 {
+	// Unnamed legacy limits cannot support pass.
+	return engine.Result{Reason: outcome.ReasonIndeterminateIncompleteCoverage, ExitCode: -1}
+}
+
+func (a Adapter) ScanProjectionProfile(ctx context.Context, projection gitinput.MaterializedProjection, profile gitinput.CoverageProfile) engine.Result {
+	var total int64
+	for _, file := range projection.Files {
+		if profile.AdmitBlob(file.Size) != nil || file.Size > profile.MaxTotalBytes-total {
+			return engine.Result{Reason: outcome.ReasonIndeterminateResourceLimit, ExitCode: -1}
+		}
+		total += file.Size
+	}
+	if profile.Admit(total, projection.EntryCount, len(projection.ExpectedProbeFiles)) != nil {
+		return engine.Result{Reason: outcome.ReasonIndeterminateResourceLimit, ExitCode: -1}
+	}
+	if profile.AdmitRuntime(profile.Timeout, profile.MaxMemoryBytes, 1, profile.MaxReportBytes, gitinput.MaximumDetectorFile-1) != nil {
+		return engine.Result{Reason: outcome.ReasonIndeterminateResourceLimit, ExitCode: -1}
+	}
+	timeout := profile.Timeout
+	if timeout <= 0 || projection.EntryCount <= 0 {
 		return engine.Result{Reason: outcome.ReasonFailInputIntegrity, ExitCode: -1}
 	}
 	if err := gitinput.VerifyMaterializedProjection(projection); err != nil {
@@ -85,11 +107,27 @@ func (a Adapter) ScanProjection(ctx context.Context, projection gitinput.Materia
 		return probe
 	}
 	expected, ok := normalizeExpectedPaths(projection.ExpectedProbeFiles)
-	if !ok || len(expected) != projection.EntryCount {
+	if !ok || len(expected) != len(projection.ExpectedProbeFiles) {
 		return engine.Result{Reason: outcome.ReasonFailInputIntegrity, ExitCode: -1}
 	}
-	args := append(a.commonArgs(a.Binding.Config, timeout, maxFileBytes+256), ".")
-	return a.runWithDecoder(ctx, append([]string{"dir"}, args...), projection.ProbeRoot, timeout, decodeProjection(expected))
+	args := append(a.commonArgs(a.Binding.Config, timeout, gitinput.MaximumDetectorFile), ".")
+	return a.runProfile(ctx, append([]string{"dir"}, args...), projection.ProbeRoot, profile, decodeProjection(expected))
+}
+
+func (a Adapter) runProfile(ctx context.Context, args []string, directory string, profile gitinput.CoverageProfile, decoder engine.Decoder) engine.Result {
+	if err := a.Verify(); err != nil || !profile.Valid() {
+		return engine.Result{Reason: outcome.ReasonFailScannerIntegrity, ExitCode: -1}
+	}
+	environment := append([]string(nil), a.Binding.Environment...)
+	environment = append(environment,
+		"GOMEMLIMIT="+strconv.FormatInt(profile.MaxMemoryBytes, 10)+"B",
+		"GOMAXPROCS=2",
+	)
+	return engine.RunPrivate(ctx, engine.Command{
+		Executable: a.Binding.Executable, ExpectedDigest: a.Binding.ExecutableDigest,
+		Args: args, Dir: directory, Environment: environment,
+		Timeout: profile.Timeout + 5*time.Second, CaptureLimit: profile.MaxReportBytes,
+	}, decoder)
 }
 
 func (a Adapter) ScanGitRange(ctx context.Context, bareRepository, base, head string, firstRelease bool, timeout time.Duration, maxFileBytes int64) engine.Result {

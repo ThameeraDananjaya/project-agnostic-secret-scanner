@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0",
-  "scope": "modules compiled by github.com/zricethezav/gitleaks/v8 at 83d9cd684c87d95d656c1458ef04895a7f1cbd8e",
+  "scope": "LF-normalized licence texts for modules compiled by github.com/zricethezav/gitleaks/v8 at 83d9cd684c87d95d656c1458ef04895a7f1cbd8e",
   "moduleCount": 63,
   "modules": [
     {
@@ -329,7 +329,7 @@
       "licenses": [
         {
           "file": "LICENSE",
-          "sha256": "b3f014ba15f4ae418959bce8b4d487ecd0a1880c3e8904f805e7c3c59b8c2a36"
+          "sha256": "aa275224fbb70cf3b7e9918f574c513885368fd87030eb73e5a7860b01f2966c"
         }
       ]
     },

@@ -138,7 +138,7 @@ func TestExactRangeEdgesTreesMergesRenamesAndDeterminism(t *testing.T) {
 	if gitinput.VerifyMaterializedProjection(projectionA) == nil {
 		t.Fatal("missing projected file did not fail completeness")
 	}
-	mutated := filepath.Join(projectionB.ProbeRoot, filepath.FromSlash(projectionB.Files[0].RelativePath))
+	mutated := filepath.Join(projectionB.ProbeRoot, filepath.FromSlash(projectionB.Files[0].Chunks[0].RelativePath))
 	if err := os.WriteFile(mutated, []byte("mutated"), 0o600); err != nil {
 		t.Fatal(err)
 	}

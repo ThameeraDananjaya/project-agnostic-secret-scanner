@@ -58,7 +58,7 @@ func TestSafeBareCloneAndExactRangeBinding(t *testing.T) {
 	if binding.Base != base || binding.Head != head || binding.MergeBase != base || binding.CommitCount != 2 {
 		t.Fatalf("wrong range binding: %#v", binding)
 	}
-	if len(binding.HistoryRangeDigest) != 64 || len(binding.TrackedTreeDigest) != 64 {
+	if len(binding.HistoryRangeDigest) != 64 || len(binding.TrackedTreeDigest) != 64 || len(binding.HeadTreeOID) < 40 {
 		t.Fatalf("missing digests: %#v", binding)
 	}
 	plan, err := g.PlanRange(context.Background(), bare, base, head, false, filepath.Join(private, "home"), gitinput.ProjectionLimits{MaxBlobBytes: 1 << 20, MaxBlobCount: 100, MaxTotalBytes: 8 << 20})
@@ -78,7 +78,7 @@ func TestSafeBareCloneAndExactRangeBinding(t *testing.T) {
 			continue
 		}
 		raw, rawErr := os.ReadFile(filepath.Join(projection.ScanRoot, filepath.FromSlash(projection.Files[i].RelativePath)))
-		framed, framedErr := os.ReadFile(filepath.Join(projection.ProbeRoot, filepath.FromSlash(projection.Files[i].RelativePath)))
+		framed, framedErr := os.ReadFile(filepath.Join(projection.ProbeRoot, filepath.FromSlash(projection.Files[i].Chunks[0].RelativePath)))
 		if rawErr != nil || framedErr != nil || !bytes.Contains(raw, []byte(binaryCanary)) || !bytes.Contains(framed, []byte(binaryCanary)) || !bytes.Contains(framed, []byte("PSCAN_COVERAGE_MARKER_")) {
 			t.Fatal("deleted binary bytes did not reach the bound scan projection")
 		}

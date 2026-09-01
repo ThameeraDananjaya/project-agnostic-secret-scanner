@@ -34,10 +34,10 @@ try {
     Push-Location $SourceRoot
     try {
         $env:GOOS = 'windows'; $env:GOARCH = 'amd64'
-        & $goExe build -trimpath -buildvcs=false -tags=gore2regex -ldflags $ldflags -o (Join-Path $OutputDirectory 'gitleaks-windows-amd64.exe') .
+        & $goExe build -trimpath -buildvcs=false -ldflags $ldflags -o (Join-Path $OutputDirectory 'gitleaks-windows-amd64.exe') .
         if ($LASTEXITCODE -ne 0) { throw 'Windows build failed' }
         $env:GOOS = 'linux'; $env:GOARCH = 'amd64'
-        & $goExe build -trimpath -buildvcs=false -tags=gore2regex -ldflags $ldflags -o (Join-Path $OutputDirectory 'gitleaks-linux-amd64') .
+        & $goExe build -trimpath -buildvcs=false -ldflags $ldflags -o (Join-Path $OutputDirectory 'gitleaks-linux-amd64') .
         if ($LASTEXITCODE -ne 0) { throw 'Linux build failed' }
     } finally {
         Pop-Location
@@ -50,8 +50,8 @@ try {
 }
 
 $expectedOutputs = @{
-    'gitleaks-windows-amd64.exe' = 'a9e923bdde0e353057f7b71c2b14f1e1b96016076f05fc81c93dd605f46525ea'
-    'gitleaks-linux-amd64'       = 'c79361874b71d1b8a366773cc3cee1ade9159b1b0500e3456835fff065c7555a'
+    'gitleaks-windows-amd64.exe' = 'b2094b3534ce0abf9c74a4b251153f5a23ebb4e74d5ae4f6d6ceeb428aaf0178'
+    'gitleaks-linux-amd64'       = '657ddddfb98e21052fb1a60d5d4e7d7534897347cb7df0031f13258a3f800586'
 }
 foreach ($entry in $expectedOutputs.GetEnumerator()) {
     $actual = (Get-FileHash -LiteralPath (Join-Path $OutputDirectory $entry.Key) -Algorithm SHA256).Hash.ToLowerInvariant()

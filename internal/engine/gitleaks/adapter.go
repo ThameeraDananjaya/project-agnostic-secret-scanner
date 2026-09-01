@@ -7,12 +7,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/ThameeraDananjaya/project-agnostic-secret-scanner/internal/artifact"
 	"github.com/ThameeraDananjaya/project-agnostic-secret-scanner/internal/engine"
 	"github.com/ThameeraDananjaya/project-agnostic-secret-scanner/internal/gitinput"
 	"github.com/ThameeraDananjaya/project-agnostic-secret-scanner/internal/outcome"
@@ -44,16 +46,20 @@ type Binding struct {
 type Adapter struct{ Binding Binding }
 
 func (a Adapter) Verify() error {
-	if err := engine.VerifyRegularFile(a.Binding.Executable, a.Binding.ExecutableDigest); err != nil {
+	return a.VerifyContext(context.Background())
+}
+
+func (a Adapter) VerifyContext(ctx context.Context) error {
+	if err := engine.VerifyRegularFileContext(ctx, a.Binding.Executable, a.Binding.ExecutableDigest); err != nil {
 		return err
 	}
-	if err := engine.VerifyRegularFile(a.Binding.Config, a.Binding.ConfigDigest); err != nil {
+	if err := engine.VerifyRegularFileContext(ctx, a.Binding.Config, a.Binding.ConfigDigest); err != nil {
 		return err
 	}
-	if _, err := ProveRuleSpans(a.Binding.Config, a.Binding.ConfigDigest); err != nil {
+	if _, err := ProveRuleSpansContext(ctx, a.Binding.Config, a.Binding.ConfigDigest); err != nil {
 		return err
 	}
-	if err := engine.VerifyRegularFile(a.Binding.IgnoreFile, a.Binding.IgnoreFileDigest); err != nil {
+	if err := engine.VerifyRegularFileContext(ctx, a.Binding.IgnoreFile, a.Binding.IgnoreFileDigest); err != nil {
 		return err
 	}
 	if !filepath.IsAbs(a.Binding.PrivateHome) {
@@ -120,8 +126,52 @@ func (a Adapter) ScanProjectionProfile(ctx context.Context, projection gitinput.
 	return a.runProfile(profileContext, append([]string{"dir"}, args...), projection.ProbeRoot, profile, decodeProjection(expected))
 }
 
+// ScanArtifactProjection is the sole pass-capable artifact entry point. It
+// verifies the private ledger and every overlapping detector projection before
+// invoking the exact pinned detector with archive recursion disabled.
+func (a Adapter) ScanArtifactProjection(ctx context.Context, projection artifact.Result) engine.Result {
+	if err := artifact.VerifyContext(ctx, projection); err != nil {
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			return engine.Result{Reason: outcome.ReasonIndeterminateTimeout, ExitCode: -1}
+		}
+		if errors.Is(ctx.Err(), context.Canceled) {
+			return engine.Result{Reason: outcome.ReasonIndeterminateIncompleteCoverage, ExitCode: -1}
+		}
+		return engine.Result{Reason: outcome.ReasonFailInputIntegrity, ExitCode: -1}
+	}
+	if !projection.Profile.Valid() {
+		return engine.Result{Reason: outcome.ReasonIndeterminateResourceLimit, ExitCode: -1}
+	}
+	environment := append([]string(nil), a.Binding.Environment...)
+	environment = append(environment,
+		"GOMEMLIMIT="+strconv.FormatInt(projection.Profile.MaxMemoryBytes, 10)+"B",
+		"GOMAXPROCS=1",
+	)
+	if !engine.IsSealedEnvironment(environment) {
+		return engine.Result{Reason: outcome.ReasonUnavailableRuntime, ExitCode: -1}
+	}
+	expected, ok := normalizeExpectedPaths(projection.ExpectedProbeFiles)
+	if !ok || len(expected) != len(projection.ExpectedProbeFiles) {
+		return engine.Result{Reason: outcome.ReasonFailInputIntegrity, ExitCode: -1}
+	}
+	probeTimeout := 5 * time.Second
+	if probeTimeout > projection.Profile.Timeout {
+		probeTimeout = projection.Profile.Timeout
+	}
+	if probe := a.probe(ctx, probeTimeout); probe.Reason != outcome.ReasonPassNoBlockingFindings {
+		return probe
+	}
+	args := append(a.commonArgs(a.Binding.Config, projection.Profile.Timeout, artifact.MaximumDetectorFile), ".")
+	return engine.RunPrivateContext(ctx, engine.Command{
+		Executable: a.Binding.Executable, ExpectedDigest: a.Binding.ExecutableDigest,
+		Args: append([]string{"dir"}, args...), Dir: projection.ProbeRoot,
+		Environment: environment, Timeout: projection.Profile.Timeout,
+		CaptureLimit: MaximumReportSize,
+	}, decodeProjectionContext(expected))
+}
+
 func (a Adapter) runProfile(ctx context.Context, args []string, directory string, profile gitinput.CoverageProfile, decoder engine.Decoder) engine.Result {
-	if err := a.Verify(); err != nil || !profile.Valid() {
+	if err := a.VerifyContext(ctx); err != nil || !profile.Valid() {
 		return engine.Result{Reason: outcome.ReasonFailScannerIntegrity, ExitCode: -1}
 	}
 	environment := append([]string(nil), a.Binding.Environment...)
@@ -146,7 +196,13 @@ func (a Adapter) ScanGitRange(ctx context.Context, bareRepository, base, head st
 }
 
 func (a Adapter) probe(ctx context.Context, timeout time.Duration) engine.Result {
-	if err := a.Verify(); err != nil {
+	if err := a.VerifyContext(ctx); err != nil {
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			return engine.Result{Reason: outcome.ReasonIndeterminateTimeout, ExitCode: -1}
+		}
+		if errors.Is(ctx.Err(), context.Canceled) {
+			return engine.Result{Reason: outcome.ReasonIndeterminateIncompleteCoverage, ExitCode: -1}
+		}
 		return engine.Result{Reason: outcome.ReasonFailScannerIntegrity, ExitCode: -1}
 	}
 	return engine.RunPrivate(ctx, engine.Command{
@@ -202,7 +258,7 @@ func (a Adapter) run(ctx context.Context, args []string, timeout time.Duration) 
 }
 
 func (a Adapter) runWithDecoder(ctx context.Context, args []string, directory string, timeout time.Duration, decoder engine.Decoder) engine.Result {
-	if err := a.Verify(); err != nil {
+	if err := a.VerifyContext(ctx); err != nil {
 		return engine.Result{Reason: outcome.ReasonFailScannerIntegrity, ExitCode: -1}
 	}
 	return engine.RunPrivate(ctx, engine.Command{
@@ -229,21 +285,34 @@ func normalizeExpectedPaths(paths []string) (map[string]bool, bool) {
 }
 
 func decodeProjection(expected map[string]bool) engine.Decoder {
+	contextDecoder := decodeProjectionContext(expected)
 	return func(output engine.PrivateOutput) outcome.ReasonCode {
+		return contextDecoder(context.Background(), output)
+	}
+}
+
+func decodeProjectionContext(expected map[string]bool) engine.ContextDecoder {
+	return func(ctx context.Context, output engine.PrivateOutput) outcome.ReasonCode {
 		if len(bytes.TrimSpace(output.Stderr)) != 0 || output.Exit != FindingExitCode {
 			return outcome.ReasonIndeterminateIncompleteCoverage
 		}
-		var findings []json.RawMessage
-		if json.Unmarshal(bytes.TrimSpace(output.Stdout), &findings) != nil || len(findings) < len(expected) {
+		decoder := json.NewDecoder(bytes.NewReader(bytes.TrimSpace(output.Stdout)))
+		token, err := decoder.Token()
+		if err != nil || token != json.Delim('[') {
 			return outcome.ReasonIndeterminateIncompleteCoverage
 		}
-		seen := make(map[string]bool, len(findings))
+		seen := make(map[string]bool, len(expected))
 		candidateFinding := false
-		for _, raw := range findings {
+		findingCount := 0
+		for decoder.More() {
+			if ctx.Err() != nil {
+				return outcome.ReasonIndeterminateTimeout
+			}
 			var object map[string]json.RawMessage
-			if json.Unmarshal(raw, &object) != nil || leaksUnredactedCandidate(object) {
+			if decoder.Decode(&object) != nil || leaksUnredactedCandidate(object) {
 				return outcome.ReasonIndeterminateRedactionUnproven
 			}
+			findingCount++
 			var ruleID, path string
 			if json.Unmarshal(object["RuleID"], &ruleID) != nil || json.Unmarshal(object["File"], &path) != nil {
 				return outcome.ReasonIndeterminateIncompleteCoverage
@@ -261,7 +330,7 @@ func decodeProjection(expected map[string]bool) engine.Decoder {
 				candidateFinding = true
 			}
 		}
-		if len(seen) != len(expected) {
+		if token, err := decoder.Token(); err != nil || token != json.Delim(']') || decoder.Decode(&struct{}{}) != io.EOF || findingCount < len(expected) || len(seen) != len(expected) {
 			return outcome.ReasonIndeterminateIncompleteCoverage
 		}
 		if candidateFinding {

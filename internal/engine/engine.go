@@ -40,6 +40,7 @@ type PrivateOutput struct {
 }
 
 type Decoder func(PrivateOutput) outcome.ReasonCode
+type ContextDecoder func(context.Context, PrivateOutput) outcome.ReasonCode
 
 type Result struct {
 	Reason   outcome.ReasonCode
@@ -48,8 +49,29 @@ type Result struct {
 
 // RunPrivate verifies the executable immediately before launch, uses no shell,
 // captures output in bounded private memory, and discards it before returning.
-func RunPrivate(parent context.Context, command Command, decode Decoder) Result {
-	if err := VerifyRegularFile(command.Executable, command.ExpectedDigest); err != nil {
+func RunPrivate(parent context.Context, command Command, decode Decoder) (result Result) {
+	if decode == nil {
+		return Result{Reason: outcome.ReasonTerminalInternalInvariant, ExitCode: -1}
+	}
+	return RunPrivateContext(parent, command, func(_ context.Context, output PrivateOutput) outcome.ReasonCode {
+		return decode(output)
+	})
+}
+
+func RunPrivateContext(parent context.Context, command Command, decode ContextDecoder) (result Result) {
+	result = Result{Reason: outcome.ReasonTerminalInternalInvariant, ExitCode: -1}
+	defer func() {
+		if recover() != nil {
+			result = Result{Reason: outcome.ReasonTerminalInternalInvariant, ExitCode: -1}
+		}
+	}()
+	if err := VerifyRegularFileContext(parent, command.Executable, command.ExpectedDigest); err != nil {
+		if errors.Is(parent.Err(), context.DeadlineExceeded) {
+			return Result{Reason: outcome.ReasonIndeterminateTimeout, ExitCode: -1}
+		}
+		if errors.Is(parent.Err(), context.Canceled) {
+			return Result{Reason: outcome.ReasonIndeterminateIncompleteCoverage, ExitCode: -1}
+		}
 		return Result{Reason: outcome.ReasonFailScannerIntegrity, ExitCode: -1}
 	}
 	if decode == nil || !filepath.IsAbs(command.Executable) || command.Timeout <= 0 {
@@ -68,11 +90,16 @@ func RunPrivate(parent context.Context, command Command, decode Decoder) Result 
 	cmd.Stdin = nil
 	var stdout, stderr boundedBuffer
 	stdout.limit, stderr.limit = limit, limit
+	defer stdout.Reset()
+	defer stderr.Reset()
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 
 	err := cmd.Run()
 	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 		return Result{Reason: outcome.ReasonIndeterminateTimeout, ExitCode: -1}
+	}
+	if errors.Is(ctx.Err(), context.Canceled) {
+		return Result{Reason: outcome.ReasonIndeterminateIncompleteCoverage, ExitCode: -1}
 	}
 	if stdout.overflow || stderr.overflow {
 		return Result{Reason: outcome.ReasonIndeterminateResourceLimit, ExitCode: -1}
@@ -85,17 +112,28 @@ func RunPrivate(parent context.Context, command Command, decode Decoder) Result 
 		}
 		exitCode = exitErr.ExitCode()
 	}
-	reason := decode(PrivateOutput{
+	reason := decode(ctx, PrivateOutput{
 		Stdout: append([]byte(nil), stdout.Bytes()...),
 		Stderr: append([]byte(nil), stderr.Bytes()...),
 		Exit:   exitCode,
 	})
-	stdout.Reset()
-	stderr.Reset()
+	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+		return Result{Reason: outcome.ReasonIndeterminateTimeout, ExitCode: -1}
+	}
+	if errors.Is(ctx.Err(), context.Canceled) {
+		return Result{Reason: outcome.ReasonIndeterminateIncompleteCoverage, ExitCode: -1}
+	}
 	return Result{Reason: reason, ExitCode: exitCode}
 }
 
 func VerifyRegularFile(path, expectedDigest string) error {
+	return VerifyRegularFileContext(context.Background(), path, expectedDigest)
+}
+
+func VerifyRegularFileContext(ctx context.Context, path, expectedDigest string) error {
+	if ctx == nil {
+		return errors.New("invalid file binding")
+	}
 	if !filepath.IsAbs(path) || len(expectedDigest) != 64 || strings.ToLower(expectedDigest) != expectedDigest {
 		return errors.New("invalid file binding")
 	}
@@ -113,7 +151,7 @@ func VerifyRegularFile(path, expectedDigest string) error {
 		return errors.New("bound file identity changed")
 	}
 	h := sha256.New()
-	if _, err := io.Copy(h, f); err != nil {
+	if _, err := io.Copy(h, engineContextReader{ctx: ctx, reader: f}); err != nil {
 		return errors.New("bound file cannot be read")
 	}
 	actual := hex.EncodeToString(h.Sum(nil))
@@ -121,6 +159,18 @@ func VerifyRegularFile(path, expectedDigest string) error {
 		return fmt.Errorf("bound file digest mismatch")
 	}
 	return nil
+}
+
+type engineContextReader struct {
+	ctx    context.Context
+	reader io.Reader
+}
+
+func (r engineContextReader) Read(value []byte) (int, error) {
+	if err := r.ctx.Err(); err != nil {
+		return 0, err
+	}
+	return r.reader.Read(value)
 }
 
 func SafeEnvironment(pathValue, privateHome string) []string {
@@ -139,6 +189,34 @@ func SafeEnvironment(pathValue, privateHome string) []string {
 		env = append(env, "SYSTEMROOT="+os.Getenv("SYSTEMROOT"), "COMSPEC="+os.Getenv("COMSPEC"))
 	}
 	return env
+}
+
+// IsSealedEnvironment proves that authoritative execution receives only the
+// scanner's explicit non-secret process variables. It never inherits the host
+// environment wholesale.
+func IsSealedEnvironment(environment []string) bool {
+	allowed := map[string]bool{
+		"GIT_CONFIG_NOSYSTEM": true, "GIT_TERMINAL_PROMPT": true,
+		"GIT_PAGER": true, "GIT_ATTR_NOSYSTEM": true, "PAGER": true,
+		"PATH": true, "HOME": true, "XDG_CONFIG_HOME": true,
+		"GIT_CONFIG_GLOBAL": true, "SYSTEMROOT": true, "COMSPEC": true,
+		"GOMEMLIMIT": true, "GOMAXPROCS": true,
+	}
+	seen := map[string]bool{}
+	for _, item := range environment {
+		key, value, ok := strings.Cut(item, "=")
+		key = strings.ToUpper(key)
+		if !ok || key == "" || !allowed[key] || seen[key] || strings.ContainsAny(value, "\r\n\x00") {
+			return false
+		}
+		seen[key] = true
+	}
+	for _, required := range []string{"PATH", "HOME", "XDG_CONFIG_HOME", "GIT_CONFIG_GLOBAL", "GIT_CONFIG_NOSYSTEM", "GIT_TERMINAL_PROMPT"} {
+		if !seen[required] {
+			return false
+		}
+	}
+	return true
 }
 
 func constantStringEqual(a, b string) bool {

@@ -2,6 +2,7 @@ package gitleaks
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"os"
 	"regexp/syntax"
@@ -20,7 +21,11 @@ type RuleSpanProof struct {
 // ProveRuleSpans parses every single-line TOML rule regex using the exact Go
 // standard-library regex grammar selected for the pinned detector build.
 func ProveRuleSpans(path, digest string) (RuleSpanProof, error) {
-	if err := engine.VerifyRegularFile(path, digest); err != nil {
+	return ProveRuleSpansContext(context.Background(), path, digest)
+}
+
+func ProveRuleSpansContext(ctx context.Context, path, digest string) (RuleSpanProof, error) {
+	if err := engine.VerifyRegularFileContext(ctx, path, digest); err != nil {
 		return RuleSpanProof{}, err
 	}
 	f, err := os.Open(path)
@@ -32,6 +37,9 @@ func ProveRuleSpans(path, digest string) (RuleSpanProof, error) {
 	scanner.Buffer(make([]byte, 4096), 1<<20)
 	proof := RuleSpanProof{}
 	for scanner.Scan() {
+		if err := ctx.Err(); err != nil {
+			return RuleSpanProof{}, errors.New("rule span proof cancelled")
+		}
 		line := strings.TrimSpace(scanner.Text())
 		if !strings.HasPrefix(line, "regex = '''") {
 			continue

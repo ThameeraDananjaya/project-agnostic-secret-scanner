@@ -7,10 +7,11 @@ network-disabled execution.
 
 ## State
 
-Activated by the owner's exact `ACTIVATE PSCAN-04` command on 2026-09-01.
-Unclaimed and not implemented. This activation bundle authorizes only a fresh
-implementation session from the exact activation commit; the session creating
-the bundle must stop without claiming or implementing PSCAN-04.
+Activated by the owner's exact `ACTIVATE PSCAN-04` command on 2026-09-01 and
+claimed alone on 2026-09-02 from exact clean activation commit
+`a21b030e1658f1f98ac4e4d001af12185d9ed311`. Implemented, corrected,
+independently accepted and closed locally on 2026-09-02. No successor is
+selected or activated.
 
 ## Objective
 

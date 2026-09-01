@@ -7,13 +7,14 @@ fixture coverage.
 
 ## State
 
-Activated and claimed. Correction C1 candidate `6cd22a3` was independently
-rejected on 2026-08-31. Exact blob enumeration is implemented, but the
-same-run per-blob marker does not prove complete Gitleaks fragment coverage.
-PSCAN-03 remains blocked and is not accepted.
+Rejected and closed fail-closed on 2026-09-01. Correction C1 candidate
+`6cd22a3` was independently rejected on 2026-08-31. Exact blob enumeration is
+implemented in that non-authoritative candidate, but the same-run per-blob
+marker does not prove complete Gitleaks fragment coverage. PSCAN-03 is not
+accepted and its scanner changes remain non-authoritative.
 
-Implementation is authorized only in a fresh session from the exact PSCAN-03
-activation commit. This activation session contains no implementation work.
+Implementation was authorized only in a fresh session from the exact PSCAN-03
+activation commit. The activation session contained no implementation work.
 
 ## Objective
 
@@ -107,5 +108,10 @@ mode for exact history/range scanning with directory mode over projections.
 The correction authorization did not waive that controlling requirement.
 
 Native patch mode remains fail-closed. TruffleHog is absent. No successor is
-selected; PSCAN-04 remains unselected and PSCAN-08 remains inactive and
-owner-gated.
+selected or activated. On 2026-09-01 the owner abandoned the contract-preserving
+option and directed future work toward an outcome-based replacement contract.
+That direction does not change PASS-SPEC-001 inside PSCAN-03 because its
+governance paths are outside this task's allowlist. PSCAN-09 is proposed only
+for that bounded governance replacement. PSCAN-04 remains unselected and
+PSCAN-08 remains inactive and owner-gated. The rejected closeout is recorded in
+`evidence/PSCAN-03/CLOSEOUT-REJECTED.md`.

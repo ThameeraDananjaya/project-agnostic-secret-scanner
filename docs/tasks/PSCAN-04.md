@@ -7,7 +7,10 @@ network-disabled execution.
 
 ## State
 
-Proposed. Unselected. Not activated. Not claimed.
+Activated by the owner's exact `ACTIVATE PSCAN-04` command on 2026-09-01.
+Unclaimed and not implemented. This activation bundle authorizes only a fresh
+implementation session from the exact activation commit; the session creating
+the bundle must stop without claiming or implementing PSCAN-04.
 
 ## Objective
 
@@ -18,11 +21,31 @@ network or credentials.
 
 ## Preconditions
 
-- PSCAN-10 outcome-proved primary coverage accepted and clean.
-- Exact PSCAN-04 activation and fresh implementation session.
-- Supported archive/OCI parsing choices and licences reviewed before admission.
+- PSCAN-10 outcome-proved primary coverage accepted, closed and clean at
+  activation parent `14348b16d9ddb87f337391a4e47dd243f6e53bf2`.
+- Exact PSCAN-04 owner selection and activation recorded in
+  `evidence/PSCAN-04/ACTIVATION.md`, followed by a fresh implementation session
+  from that activation commit.
+- Supported archive/OCI parsing choices and licences reviewed from current
+  primary sources before dependency intake, build, execution or admission.
+- Existing pinned Gitleaks, rules, preparation/proof boundary and toolchain
+  identity revalidated before scanner or test execution.
 
-## Allowed paths
+## Activation-only bundle
+
+This session may change and commit only:
+
+```text
+docs/tasks/PSCAN-04.md
+docs/tasks/PSCAN-04-READING-MAP.md
+docs/tasks/TRACKER.md
+evidence/PSCAN-04/ACTIVATION.md
+```
+
+No implementation, dependency intake, scanner/toolchain execution, test run or
+successor work is authorized in the activation session.
+
+## Allowed implementation paths
 
 ```text
 go.mod
@@ -56,9 +79,22 @@ evidence/PSCAN-04/**
 
 ## Forbidden scope
 
-No candidate execution/build/dependency install; no project policy or allowlist;
-no TruffleHog; no receipt/signing; no GitHub workflow or remote action; no real
-project artifact, finding, credential or customer data.
+- No modification of PASS-OUTCOME-SPEC-001, PASS-SPEC-001, their source record,
+  TRACEABILITY, DEC-001, DEC-002 or PSCAN-01 through PSCAN-03 and PSCAN-09/10
+  historical evidence.
+- No execution, build or dependency installation from candidate artifacts;
+  candidate material remains data only.
+- No project policy, allowlist, receipt, revocation, evidence-custody,
+  deployment or retention authority.
+- No TruffleHog assessment, legal work, download, material, integration,
+  distribution or enablement.
+- No GitHub workflow, remote creation, push, publication, release, signing,
+  settings change, credential handling, spending, provider, deployment,
+  production or go-live action.
+- No real consuming-project artifact, source, finding, credential, customer
+  data, repository identity, statistics or project-specific behavior.
+- No selection, activation, claim or implementation of PSCAN-05, PSCAN-08 or
+  any other successor.
 
 ## Deliverables
 

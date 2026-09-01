@@ -5,7 +5,7 @@
 | PSCAN-01 | Completed and accepted locally | Activation `a85a64e`; accepted implementation `5019489` |
 | PSCAN-02 | Completed and independently accepted locally | Activation `48a8bd0`; accepted implementation `98768cc` |
 | PSCAN-03 | Rejected and closed fail-closed; not accepted | `evidence/PSCAN-03/CLOSEOUT-REJECTED.md` |
-| PSCAN-04 | Proposed; unselected | PASS-OUTCOME-SPEC-001; requires accepted PSCAN-10 |
+| PSCAN-04 | Activated; unclaimed; not implemented | Owner command plus PSCAN-04 activation bundle |
 | PSCAN-05 | Proposed; unselected | PASS-OUTCOME-SPEC-001; follows PSCAN-04 |
 | PSCAN-06 | Proposed; unselected; remote gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-05 |
 | PSCAN-07 | Proposed; unselected; signing/publication gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-06 |
@@ -30,7 +30,10 @@ primary-coverage successor. It was claimed in a fresh implementation session
 from exact clean activation commit
 `9053b37d799b19e3d98aeca0ae853296971ab09d`, independently accepted after the
 correction commit `d10df991d72e3fcc40b378830b50d1f258e16654`, and closed locally. PSCAN-04
-through PSCAN-07 remain proposed and unselected. PSCAN-08 remains inactive,
-unselected and ineligible because accepted evidence did not establish a
-material required-class Gitleaks gap; separate technical and AGPL owner approval
-would also be required. No successor to PSCAN-10 is selected or activated.
+was exactly activated by the owner on 2026-09-01 and is the only activated task;
+it remains unclaimed and not implemented, and implementation requires a fresh
+session from the activation commit. PSCAN-05 through PSCAN-07 remain proposed
+and unselected. PSCAN-08 remains inactive, unselected and ineligible because
+accepted evidence did not establish a material required-class Gitleaks gap;
+separate technical and AGPL owner approval would also be required. No successor
+to PSCAN-04 is selected or activated.

@@ -7,8 +7,9 @@ workflow, immutable-release plan, and offline verifier guidance.
 
 ## State
 
-Proposed. Unselected. Not activated. Not claimed. Remote, settings, spending,
-signing and publication gates reserved.
+Activated by the owner's exact `ACTIVATE PSCAN-06` command on 2026-09-02.
+Unclaimed and not implemented. Remote, settings, spending, signing and
+publication gates remain reserved. No successor is selected or activated.
 
 ## Objective
 
@@ -19,7 +20,11 @@ not publish `v1.0.0`; final acceptance/publication belongs to PSCAN-07.
 
 ## Preconditions and owner gates
 
-- PSCAN-05 accepted and clean; exact PSCAN-06 activation and fresh session.
+- PSCAN-05 accepted, closed and clean at activation parent
+  `30d27856bdfd404fc190501be854b78bc5147f1f`.
+- Exact PSCAN-06 owner selection and activation recorded in
+  `evidence/PSCAN-06/ACTIVATION.md`, followed by a fresh implementation session
+  from that activation commit.
 - Revalidate official Go, Gitleaks, Cosign/Sigstore, GitHub Actions, immutable
   releases, artifact attestations, rules/settings, plan and cost facts.
 - Read-only preflight must confirm exact account/repository/workflow identity,
@@ -27,7 +32,22 @@ not publish `v1.0.0`; final acceptance/publication belongs to PSCAN-07.
 - Owner separately approves each remote creation, push/settings/workflow action
   and any signing dry run. Activation alone is not approval.
 
-## Allowed paths
+## Activation-only bundle
+
+This session may change and commit only:
+
+```text
+docs/tasks/PSCAN-06.md
+docs/tasks/PSCAN-06-READING-MAP.md
+docs/tasks/TRACKER.md
+evidence/PSCAN-06/ACTIVATION.md
+```
+
+No implementation, dependency/action intake, scanner/toolchain execution, test
+run, workflow execution, remote preflight mutation or successor work is
+authorized in the activation session.
+
+## Allowed implementation paths
 
 ```text
 .github/workflows/**
@@ -52,10 +72,25 @@ evidence/PSCAN-06/**
 
 ## Forbidden scope
 
-No secrets, long-lived signing keys, project receipt keys, consuming-project
-integration, deployment gates, real candidate data, `latest`, mutable refs,
-auto-update, pipe-to-shell, unpinned actions, TruffleHog, paid capability or
-final release publication. No remote action without exact recorded approval.
+- No modification of PASS-OUTCOME-SPEC-001, PASS-SPEC-001, their source record,
+  TRACEABILITY, DEC-002 or PSCAN-01 through PSCAN-05 and PSCAN-09/10 historical
+  evidence.
+- No secrets, credentials, long-lived signing keys, project receipt keys,
+  consuming-project integration, source, policy, allowlist, receipt,
+  revocation, identity, finding, customer data, statistics, project-specific
+  behavior, deployment gates or real candidate data.
+- No `latest`, mutable refs, auto-update, pipe-to-shell, unpinned actions,
+  incomplete asset sets, unverified identity, unresolved licence material or
+  pass from missing, stale, conflicting or unsupported evidence.
+- No TruffleHog assessment, legal work, download, material, integration,
+  distribution or enablement.
+- No paid capability, provider commitment, final release publication,
+  deployment, production, legal/compliance or go-live action.
+- No remote creation, push, settings/workflow enablement, signing dry run or
+  other remote action without separate exact recorded owner approval after the
+  required current read-only preflight.
+- No selection, activation, claim or implementation of PSCAN-07, PSCAN-08 or
+  any other successor.
 
 ## Deliverables
 

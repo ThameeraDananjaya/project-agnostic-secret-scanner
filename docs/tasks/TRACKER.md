@@ -7,7 +7,7 @@
 | PSCAN-03 | Rejected and closed fail-closed; not accepted | `evidence/PSCAN-03/CLOSEOUT-REJECTED.md` |
 | PSCAN-04 | Completed and independently accepted locally | Exact activation `a21b030e1658f1f98ac4e4d001af12185d9ed311`; evidence-bearing closeout commit |
 | PSCAN-05 | Completed and independently accepted locally | Exact activation `50b4186`; corrected evidence-bearing closeout commit |
-| PSCAN-06 | Proposed; unselected; remote gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-05 |
+| PSCAN-06 | Activated; unclaimed; not implemented; remote gates reserved | Exact owner command plus PSCAN-06 activation bundle |
 | PSCAN-07 | Proposed; unselected; signing/publication gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-06 |
 | PSCAN-08 | Inactive; technically and legally gated | Material-gap evidence plus separate owner approval required |
 | PSCAN-09 | Completed and independently accepted locally | Activation `f486989`; accepted closeout commit |
@@ -39,8 +39,12 @@ implementation session from exact activation commit
 `50b418609c1f9927c0ecd5d740aba6d7bff11f58`. Candidate
 `ab3626ac11e4a62c915e209f1b9f17f098950291` was independently reviewed,
 corrected within PSCAN-05 paths, revalidated and accepted through its local
-evidence-bearing closeout commit. PSCAN-06 and PSCAN-07 remain proposed and
-unselected. PSCAN-08 remains inactive, unselected and ineligible because
+evidence-bearing closeout commit. PSCAN-06 was exactly activated by the owner
+on 2026-09-02 and is now the only activated task. It remains unclaimed and not
+implemented pending a fresh implementation session from its activation commit.
+All remote creation, push, settings, workflow-enablement, signing, spending and
+publication gates remain reserved. PSCAN-07 remains proposed and unselected.
+PSCAN-08 remains inactive, unselected and ineligible because
 accepted evidence did not establish a material required-class Gitleaks gap;
 separate technical and AGPL owner approval would also be required. No
-successor to PSCAN-05 is selected or activated.
+successor to PSCAN-06 is selected or activated.

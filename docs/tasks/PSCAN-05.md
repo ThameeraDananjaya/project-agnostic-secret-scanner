@@ -7,8 +7,9 @@ reference verification, and project-isolation controls.
 
 ## State
 
-Activated by the owner's exact `ACTIVATE PSCAN-05` command on 2026-09-02.
-Unclaimed and not implemented. No successor is selected or activated.
+Implemented as a bounded local candidate on 2026-09-02 from exact activation
+commit `50b418609c1f9927c0ecd5d740aba6d7bff11f58`; awaiting independent
+acceptance. No successor is selected or activated.
 
 ## Objective
 

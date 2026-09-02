@@ -1,0 +1,29 @@
+{
+  "anchor": {
+    "sequence": 4,
+    "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "records": [
+    {
+      "schemaFamily": "synthetic-global-revocations",
+      "schemaVersion": "1.0",
+      "recordId": "00000000-0000-4000-8000-000000000105",
+      "sequence": 5,
+      "previousDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "kind": "revocation",
+      "targetType": "policy",
+      "targetValue": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "authorityId": "synthetic-authority",
+      "reasonCode": "synthetic-integrity-defect",
+      "issuedAt": "2026-09-01T00:00:00Z",
+      "effectiveAt": "2026-09-01T00:00:00Z",
+      "recordDigest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "signature": {
+        "trustDomain": "global-revocation-authority",
+        "algorithm": "ed25519",
+        "keyId": "synthetic-public-key",
+        "value": "invalid-by-construction"
+      }
+    }
+  ]
+}

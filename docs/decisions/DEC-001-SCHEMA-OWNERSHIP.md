@@ -4,7 +4,9 @@
 - Date: 2026-08-30
 - Authority: PASS-SPEC-001 sections 7.7, 9, 13, 16, 17 and 20
 - Implementation: scanner-owned schema families implemented by PSCAN-02;
-  project-owned projection and precedence remain deferred to PSCAN-05
+  project-owned projection, precedence and custody-neutral reference
+  verification implemented as the PSCAN-05 candidate pending independent
+  acceptance
 
 ## Decision
 

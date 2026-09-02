@@ -85,3 +85,15 @@ transient workspace destruction and evidence-chain trust.
 Any newly discovered material threat that cannot be controlled inside an
 activated task fails that task closed and returns to the owner with bounded
 alternatives.
+
+## PSCAN-05 implemented controls
+
+The PSCAN-05 candidate implements the in-scope controls for T-12 and T-14
+through T-17: transient per-call projections, fixed precedence, mandatory
+credential-class blocking, exact exception context and expiry, independent
+schema windows, public-key-only signature verification, exact receipt binding,
+trusted receipt/global/project checkpoints, and append-only revocation-chain
+verification. Its API contains no private-key, signing, receipt-issuance,
+evidence-storage, promotion or project-identity authority. These controls await
+independent PSCAN-05 acceptance and do not replace PSCAN-07 whole-product
+validation.

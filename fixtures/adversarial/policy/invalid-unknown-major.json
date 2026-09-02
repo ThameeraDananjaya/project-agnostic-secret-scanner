@@ -1,0 +1,12 @@
+{
+  "schemaFamily": "synthetic-policy",
+  "schemaVersion": "2.0",
+  "adapterVersion": "policy-projection-1.0",
+  "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "signature": {
+    "trustDomain": "project-policy",
+    "algorithm": "ed25519",
+    "keyId": "synthetic-public-key",
+    "value": "invalid-by-construction"
+  }
+}

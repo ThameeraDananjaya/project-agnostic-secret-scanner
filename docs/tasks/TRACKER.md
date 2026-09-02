@@ -6,7 +6,7 @@
 | PSCAN-02 | Completed and independently accepted locally | Activation `48a8bd0`; accepted implementation `98768cc` |
 | PSCAN-03 | Rejected and closed fail-closed; not accepted | `evidence/PSCAN-03/CLOSEOUT-REJECTED.md` |
 | PSCAN-04 | Completed and independently accepted locally | Exact activation `a21b030e1658f1f98ac4e4d001af12185d9ed311`; evidence-bearing closeout commit |
-| PSCAN-05 | Activated; unclaimed; not implemented | Exact owner command plus PSCAN-05 activation bundle |
+| PSCAN-05 | Implemented locally; awaiting independent acceptance | Exact activation `50b4186`; bounded implementation candidate |
 | PSCAN-06 | Proposed; unselected; remote gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-05 |
 | PSCAN-07 | Proposed; unselected; signing/publication gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-06 |
 | PSCAN-08 | Inactive; technically and legally gated | Material-gap evidence plus separate owner approval required |
@@ -34,10 +34,11 @@ was exactly activated by the owner on 2026-09-01;
 it was claimed alone on 2026-09-02 in a fresh implementation session from the
 exact activation commit. PSCAN-04 is implemented, independently accepted and
 closed locally through its evidence-bearing closeout commit. PSCAN-05 was
-exactly activated by the owner on 2026-09-02 and is now the only activated task;
-it remains unclaimed and not implemented pending a fresh implementation
-session from its activation commit. PSCAN-06 and PSCAN-07 remain proposed and
-unselected. PSCAN-08 remains inactive, unselected
+exactly activated by the owner on 2026-09-02 and claimed alone in a fresh
+implementation session from exact activation commit
+`50b418609c1f9927c0ecd5d740aba6d7bff11f58`. Its bounded local implementation
+candidate awaits independent acceptance; it is not closed. PSCAN-06 and
+PSCAN-07 remain proposed and unselected. PSCAN-08 remains inactive, unselected
 and ineligible because accepted evidence did not establish a material
 required-class Gitleaks gap; separate technical and AGPL owner approval would
 also be required. No successor to PSCAN-05 is selected or activated.

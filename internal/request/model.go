@@ -37,6 +37,33 @@ type FallbackRequirement struct {
 	Mode string `json:"mode"`
 }
 
+type SignatureReference struct {
+	TrustDomain string `json:"trustDomain"`
+	Algorithm   string `json:"algorithm"`
+	KeyID       string `json:"keyId"`
+	Value       string `json:"value"`
+}
+
+type ProjectDocumentBinding struct {
+	SchemaFamily   string             `json:"schemaFamily"`
+	SchemaVersion  string             `json:"schemaVersion"`
+	AdapterVersion string             `json:"adapterVersion"`
+	Digest         string             `json:"digest"`
+	Signature      SignatureReference `json:"signature"`
+}
+
+type ProofBindings struct {
+	AdmissionLedgerSchemaVersion string `json:"admissionLedgerSchemaVersion"`
+	AdmissionLedgerDigest        string `json:"admissionLedgerDigest"`
+	RawClassifierVersion         string `json:"rawClassifierVersion"`
+	RawClassifierDigest          string `json:"rawClassifierDigest"`
+	PreparationVersion           string `json:"preparationVersion"`
+	PreparationDigest            string `json:"preparationDigest"`
+	ResourceProfileID            string `json:"resourceProfileId"`
+	InspectionProofFormat        string `json:"inspectionProofFormat"`
+	InspectionProofDigest        string `json:"inspectionProofDigest"`
+}
+
 type Limits struct {
 	TimeoutSeconds      int   `json:"timeoutSeconds"`
 	MaxArchiveDepth     int   `json:"maxArchiveDepth"`
@@ -49,23 +76,26 @@ type Limits struct {
 }
 
 type ScanRequest struct {
-	RequestSchemaVersion  string              `json:"requestSchemaVersion"`
-	RequiredFeatures      []string            `json:"requiredFeatures,omitempty"`
-	ScanID                string              `json:"scanId"`
-	SupersedesScanID      string              `json:"supersedesScanId,omitempty"`
-	Mode                  string              `json:"mode"`
-	ScannerReleaseDigest  string              `json:"scannerReleaseDigest"`
-	EngineBinding         EngineBinding       `json:"engineBinding"`
-	RulePackDigest        string              `json:"rulePackDigest"`
-	PolicyDigest          string              `json:"policyDigest"`
-	AllowlistDigest       string              `json:"allowlistDigest"`
-	SourceBinding         SourceBinding       `json:"sourceBinding"`
-	TrackedSourceManifest FileBinding         `json:"trackedSourceManifest"`
-	BuildContextManifest  *FileBinding        `json:"buildContextManifest,omitempty"`
-	ArtifactManifest      *ArtifactManifest   `json:"artifactManifest,omitempty"`
-	FallbackRequirement   FallbackRequirement `json:"fallbackRequirement"`
-	Limits                Limits              `json:"limits"`
-	OfflineRequired       bool                `json:"offlineRequired"`
-	RedactionMode         string              `json:"redactionMode"`
-	RequestedAt           string              `json:"requestedAt"`
+	RequestSchemaVersion  string                  `json:"requestSchemaVersion"`
+	RequiredFeatures      []string                `json:"requiredFeatures,omitempty"`
+	ScanID                string                  `json:"scanId"`
+	SupersedesScanID      string                  `json:"supersedesScanId,omitempty"`
+	Mode                  string                  `json:"mode"`
+	ScannerReleaseDigest  string                  `json:"scannerReleaseDigest"`
+	EngineBinding         EngineBinding           `json:"engineBinding"`
+	RulePackDigest        string                  `json:"rulePackDigest"`
+	PolicyDigest          string                  `json:"policyDigest"`
+	AllowlistDigest       string                  `json:"allowlistDigest"`
+	PolicyBinding         *ProjectDocumentBinding `json:"policyBinding,omitempty"`
+	AllowlistBinding      *ProjectDocumentBinding `json:"allowlistBinding,omitempty"`
+	ProofBindings         *ProofBindings          `json:"proofBindings,omitempty"`
+	SourceBinding         SourceBinding           `json:"sourceBinding"`
+	TrackedSourceManifest FileBinding             `json:"trackedSourceManifest"`
+	BuildContextManifest  *FileBinding            `json:"buildContextManifest,omitempty"`
+	ArtifactManifest      *ArtifactManifest       `json:"artifactManifest,omitempty"`
+	FallbackRequirement   FallbackRequirement     `json:"fallbackRequirement"`
+	Limits                Limits                  `json:"limits"`
+	OfflineRequired       bool                    `json:"offlineRequired"`
+	RedactionMode         string                  `json:"redactionMode"`
+	RequestedAt           string                  `json:"requestedAt"`
 }

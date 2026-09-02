@@ -3,9 +3,11 @@
 ## Status
 
 This is the complete target layout under PASS-OUTCOME-SPEC-001. PSCAN-02 created
-its bounded contract/workspace skeleton. Rejected PSCAN-03 paths remain in
-history but are not authoritative. PSCAN-10 is the proposed, unselected owner of
-the replacement primary-coverage boundary.
+its bounded contract/workspace skeleton, PSCAN-10 implemented the accepted
+primary-coverage boundary, and PSCAN-04 implemented the accepted artifact and
+redaction boundary. Rejected PSCAN-03 paths remain in history but are not
+authoritative. PSCAN-05 now implements its bounded policy/reference candidate,
+pending independent acceptance.
 
 ```text
 /.github/workflows/             trusted CI and release workflows
@@ -71,6 +73,19 @@ the replacement primary-coverage boundary.
   `fixtures/adversarial/workspace` contain synthetic non-credential inputs.
 - `tests/unit/*` and `tests/integration/contract` contain the PSCAN-02 contract
   proof. No engine, project policy, allowlist or receipt fixture exists.
+
+## PSCAN-05 concrete files
+
+- `internal/policy` contains closed transient policy/allowlist projections and
+  the fixed precedence evaluator.
+- `internal/verify` contains public-key-only exact-document, compatibility,
+  retirement, receipt and append-only revocation-reference verification.
+- `contracts/scan-request/schema-1.1.json` binds policy, allowlist, admission,
+  classifier, preparation, resource-profile and inspection-proof identities.
+- `contracts/global-revocation/schema-1.1.json` defines signed append-only global
+  revocation records without creating project schema authority.
+- `fixtures/adversarial/{policy,allowlist,evidence,isolation}` and the bounded
+  PSCAN-05 tests contain only synthetic, non-authoritative data.
 
 ## Permanent exclusions
 

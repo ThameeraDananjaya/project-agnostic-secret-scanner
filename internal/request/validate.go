@@ -2,6 +2,7 @@ package request
 
 import (
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
 	"hash"
@@ -47,6 +48,22 @@ func ValidateAt(value ScanRequest, now time.Time) error {
 	}
 	if value.Mode != "local" && value.Mode != "pr" && value.Mode != "release" {
 		return reject(outcome.ReasonFailInputIntegrity)
+	}
+	if version.Minor >= 1 {
+		if err := validateProjectDocumentBinding(value.PolicyBinding, value.PolicyDigest, "project-policy"); err != nil {
+			return err
+		}
+		if err := validateProjectDocumentBinding(value.AllowlistBinding, value.AllowlistDigest, "project-allowlist"); err != nil {
+			return err
+		}
+		if value.ProofBindings == nil ||
+			!validSchemaVersionString(value.ProofBindings.AdmissionLedgerSchemaVersion) || !digestPattern.MatchString(value.ProofBindings.AdmissionLedgerDigest) ||
+			!versionPattern.MatchString(value.ProofBindings.RawClassifierVersion) || !digestPattern.MatchString(value.ProofBindings.RawClassifierDigest) ||
+			!versionPattern.MatchString(value.ProofBindings.PreparationVersion) || !digestPattern.MatchString(value.ProofBindings.PreparationDigest) ||
+			!versionPattern.MatchString(value.ProofBindings.ResourceProfileID) || !versionPattern.MatchString(value.ProofBindings.InspectionProofFormat) ||
+			!digestPattern.MatchString(value.ProofBindings.InspectionProofDigest) {
+			return reject(outcome.ReasonFailBindingMismatch)
+		}
 	}
 	if !allDigests(value.ScannerReleaseDigest, value.EngineBinding.BinaryDigest, value.RulePackDigest, value.PolicyDigest, value.AllowlistDigest, value.SourceBinding.HistoryRangeDigest, value.SourceBinding.TrackedTreeDigest, value.TrackedSourceManifest.Digest) || !gitOIDPattern.MatchString(value.SourceBinding.HeadCommit) || !optionalGitOID(value.SourceBinding.BaseCommit) || !optionalGitOID(value.SourceBinding.MergeBase) {
 		return reject(outcome.ReasonFailBindingMismatch)
@@ -115,6 +132,29 @@ func ValidateAt(value ScanRequest, now time.Time) error {
 		}
 	}
 	return nil
+}
+
+func validateProjectDocumentBinding(binding *ProjectDocumentBinding, expectedDigest, trustDomain string) error {
+	if binding == nil || binding.Digest != expectedDigest || !versionPattern.MatchString(binding.SchemaFamily) ||
+		!versionPattern.MatchString(binding.AdapterVersion) || binding.Signature.TrustDomain != trustDomain ||
+		binding.Signature.Algorithm != "ed25519" || !versionPattern.MatchString(binding.Signature.KeyID) || !validSignatureValue(binding.Signature.Value) {
+		return reject(outcome.ReasonFailBindingMismatch)
+	}
+	version, err := ParseVersion(binding.SchemaVersion)
+	if err != nil || version.Major < 1 {
+		return reject(outcome.ReasonIndeterminateSchemaUnsupported)
+	}
+	return nil
+}
+
+func validSignatureValue(value string) bool {
+	decoded, err := base64.RawURLEncoding.DecodeString(value)
+	return err == nil && len(decoded) == 64 && base64.RawURLEncoding.EncodeToString(decoded) == value
+}
+
+func validSchemaVersionString(value string) bool {
+	version, err := ParseVersion(value)
+	return err == nil && version.Major >= 1
 }
 
 // ArtifactEntriesDigest returns the language-neutral, domain-separated digest

@@ -2,11 +2,13 @@
 
 ## Status and scope
 
-This document defines the target architecture required by
-PASS-OUTCOME-SPEC-001. PSCAN-02 implements only the contract, request, outcome,
-workspace and CLI skeleton boundaries identified below. PSCAN-03 and correction
-C1 are rejected historical candidates. No accepted pass-capable engine or Git
-input path exists. PSCAN-10 is proposed and unselected.
+This document defines the architecture required by PASS-OUTCOME-SPEC-001.
+PSCAN-02 established the contract, request, outcome, workspace and CLI
+boundaries; PSCAN-10 established the accepted outcome-proved primary Git and
+Gitleaks boundary; PSCAN-04 established the accepted artifact, redaction,
+cleanup and offline-execution boundary. PSCAN-03 and correction C1 remain
+rejected historical candidates. PSCAN-05 implements the policy/reference
+boundary below as a candidate awaiting independent acceptance.
 
 ## PSCAN-02 realized boundary
 
@@ -70,6 +72,36 @@ The scanner boundary ends at the content-free outcome. A consuming project
 owns request construction, retries, policy and allowlist authority, receipt
 issuance and verification, revocations, evidence custody, merge and deployment
 gates, credential response, retention, and go-live decisions.
+
+## PSCAN-05 policy and reference boundary
+
+```text
+exact caller bytes + schema/adapter/digest/signature binding
+    -> independent family compatibility and required-feature gate
+    -> closed transient project projection
+    -> scanner invariants
+    -> global revocations and mandatory protections
+    -> project policy denial
+    -> exact narrow exception only
+```
+
+Policy and allowlist instances are never stored. Exact admitted bytes are
+SHA-256 bound, while signatures cover a domain-separated, length-prefixed
+binary message containing the declared family, version, adapter, key and
+digest. This avoids treating JSON formatting or member order as authority.
+Current-minor unknown fields, duplicate keys, unknown majors, unknown required
+features, incompatible adapters, bad signatures and ambiguous mappings fail
+closed.
+
+The reference verifier accepts only in-memory public verification material,
+content-free receipt bindings, trusted current checkpoints, and caller-owned
+revocation projections. A receipt is reusable only for a release pass, with
+every predecessor and inspection-proof binding identical, before its deadline,
+and for no more than 30 days. Receipt, global and project heads must match their
+trusted checkpoints; sequence gaps, rollback, divergent previous hashes,
+duplicate record identities/targets and conflicting records reject. Effective
+revocation always wins. No signing, issuance, private key, evidence store,
+promotion or retention API exists.
 
 ## Outcome-proved primary coverage
 

@@ -8,7 +8,7 @@ import (
 
 const (
 	SupportedMajor = 1
-	SupportedMinor = 0
+	SupportedMinor = 1
 )
 
 type Version struct {

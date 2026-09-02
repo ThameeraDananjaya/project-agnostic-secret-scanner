@@ -37,7 +37,8 @@ func Load(reader io.Reader) (ScanRequest, error) {
 		return ScanRequest{}, reject(outcome.ReasonFailInputIntegrity)
 	}
 	var header struct {
-		RequestSchemaVersion string `json:"requestSchemaVersion"`
+		RequestSchemaVersion string   `json:"requestSchemaVersion"`
+		RequiredFeatures     []string `json:"requiredFeatures"`
 	}
 	if err := json.Unmarshal(data, &header); err != nil {
 		return ScanRequest{}, reject(outcome.ReasonFailInputIntegrity)
@@ -49,7 +50,10 @@ func Load(reader io.Reader) (ScanRequest, error) {
 	if !version.Supported() {
 		return ScanRequest{}, reject(outcome.ReasonIndeterminateSchemaUnsupported)
 	}
-	if err := validateRequiredPresence(data); err != nil {
+	if len(header.RequiredFeatures) > 0 {
+		return ScanRequest{}, reject(outcome.ReasonIndeterminateSchemaUnsupported)
+	}
+	if err := validateRequiredPresence(data, version); err != nil {
 		return ScanRequest{}, reject(outcome.ReasonFailInputIntegrity)
 	}
 	var value ScanRequest
@@ -69,7 +73,7 @@ func Load(reader io.Reader) (ScanRequest, error) {
 	return value, nil
 }
 
-func validateRequiredPresence(data []byte) error {
+func validateRequiredPresence(data []byte, version Version) error {
 	top, err := requiredObject(data,
 		"requestSchemaVersion", "scanId", "mode", "scannerReleaseDigest", "engineBinding",
 		"rulePackDigest", "policyDigest", "allowlistDigest", "sourceBinding",
@@ -99,6 +103,23 @@ func validateRequiredPresence(data []byte) error {
 	}
 	if _, err := requiredObject(top["limits"], "timeoutSeconds", "maxArchiveDepth", "maxArchiveEntries", "maxExpandedBytes", "maxFileBytes", "maxCompressionRatio", "maxMemoryBytes", "maxCpuPercent"); err != nil {
 		return err
+	}
+	if version.Major == 1 && version.Minor >= 1 && !version.FutureMinor() {
+		if err := requireFields(top, "policyBinding", "allowlistBinding", "proofBindings"); err != nil {
+			return err
+		}
+		for _, field := range []string{"policyBinding", "allowlistBinding"} {
+			binding, err := requiredObject(top[field], "schemaFamily", "schemaVersion", "adapterVersion", "digest", "signature")
+			if err != nil {
+				return err
+			}
+			if _, err := requiredObject(binding["signature"], "trustDomain", "algorithm", "keyId", "value"); err != nil {
+				return err
+			}
+		}
+		if _, err := requiredObject(top["proofBindings"], "admissionLedgerSchemaVersion", "admissionLedgerDigest", "rawClassifierVersion", "rawClassifierDigest", "preparationVersion", "preparationDigest", "resourceProfileId", "inspectionProofFormat", "inspectionProofDigest"); err != nil {
+			return err
+		}
 	}
 	if raw, ok := top["buildContextManifest"]; ok {
 		if _, err := requiredObject(raw, "path", "digest"); err != nil {

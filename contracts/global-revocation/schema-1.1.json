@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:project-agnostic-secret-scanner:global-revocation:1.1",
+  "title": "Signed Global Scanner Revocation Record 1.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaFamily",
+    "schemaVersion",
+    "recordId",
+    "sequence",
+    "kind",
+    "targetType",
+    "targetValue",
+    "authorityId",
+    "reasonCode",
+    "issuedAt",
+    "effectiveAt",
+    "recordDigest",
+    "signature"
+  ],
+  "properties": {
+    "schemaFamily": { "type": "string", "const": "global-scanner-revocation" },
+    "schemaVersion": { "type": "string", "const": "1.1" },
+    "recordId": { "type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$" },
+    "sequence": { "type": "integer", "minimum": 1 },
+    "previousDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "kind": { "type": "string", "const": "revocation" },
+    "targetType": { "type": "string", "enum": ["scanner-release", "scanner-asset", "rule-pack", "scanner-schema"] },
+    "targetValue": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "authorityId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/+-]{0,127}$" },
+    "reasonCode": { "type": "string", "enum": ["COMPROMISE", "INTEGRITY_DEFECT", "INCOMPLETE_COVERAGE", "AUTHORITY_DEFECT", "RETIREMENT_BREACH"] },
+    "issuedAt": { "type": "string", "format": "date-time" },
+    "effectiveAt": { "type": "string", "format": "date-time" },
+    "recordDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["trustDomain", "algorithm", "keyId", "value"],
+      "properties": {
+        "trustDomain": { "type": "string", "const": "global-scanner-revocation" },
+        "algorithm": { "type": "string", "const": "ed25519" },
+        "keyId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/+-]{0,127}$" },
+        "value": { "type": "string", "pattern": "^[A-Za-z0-9_-]{86}$" }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "sequence": { "const": 1 } }, "required": ["sequence"] },
+      "then": { "not": { "required": ["previousDigest"] } }
+    },
+    {
+      "if": { "properties": { "sequence": { "minimum": 2 } }, "required": ["sequence"] },
+      "then": { "required": ["previousDigest"] }
+    }
+  ]
+}

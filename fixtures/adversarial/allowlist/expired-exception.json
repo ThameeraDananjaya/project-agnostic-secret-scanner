@@ -1,0 +1,23 @@
+{
+  "requiredFeatures": [],
+  "exceptions": [
+    {
+      "exceptionId": "synthetic-expired-exception",
+      "owner": "synthetic-owner",
+      "approver": "synthetic-approver",
+      "rationale": "Synthetic expired exception evidence.",
+      "ruleId": "synthetic-rule",
+      "class": "api-secret",
+      "scopeDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "evidenceType": "synthetic",
+      "evidenceDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "createdAt": "2026-07-01T00:00:00Z",
+      "expiresAt": "2026-07-08T00:00:00Z",
+      "scannerReleaseDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "rulePackDigest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "policyDigest": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "sourceDigest": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "invalidatesOn": ["scope", "policy", "rule", "scanner", "source", "evidence"]
+    }
+  ]
+}

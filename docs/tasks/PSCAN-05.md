@@ -7,7 +7,8 @@ reference verification, and project-isolation controls.
 
 ## State
 
-Proposed. Unselected. Not activated. Not claimed.
+Activated by the owner's exact `ACTIVATE PSCAN-05` command on 2026-09-02.
+Unclaimed and not implemented. No successor is selected or activated.
 
 ## Objective
 
@@ -17,11 +18,29 @@ revocation reference verification, and prove that no state crosses projects.
 
 ## Preconditions
 
-- PSCAN-04 accepted and clean.
-- Exact PSCAN-05 activation and fresh implementation session.
-- DEC-001 remains consistent with PASS-OUTCOME-SPEC-001.
+- PSCAN-04 accepted, closed and clean at activation parent
+  `1f0890878518de32a55ceb8d7b97430c4f3d2f2b`.
+- Exact PSCAN-05 owner selection and activation recorded in
+  `evidence/PSCAN-05/ACTIVATION.md`, followed by a fresh implementation session
+  from that activation commit.
+- DEC-001 remains consistent with PASS-OUTCOME-SPEC-001 and its independent
+  schema-family ownership boundary is preserved.
 
-## Allowed paths
+## Activation-only bundle
+
+This session may change and commit only:
+
+```text
+docs/tasks/PSCAN-05.md
+docs/tasks/PSCAN-05-READING-MAP.md
+docs/tasks/TRACKER.md
+evidence/PSCAN-05/ACTIVATION.md
+```
+
+No implementation, dependency intake, scanner/toolchain execution, test run or
+successor work is authorized in the activation session.
+
+## Allowed implementation paths
 
 ```text
 go.mod
@@ -54,9 +73,21 @@ evidence/PSCAN-05/**
 
 ## Forbidden scope
 
-No project policy/allowlist/receipt instances, keys, identities, repositories or
-statistics; no project schema authority; no receipt issuance/signing; no evidence
-store; no deployment gate; no workflow, remote, release, spending or TruffleHog.
+- No modification of PASS-OUTCOME-SPEC-001, PASS-SPEC-001, their source record,
+  TRACEABILITY, DEC-002 or PSCAN-01 through PSCAN-04 and PSCAN-09/10 historical
+  evidence.
+- No consuming-project policy, allowlist, receipt or revocation instance, key,
+  identity, source, repository, finding, credential, customer data, statistics
+  or project-specific behavior.
+- No project schema authority; no receipt issuance or signing; no receipt key
+  custody; no evidence store; no promotion, deployment or retention authority.
+- No TruffleHog assessment, legal work, download, material, integration,
+  distribution or enablement.
+- No GitHub workflow, remote creation, push, publication, release, signing,
+  settings change, credential handling, spending, provider, deployment,
+  production or go-live action.
+- No selection, activation, claim or implementation of PSCAN-06, PSCAN-08 or
+  any other successor.
 
 ## Deliverables
 

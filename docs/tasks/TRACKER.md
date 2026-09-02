@@ -6,7 +6,7 @@
 | PSCAN-02 | Completed and independently accepted locally | Activation `48a8bd0`; accepted implementation `98768cc` |
 | PSCAN-03 | Rejected and closed fail-closed; not accepted | `evidence/PSCAN-03/CLOSEOUT-REJECTED.md` |
 | PSCAN-04 | Completed and independently accepted locally | Exact activation `a21b030e1658f1f98ac4e4d001af12185d9ed311`; evidence-bearing closeout commit |
-| PSCAN-05 | Proposed; unselected | PASS-OUTCOME-SPEC-001; follows PSCAN-04 |
+| PSCAN-05 | Activated; unclaimed; not implemented | Exact owner command plus PSCAN-05 activation bundle |
 | PSCAN-06 | Proposed; unselected; remote gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-05 |
 | PSCAN-07 | Proposed; unselected; signing/publication gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-06 |
 | PSCAN-08 | Inactive; technically and legally gated | Material-gap evidence plus separate owner approval required |
@@ -30,11 +30,14 @@ primary-coverage successor. It was claimed in a fresh implementation session
 from exact clean activation commit
 `9053b37d799b19e3d98aeca0ae853296971ab09d`, independently accepted after the
 correction commit `d10df991d72e3fcc40b378830b50d1f258e16654`, and closed locally. PSCAN-04
-was exactly activated by the owner on 2026-09-01 and is the only activated task;
+was exactly activated by the owner on 2026-09-01;
 it was claimed alone on 2026-09-02 in a fresh implementation session from the
 exact activation commit. PSCAN-04 is implemented, independently accepted and
-closed locally through its evidence-bearing closeout commit. PSCAN-05 through
-PSCAN-07 remain proposed and unselected. PSCAN-08 remains inactive, unselected
+closed locally through its evidence-bearing closeout commit. PSCAN-05 was
+exactly activated by the owner on 2026-09-02 and is now the only activated task;
+it remains unclaimed and not implemented pending a fresh implementation
+session from its activation commit. PSCAN-06 and PSCAN-07 remain proposed and
+unselected. PSCAN-08 remains inactive, unselected
 and ineligible because accepted evidence did not establish a material
 required-class Gitleaks gap; separate technical and AGPL owner approval would
-also be required. No successor to PSCAN-04 is selected or activated.
+also be required. No successor to PSCAN-05 is selected or activated.

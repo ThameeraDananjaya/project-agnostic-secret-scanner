@@ -7,8 +7,8 @@ PSCAN-02 established the contract, request, outcome, workspace and CLI
 boundaries; PSCAN-10 established the accepted outcome-proved primary Git and
 Gitleaks boundary; PSCAN-04 established the accepted artifact, redaction,
 cleanup and offline-execution boundary. PSCAN-03 and correction C1 remain
-rejected historical candidates. PSCAN-05 implements the policy/reference
-boundary below as a candidate awaiting independent acceptance.
+rejected historical candidates. PSCAN-05 implements the independently accepted
+policy/reference boundary below.
 
 ## PSCAN-02 realized boundary
 
@@ -96,12 +96,16 @@ closed.
 The reference verifier accepts only in-memory public verification material,
 content-free receipt bindings, trusted current checkpoints, and caller-owned
 revocation projections. A receipt is reusable only for a release pass, with
-every predecessor and inspection-proof binding identical, before its deadline,
-and for no more than 30 days. Receipt, global and project heads must match their
-trusted checkpoints; sequence gaps, rollback, divergent previous hashes,
-duplicate record identities/targets and conflicting records reject. Effective
-revocation always wins. No signing, issuance, private key, evidence store,
-promotion or retention API exists.
+every predecessor and inspection-proof binding identical, including the signed
+policy/allowlist projection identities, request/outcome schema digests and
+outcome timestamp, before its deadline and for no more than 30 days. A trusted
+previous-receipt anchor proves the next sequence and previous digest. Receipt,
+global and project heads must match their trusted checkpoints; sequence gaps,
+rollback, divergent previous hashes, duplicate record identities/targets and
+conflicting records reject. Scanner-owned global records additionally enforce
+their exact authority domain, target classes, digest target and reason-code
+vocabulary. Effective revocation always wins. No signing, issuance, private
+key, evidence store, promotion or retention API exists.
 
 ## Outcome-proved primary coverage
 

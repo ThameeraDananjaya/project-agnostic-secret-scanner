@@ -54,6 +54,16 @@ func TestDocumentBindingUsesExactBytes(t *testing.T) {
 	if !errors.Is(VerifyDocument(append(raw, '\n'), binding, acceptingVerifier{}), ErrBindingMismatch) {
 		t.Fatal("formatting change did not invalidate the exact-byte binding")
 	}
+	referenceDigest, err := DocumentBindingReferenceDigest(binding)
+	if err != nil || !IsDigest(referenceDigest) {
+		t.Fatalf("document binding reference digest was not produced: %q %v", referenceDigest, err)
+	}
+	rotated := binding
+	rotated.Signature.KeyID = "rotated-synthetic-key"
+	rotatedDigest, err := DocumentBindingReferenceDigest(rotated)
+	if err != nil || rotatedDigest == referenceDigest {
+		t.Fatal("signature key rotation did not change the document binding reference")
+	}
 }
 
 func TestFamilyWindowRejectsUnknownAndInvalidRetirement(t *testing.T) {
@@ -116,6 +126,31 @@ func TestChainRejectsRollbackDivergenceAndDuplicateTarget(t *testing.T) {
 	}
 }
 
+func TestScannerOwnedGlobalChainRejectsSchemaAuthorityViolations(t *testing.T) {
+	now := time.Date(2026, 9, 2, 0, 0, 0, 0, time.UTC)
+	window := FamilyWindow{Family: "global-scanner-revocation", CurrentMajor: 1, Minors: []MinorCompatibility{{Minor: 1}}}
+	valid := makeGlobalRecord(t, "scanner-release", digest("scanner"), "INTEGRITY_DEFECT")
+	if _, err := VerifyChain([]ChainRecord{valid}, Checkpoint{}, window, acceptingVerifier{}, now); err != nil {
+		t.Fatalf("valid scanner-owned global record rejected: %v", err)
+	}
+	for name, mutate := range map[string]func(*ChainRecord){
+		"project target":      func(record *ChainRecord) { record.TargetType = "receipt" },
+		"non-digest target":   func(record *ChainRecord) { record.TargetValue = "synthetic-receipt" },
+		"unregistered reason": func(record *ChainRecord) { record.ReasonCode = "synthetic-reason" },
+		"wrong trust domain":  func(record *ChainRecord) { record.Signature.TrustDomain = "project-revocation" },
+	} {
+		t.Run(name, func(t *testing.T) {
+			candidate := valid
+			mutate(&candidate)
+			candidate.RecordDigest = ""
+			candidate = finalizeRecord(t, candidate)
+			if _, err := VerifyChain([]ChainRecord{candidate}, Checkpoint{}, window, acceptingVerifier{}, now); !errors.Is(err, ErrInvalidReference) {
+				t.Fatalf("scanner-owned global schema violation was admitted: %v", err)
+			}
+		})
+	}
+}
+
 func TestReceiptReferenceRequiresEveryBindingAndHonoursRevocation(t *testing.T) {
 	now := time.Date(2026, 9, 2, 0, 0, 0, 0, time.UTC)
 	bindings := testBindings()
@@ -132,7 +167,7 @@ func TestReceiptReferenceRequiresEveryBindingAndHonoursRevocation(t *testing.T) 
 	receipt.RecordDigest = DigestBytes(message)
 	request := ReferenceRequest{
 		Receipt: receipt, ExpectedBindings: bindings, Now: now,
-		ReceiptWindow: window("synthetic-receipt"), GlobalWindow: window("synthetic-global-revocations"), ProjectWindow: window("synthetic-project-revocations"),
+		ReceiptWindow: window("synthetic-receipt"), GlobalWindow: FamilyWindow{Family: "global-scanner-revocation", CurrentMajor: 1, Minors: []MinorCompatibility{{Minor: 1}}}, ProjectWindow: window("synthetic-project-revocations"),
 		ReceiptHead: Checkpoint{Sequence: receipt.Sequence, Digest: receipt.RecordDigest},
 	}
 	trust := TrustSet{Receipt: acceptingVerifier{}, Global: acceptingVerifier{}, Project: acceptingVerifier{}}
@@ -145,6 +180,23 @@ func TestReceiptReferenceRequiresEveryBindingAndHonoursRevocation(t *testing.T) 
 	if _, err := VerifyReference(rolledBack, trust); !errors.Is(err, ErrEvidenceRollback) {
 		t.Fatalf("receipt head rollback was not rejected: %v", err)
 	}
+	gapped := request
+	gapped.Receipt.Sequence = 2
+	gapped.Receipt.PreviousDigest = digest("untrusted-previous-receipt")
+	gappedMessage, err := ReceiptMessage(gapped.Receipt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gapped.Receipt.RecordDigest = DigestBytes(gappedMessage)
+	gapped.ReceiptHead = Checkpoint{Sequence: 2, Digest: gapped.Receipt.RecordDigest}
+	if _, err := VerifyReference(gapped, trust); !errors.Is(err, ErrEvidenceConflict) {
+		t.Fatalf("receipt chain gap was not rejected: %v", err)
+	}
+	anchored := gapped
+	anchored.ReceiptAnchor = Checkpoint{Sequence: 1, Digest: digest("trusted-previous-receipt")}
+	if _, err := VerifyReference(anchored, trust); !errors.Is(err, ErrEvidenceConflict) {
+		t.Fatalf("receipt divergence from trusted anchor was not rejected: %v", err)
+	}
 	truncated := request
 	truncated.ExpectedGlobalHead = Checkpoint{Sequence: 1, Digest: digest("missing-global-head")}
 	if _, err := VerifyReference(truncated, trust); !errors.Is(err, ErrEvidenceRollback) {
@@ -154,6 +206,11 @@ func TestReceiptReferenceRequiresEveryBindingAndHonoursRevocation(t *testing.T) 
 	changed.ExpectedBindings.OutcomeDigest = digest("different-outcome")
 	if _, err := VerifyReference(changed, trust); !errors.Is(err, ErrBindingMismatch) {
 		t.Fatalf("changed binding was not rejected: %v", err)
+	}
+	changedProjection := request
+	changedProjection.ExpectedBindings.PolicyBindingDigest = digest("rotated-policy-binding")
+	if _, err := VerifyReference(changedProjection, trust); !errors.Is(err, ErrBindingMismatch) {
+		t.Fatalf("changed signed policy projection binding was not rejected: %v", err)
 	}
 	future := request
 	future.Receipt.CreatedAt = "2026-09-03T00:00:00Z"
@@ -168,11 +225,11 @@ func TestReceiptReferenceRequiresEveryBindingAndHonoursRevocation(t *testing.T) 
 		t.Fatalf("future receipt was not rejected: %v", err)
 	}
 	revocation := makeRecord(t, 1, "", "receipt", receipt.RecordDigest)
-	revocation.SchemaFamily = "synthetic-global-revocations"
+	revocation.SchemaFamily = "synthetic-project-revocations"
 	revocation.RecordDigest = ""
 	revocation = finalizeRecord(t, revocation)
-	request.GlobalRecords = []ChainRecord{revocation}
-	request.ExpectedGlobalHead = Checkpoint{Sequence: revocation.Sequence, Digest: revocation.RecordDigest}
+	request.ProjectRecords = []ChainRecord{revocation}
+	request.ExpectedProjectHead = Checkpoint{Sequence: revocation.Sequence, Digest: revocation.RecordDigest}
 	if _, err := VerifyReference(request, trust); !errors.Is(err, ErrRevoked) {
 		t.Fatalf("revocation did not win: %v", err)
 	}
@@ -191,13 +248,22 @@ func TestReceiptReferenceRequiresEveryBindingAndHonoursRevocation(t *testing.T) 
 	exceptionRevocation.SchemaFamily = "synthetic-project-revocations"
 	exceptionRevocation.RecordDigest = ""
 	exceptionRevocation = finalizeRecord(t, exceptionRevocation)
-	exceptionRequest.GlobalRecords = nil
-	exceptionRequest.ExpectedGlobalHead = Checkpoint{}
+	exceptionRequest.ProjectRecords = nil
+	exceptionRequest.ExpectedProjectHead = Checkpoint{}
 	exceptionRequest.ProjectRecords = []ChainRecord{exceptionRevocation}
 	exceptionRequest.ExpectedProjectHead = Checkpoint{Sequence: 1, Digest: exceptionRevocation.RecordDigest}
 	if _, err := VerifyReference(exceptionRequest, trust); !errors.Is(err, ErrRevoked) {
 		t.Fatalf("applied exception revocation did not win: %v", err)
 	}
+}
+
+func makeGlobalRecord(t *testing.T, targetType, targetValue, reasonCode string) ChainRecord {
+	t.Helper()
+	return finalizeRecord(t, ChainRecord{
+		SchemaFamily: "global-scanner-revocation", SchemaVersion: "1.1", RecordID: "00000000-0000-4000-8000-000000000201", Sequence: 1,
+		Kind: "revocation", TargetType: targetType, TargetValue: targetValue, AuthorityID: "synthetic-global-authority", ReasonCode: reasonCode,
+		IssuedAt: "2026-09-01T00:00:00Z", EffectiveAt: "2026-09-01T00:00:00Z", Signature: testSignature("global-scanner-revocation"),
+	})
 }
 
 func testSignature(domain string) DetachedSignature {
@@ -244,10 +310,11 @@ func testBindings() ReceiptBindings {
 		ReleaseCommit: "0123456789abcdef0123456789abcdef01234567", HistoryRangeDigest: d("history"), TrackedTreeDigest: d("tree"),
 		BuildContextDigest: d("context"), ArtifactSetDigest: d("artifacts"), BuildProvenanceDigest: d("provenance"),
 		ScannerReleaseDigest: d("scanner"), RunnerDigest: d("runner"), EngineDigest: d("engine"), RulePackDigest: d("rules"),
-		PolicyDigest: d("policy"), AllowlistDigest: d("allowlist"), ExceptionSetDigest: emptyExceptions, RequestSchemaVersion: "1.1", OutcomeSchemaVersion: "1.0",
+		PolicyDigest: d("policy"), AllowlistDigest: d("allowlist"), PolicyBindingDigest: d("policy-binding"), AllowlistBindingDigest: d("allowlist-binding"),
+		ExceptionSetDigest: emptyExceptions, RequestSchemaVersion: "1.1", RequestSchemaDigest: d("request-schema"), OutcomeSchemaVersion: "1.0", OutcomeSchemaDigest: d("outcome-schema"),
 		AdmissionLedgerSchemaVersion: "1.0", AdmissionLedgerDigest: d("ledger"), RawClassifierVersion: "classifier-1.0",
 		RawClassifierDigest: d("classifier"), PreparationVersion: "preparation-1.0", PreparationDigest: d("preparation"),
 		ResourceProfileID: "release-bounded-1", InspectionProofFormat: "inspection-proof-1.0", InspectionProofDigest: d("inspection"),
-		OutcomeDigest: d("outcome"),
+		OutcomeDigest: d("outcome"), OutcomeTimestamp: "2026-08-31T00:00:00Z",
 	}
 }

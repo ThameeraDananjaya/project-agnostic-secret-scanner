@@ -6,8 +6,8 @@ This is the complete target layout under PASS-OUTCOME-SPEC-001. PSCAN-02 created
 its bounded contract/workspace skeleton, PSCAN-10 implemented the accepted
 primary-coverage boundary, and PSCAN-04 implemented the accepted artifact and
 redaction boundary. Rejected PSCAN-03 paths remain in history but are not
-authoritative. PSCAN-05 now implements its bounded policy/reference candidate,
-pending independent acceptance.
+authoritative. PSCAN-05 implements its independently accepted bounded
+policy/reference boundary.
 
 ```text
 /.github/workflows/             trusted CI and release workflows
@@ -74,7 +74,7 @@ pending independent acceptance.
 - `tests/unit/*` and `tests/integration/contract` contain the PSCAN-02 contract
   proof. No engine, project policy, allowlist or receipt fixture exists.
 
-## PSCAN-05 concrete files
+## PSCAN-05 accepted concrete files
 
 - `internal/policy` contains closed transient policy/allowlist projections and
   the fixed precedence evaluator.

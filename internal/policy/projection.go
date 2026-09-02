@@ -136,14 +136,19 @@ func LoadAllowlist(raw []byte, binding verify.DocumentBinding, window verify.Fam
 		return AllowlistProjection{}, ErrInvalidProjection
 	}
 	exceptions := map[string]Exception{}
+	seenIDs := map[string]bool{}
 	for _, exception := range document.Exceptions {
 		if err := validateException(exception, now, context); err != nil {
+			return AllowlistProjection{}, ErrInvalidProjection
+		}
+		if seenIDs[exception.ExceptionID] {
 			return AllowlistProjection{}, ErrInvalidProjection
 		}
 		key := exceptionKey(exception.RuleID, exception.Class, exception.ScopeDigest)
 		if _, duplicate := exceptions[key]; duplicate {
 			return AllowlistProjection{}, ErrInvalidProjection
 		}
+		seenIDs[exception.ExceptionID] = true
 		exceptions[key] = exception
 	}
 	return AllowlistProjection{Digest: binding.Digest, SchemaFamily: binding.SchemaFamily, SchemaVersion: binding.SchemaVersion, exceptions: exceptions}, nil

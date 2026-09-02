@@ -108,6 +108,18 @@ func TestInvalidExceptionsFailClosed(t *testing.T) {
 	}
 }
 
+func TestDuplicateExceptionIdentityFailsClosedAcrossDifferentScopes(t *testing.T) {
+	context := ExceptionContext{ScannerReleaseDigest: digest("scanner"), RulePackDigest: digest("rules"), PolicyDigest: digest("policy"), SourceDigest: digest("source")}
+	first := validException(context)
+	second := validException(context)
+	second.RuleID = "different-synthetic-rule"
+	second.ScopeDigest = digest("different-scope")
+	raw := exceptionDocument(t, first, second)
+	if _, err := LoadAllowlist(raw, binding(raw, "synthetic-allowlist", AllowlistAdapterVersion, "project-allowlist"), family("synthetic-allowlist"), acceptingVerifier{}, testNow, context); err == nil {
+		t.Fatal("duplicate exception identity was admitted across different scopes")
+	}
+}
+
 func TestPolicySpecificExceptionMaximumIsEnforced(t *testing.T) {
 	policyRaw := []byte(`{"blockedClasses":["api-secret"],"minimumSeverity":"critical","maxExceptionDays":7,"allowedExceptionEvidence":["synthetic"]}`)
 	policyBinding := binding(policyRaw, "synthetic-policy", PolicyAdapterVersion, "project-policy")

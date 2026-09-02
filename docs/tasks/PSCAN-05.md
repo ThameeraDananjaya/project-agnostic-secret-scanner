@@ -7,9 +7,11 @@ reference verification, and project-isolation controls.
 
 ## State
 
-Implemented as a bounded local candidate on 2026-09-02 from exact activation
-commit `50b418609c1f9927c0ecd5d740aba6d7bff11f58`; awaiting independent
-acceptance. No successor is selected or activated.
+Completed and independently accepted locally on 2026-09-02 after bounded
+corrections to candidate `ab3626ac11e4a62c915e209f1b9f17f098950291`, whose
+exact activation parent is
+`50b418609c1f9927c0ecd5d740aba6d7bff11f58`. No successor is selected or
+activated.
 
 ## Objective
 

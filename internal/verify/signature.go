@@ -102,3 +102,14 @@ func VerifyDocument(raw []byte, binding DocumentBinding, verifier SignatureVerif
 	}
 	return verifier.Verify(message, binding.Signature)
 }
+
+// DocumentBindingReferenceDigest binds the family, version, adapter, trust
+// domain, key identity and exact document digest without retaining the
+// project-owned document or signature material.
+func DocumentBindingReferenceDigest(binding DocumentBinding) (string, error) {
+	message, err := SignedBindingMessage(binding)
+	if err != nil {
+		return "", err
+	}
+	return DigestBytes(message), nil
+}

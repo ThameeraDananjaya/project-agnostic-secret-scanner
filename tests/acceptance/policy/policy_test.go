@@ -64,6 +64,12 @@ func readFixture(t *testing.T, group, name string) []byte {
 
 func readFixtureRoot(t *testing.T) string {
 	t.Helper()
+	if workingDirectory, err := os.Getwd(); err == nil {
+		root := filepath.Join(workingDirectory, "fixtures", "adversarial")
+		if info, statErr := os.Stat(root); statErr == nil && info.IsDir() {
+			return root
+		}
+	}
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {
 		t.Fatal("caller path unavailable")

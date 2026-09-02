@@ -17,9 +17,13 @@ type ReceiptBindings struct {
 	RulePackDigest               string
 	PolicyDigest                 string
 	AllowlistDigest              string
+	PolicyBindingDigest          string
+	AllowlistBindingDigest       string
 	ExceptionSetDigest           string
 	RequestSchemaVersion         string
+	RequestSchemaDigest          string
 	OutcomeSchemaVersion         string
+	OutcomeSchemaDigest          string
 	AdmissionLedgerSchemaVersion string
 	AdmissionLedgerDigest        string
 	RawClassifierVersion         string
@@ -30,6 +34,7 @@ type ReceiptBindings struct {
 	InspectionProofFormat        string
 	InspectionProofDigest        string
 	OutcomeDigest                string
+	OutcomeTimestamp             string
 }
 
 type ReceiptReference struct {
@@ -62,6 +67,7 @@ type ReferenceRequest struct {
 	ExpectedProjectHead Checkpoint
 	GlobalRecords       []ChainRecord
 	ProjectRecords      []ChainRecord
+	ReceiptAnchor       Checkpoint
 	ReceiptHead         Checkpoint
 	AppliedExceptions   []string
 }
@@ -121,6 +127,9 @@ func VerifyReference(request ReferenceRequest, trust TrustSet) (ReferenceDecisio
 	if trust.Receipt == nil || trust.Global == nil || trust.Project == nil || request.Now.IsZero() {
 		return ReferenceDecision{}, ErrInvalidReference
 	}
+	if request.GlobalWindow.Family != "global-scanner-revocation" {
+		return ReferenceDecision{}, ErrInvalidReference
+	}
 	if request.GlobalAnchor != (Checkpoint{}) || request.ProjectAnchor != (Checkpoint{}) {
 		return ReferenceDecision{}, ErrInvalidReference
 	}
@@ -133,7 +142,8 @@ func VerifyReference(request ReferenceRequest, trust TrustSet) (ReferenceDecisio
 	}
 	created, createdErr := parseCanonicalTime(receipt.CreatedAt)
 	deadline, deadlineErr := parseCanonicalTime(receipt.PromotionDeadline)
-	if createdErr != nil || deadlineErr != nil || created.After(request.Now) || deadline.Before(created) || deadline.Sub(created) > MaximumReceiptReuse || request.Now.After(deadline) {
+	outcomeAt, outcomeErr := parseCanonicalTime(receipt.Bindings.OutcomeTimestamp)
+	if createdErr != nil || deadlineErr != nil || outcomeErr != nil || outcomeAt.After(created) || created.After(request.Now) || deadline.Before(created) || deadline.Sub(created) > MaximumReceiptReuse || request.Now.After(deadline) {
 		return ReferenceDecision{}, ErrInvalidReference
 	}
 	if receipt.Bindings != request.ExpectedBindings {
@@ -153,6 +163,16 @@ func VerifyReference(request ReferenceRequest, trust TrustSet) (ReferenceDecisio
 	}
 	if err := trust.Receipt.Verify(message, receipt.Signature); err != nil {
 		return ReferenceDecision{}, ErrInvalidSignature
+	}
+	if request.ReceiptAnchor.Sequence < 0 || (request.ReceiptAnchor.Sequence == 0) != (request.ReceiptAnchor.Digest == "") ||
+		(request.ReceiptAnchor.Sequence > 0 && !IsDigest(request.ReceiptAnchor.Digest)) {
+		return ReferenceDecision{}, ErrInvalidReference
+	}
+	if receipt.Sequence < request.ReceiptAnchor.Sequence+1 {
+		return ReferenceDecision{}, ErrEvidenceRollback
+	}
+	if receipt.Sequence != request.ReceiptAnchor.Sequence+1 || receipt.PreviousDigest != request.ReceiptAnchor.Digest {
+		return ReferenceDecision{}, ErrEvidenceConflict
 	}
 	if request.ReceiptHead.Sequence < 1 || request.ReceiptHead.Sequence != receipt.Sequence || request.ReceiptHead.Digest != digest {
 		return ReferenceDecision{}, ErrEvidenceRollback
@@ -178,7 +198,8 @@ func (b ReceiptBindings) message() ([]byte, error) {
 	digests := []string{
 		b.HistoryRangeDigest, b.TrackedTreeDigest, b.BuildContextDigest, b.ArtifactSetDigest,
 		b.BuildProvenanceDigest, b.ScannerReleaseDigest, b.RunnerDigest, b.EngineDigest,
-		b.RulePackDigest, b.PolicyDigest, b.AllowlistDigest, b.ExceptionSetDigest, b.AdmissionLedgerDigest,
+		b.RulePackDigest, b.PolicyDigest, b.AllowlistDigest, b.PolicyBindingDigest, b.AllowlistBindingDigest,
+		b.ExceptionSetDigest, b.RequestSchemaDigest, b.OutcomeSchemaDigest, b.AdmissionLedgerDigest,
 		b.RawClassifierDigest, b.PreparationDigest, b.InspectionProofDigest, b.OutcomeDigest,
 	}
 	for _, digest := range digests {
@@ -197,11 +218,12 @@ func (b ReceiptBindings) message() ([]byte, error) {
 	for _, value := range []string{
 		b.HistoryRangeDigest, b.TrackedTreeDigest, b.BuildContextDigest, b.ArtifactSetDigest,
 		b.BuildProvenanceDigest, b.ScannerReleaseDigest, b.RunnerDigest, b.EngineDigest,
-		b.RulePackDigest, b.PolicyDigest, b.AllowlistDigest, b.ExceptionSetDigest, b.RequestSchemaVersion,
-		b.OutcomeSchemaVersion, b.AdmissionLedgerSchemaVersion, b.AdmissionLedgerDigest,
+		b.RulePackDigest, b.PolicyDigest, b.AllowlistDigest, b.PolicyBindingDigest,
+		b.AllowlistBindingDigest, b.ExceptionSetDigest, b.RequestSchemaVersion, b.RequestSchemaDigest,
+		b.OutcomeSchemaVersion, b.OutcomeSchemaDigest, b.AdmissionLedgerSchemaVersion, b.AdmissionLedgerDigest,
 		b.RawClassifierVersion, b.RawClassifierDigest, b.PreparationVersion,
 		b.PreparationDigest, b.ResourceProfileID, b.InspectionProofFormat,
-		b.InspectionProofDigest, b.OutcomeDigest,
+		b.InspectionProofDigest, b.OutcomeDigest, b.OutcomeTimestamp,
 	} {
 		p.add(value)
 	}

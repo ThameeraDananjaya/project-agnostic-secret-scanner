@@ -100,6 +100,9 @@ func VerifyChain(records []ChainRecord, anchor Checkpoint, window FamilyWindow, 
 		if _, err := window.Check(record.SchemaVersion, nil, now, verifier); err != nil {
 			return ChainResult{}, err
 		}
+		if err := validateScannerOwnedGlobalRecord(record); err != nil {
+			return ChainResult{}, err
+		}
 		message, err := ChainRecordMessage(record)
 		if err != nil {
 			return ChainResult{}, err
@@ -131,6 +134,36 @@ func VerifyChain(records []ChainRecord, anchor Checkpoint, window FamilyWindow, 
 		result.Head = Checkpoint{Sequence: record.Sequence, Digest: digest}
 	}
 	return result, nil
+}
+
+func validateScannerOwnedGlobalRecord(record ChainRecord) error {
+	if record.SchemaFamily != "global-scanner-revocation" {
+		return nil
+	}
+	major, minor, err := parseVersion(record.SchemaVersion)
+	if err != nil || major != 1 || minor < 1 || record.Signature.TrustDomain != "global-scanner-revocation" ||
+		!IsDigest(record.TargetValue) || !validGlobalTargetType(record.TargetType) || !validGlobalReasonCode(record.ReasonCode) {
+		return ErrInvalidReference
+	}
+	return nil
+}
+
+func validGlobalTargetType(value string) bool {
+	switch value {
+	case "scanner-release", "scanner-asset", "rule-pack", "scanner-schema":
+		return true
+	default:
+		return false
+	}
+}
+
+func validGlobalReasonCode(value string) bool {
+	switch value {
+	case "COMPROMISE", "INTEGRITY_DEFECT", "INCOMPLETE_COVERAGE", "AUTHORITY_DEFECT", "RETIREMENT_BREACH":
+		return true
+	default:
+		return false
+	}
 }
 
 func validTargetType(value string) bool {

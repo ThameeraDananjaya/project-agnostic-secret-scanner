@@ -50,7 +50,12 @@ The correction tooling must additionally prove from its exact clean candidate:
    trigger, certificate identity and GitHub OIDC issuer;
 6. two independent network-disabled builds use the completed module cache
    read-only and produce byte-identical assets; and
-7. the shipped runner, Gitleaks engines and rules retain the previously
+7. a forced-CRLF checkout proves that the canary, acquisition and build Docker
+   shell payloads are converted to LF immediately before invocation, raw
+   carriage-return payloads reject, the exact normalized payloads parse in the
+   pinned network-disabled image, and the read-only cache still fails closed;
+   and
+8. the shipped runner, Gitleaks engines and rules retain the previously
    accepted product-source digests.
 
 Local author validation remains non-acceptance. Independent skeptical review

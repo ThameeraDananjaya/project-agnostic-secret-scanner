@@ -25,10 +25,14 @@ Correction C1 recovery recorded in
 claim, implement or accept the correction. Correction C1 was subsequently
 claimed alone from exact clean authority commit
 `3fb1b0a55dc4f48dd35464c63c768f497efbc89b` and locally implemented as a
-candidate `f24b832ebe5f6749aa0ab910e1b9be279065ebb1`. Two network-disabled builds
-and all checks callable on the Windows author host pass, but actual-Linux host
-positive/wrong-owner proof and independent skeptical acceptance remain open.
-PSCAN-06 remains the sole open task and remains unaccepted.
+candidate `f24b832ebe5f6749aa0ab910e1b9be279065ebb1`, but independent review
+rejected it after reproducing carriage-return corruption in Docker POSIX shell
+payloads from a Windows CRLF checkout. Correction C1 iteration 003 is the
+bounded runtime-LF repair recorded in
+`evidence/PSCAN-06/CORRECTION-C1-ITERATION-003.md`; its exact candidate and
+fresh validation evidence are pending. Actual-Linux host positive/wrong-owner
+proof and independent skeptical acceptance remain open. PSCAN-06 remains the
+sole open task and remains unaccepted.
 
 ## Objective
 

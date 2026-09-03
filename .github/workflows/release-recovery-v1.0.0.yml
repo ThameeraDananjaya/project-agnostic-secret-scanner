@@ -67,6 +67,10 @@ jobs:
           test "$(git rev-parse 'v1.0.0^{commit}')" = 'a13c28fe7273bc8dc6545f97966a02889524eb4c'
           test "$(git rev-parse 'v1.0.0^{tree}')" = '217b711ddea51fd0ea7e808edd2e27fdecef8427'
 
+      - name: Prove CRLF checkout cannot corrupt Docker shell payloads
+        shell: pwsh
+        run: ./build/release/test-crlf-shell-payloads.ps1 -WorkingDirectory "$env:RUNNER_TEMP/pscan-crlf-regression"
+
       - name: Prove Linux cache ownership failures before acquisition
         shell: bash
         run: |

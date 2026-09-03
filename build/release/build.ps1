@@ -5,6 +5,8 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+. (Join-Path $PSScriptRoot 'shell-payload.ps1')
+
 $image = 'golang@sha256:ded31c68586d2e49e760acc2e65a884b23d032e9bbbed0ae0c55abd3fcaf4452'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $acquisition = (Resolve-Path -LiteralPath $AcquisitionDirectory).Path
@@ -138,6 +140,8 @@ GOOS=windows GOARCH=amd64 /work/runner/go/bin/go test -p=1 -exec /bin/true ./...
 $revisionIndex = $arguments.IndexOf('/usr/bin/env')
 $arguments = $arguments[0..($revisionIndex)] + @('-i','PATH=/usr/bin:/bin','HOME=/work',"SOURCE_DATE_EPOCH=$epoch","PSCAN_PRODUCT_REVISION=$productRevision","PSCAN_TOOLING_REVISION=$toolingRevision","PSCAN_TOOLING_TREE=$toolingTree","PSCAN_CREATED=$created") + $arguments[($revisionIndex + 5)..($arguments.Count - 1)]
 
+$arguments[$arguments.Count - 1] = ConvertTo-LFPosixShellPayload -Payload $arguments[$arguments.Count - 1]
+Assert-LFPosixShellPayload -Payload $arguments[$arguments.Count - 1]
 & docker @arguments
 if ($LASTEXITCODE -ne 0) { throw 'Offline release build or validation failed' }
 
@@ -234,6 +238,8 @@ $packageArguments = @(
     $image,'/bin/sh','-ceu',
     "cp /tools/packager-linux-amd64 /tmp/packager; chmod 0755 /tmp/packager; /tmp/packager -root /input/linux -output /dist/project-agnostic-secret-scanner_v1.0.0_linux_amd64.tar.gz -format tar.gz -epoch $epoch; /tmp/packager -root /input/windows -output /dist/project-agnostic-secret-scanner_v1.0.0_windows_amd64.zip -format zip -epoch $epoch"
 )
+$packageArguments[$packageArguments.Count - 1] = ConvertTo-LFPosixShellPayload -Payload $packageArguments[$packageArguments.Count - 1]
+Assert-LFPosixShellPayload -Payload $packageArguments[$packageArguments.Count - 1]
 & docker @packageArguments
 if ($LASTEXITCODE -ne 0) { throw 'Deterministic packaging failed' }
 

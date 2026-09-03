@@ -132,6 +132,8 @@ if ($hostUID -ne $null) {
     $arguments[$arguments.IndexOf('/work:rw,exec,nosuid,nodev,size=1g')] = "/work:rw,exec,nosuid,nodev,size=1g,mode=0700,uid=$hostUID,gid=$hostGID"
 }
 
+$arguments[$arguments.Count - 1] = ConvertTo-LFPosixShellPayload -Payload $arguments[$arguments.Count - 1]
+Assert-LFPosixShellPayload -Payload $arguments[$arguments.Count - 1]
 & docker @arguments
 if ($LASTEXITCODE -ne 0) { throw 'Pinned dependency acquisition failed' }
 

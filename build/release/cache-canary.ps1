@@ -1,3 +1,5 @@
+. (Join-Path $PSScriptRoot 'shell-payload.ps1')
+
 function Invoke-ReleaseCacheCanary {
     [CmdletBinding()]
     param(
@@ -48,6 +50,8 @@ trap - EXIT HUP INT TERM
 '@
     )
 
+    $arguments[$arguments.Count - 1] = ConvertTo-LFPosixShellPayload -Payload $arguments[$arguments.Count - 1]
+    Assert-LFPosixShellPayload -Payload $arguments[$arguments.Count - 1]
     & docker @arguments
     if ($LASTEXITCODE -ne 0) {
         throw 'Module-cache write, atomic rename, read and delete canary failed before dependency acquisition'

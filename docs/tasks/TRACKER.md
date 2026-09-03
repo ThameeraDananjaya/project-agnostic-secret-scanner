@@ -7,7 +7,7 @@
 | PSCAN-03 | Rejected and closed fail-closed; not accepted | `evidence/PSCAN-03/CLOSEOUT-REJECTED.md` |
 | PSCAN-04 | Completed and independently accepted locally | Exact activation `a21b030e1658f1f98ac4e4d001af12185d9ed311`; evidence-bearing closeout commit |
 | PSCAN-05 | Completed and independently accepted locally | Exact activation `50b4186`; corrected evidence-bearing closeout commit |
-| PSCAN-06 | Correction C1 candidate implemented; callable author checks pass, actual-Linux host proof and independent acceptance remain open | `evidence/PSCAN-06/CORRECTION-C1-AUTHOR-VALIDATION-002.md` |
+| PSCAN-06 | Correction C1 iteration 003 repair implemented; rejected candidate 002 cannot support acceptance; fresh exact-candidate validation, actual-Linux host proof and independent acceptance remain open | `evidence/PSCAN-06/CORRECTION-C1-ITERATION-003.md` |
 | PSCAN-07 | Proposed; unselected; signing/publication gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-06 |
 | PSCAN-08 | Inactive; technically and legally gated | Material-gap evidence plus separate owner approval required |
 | PSCAN-09 | Completed and independently accepted locally | Activation `f486989`; accepted closeout commit |
@@ -59,11 +59,13 @@ Linux cache-ownership correction and a dual-identity release design that keeps
 the public locked `v1.0.0` tag fixed at the accepted product-source candidate
 while separately binding correction tooling and workflow identity. The
 correction was claimed alone in a fresh session from exact clean authority
-commit `3fb1b0a55dc4f48dd35464c63c768f497efbc89b` and is locally implemented as a
-candidate `f24b832ebe5f6749aa0ab910e1b9be279065ebb1`. Two offline builds and all
-checks callable on the Windows author host pass, but the required actual-Linux
-host positive/wrong-owner proof and independent skeptical acceptance remain
-open; no correction remote action is approved. PSCAN-07 remains proposed and
+commit `3fb1b0a55dc4f48dd35464c63c768f497efbc89b`. Independent review rejected
+candidate `f24b832ebe5f6749aa0ab910e1b9be279065ebb1` after reproducing CRLF
+carriage-return corruption in its Docker POSIX shell payloads. Bounded
+iteration 003 adds runtime LF normalization and a forced-CRLF regression; fresh
+exact-candidate author validation, the required actual-Linux host positive/
+wrong-owner proof and independent skeptical acceptance remain open. No
+correction remote action is approved. PSCAN-07 remains proposed and
 unselected. PSCAN-08 remains inactive,
 unselected and ineligible because
 accepted evidence did not establish a material required-class Gitleaks gap;

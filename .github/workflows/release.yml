@@ -118,12 +118,22 @@ jobs:
             --bundle dist/release-manifest.sigstore.json \
             dist/release-manifest.json
 
-      - name: Verify exact keyless identity offline
+      - name: Acquire authenticated Sigstore trusted root
         shell: bash
         run: |
           set -euo pipefail
-          "$RUNNER_TEMP/cosign" verify-blob --offline \
+          "$RUNNER_TEMP/cosign" trusted-root create \
+            --with-default-services \
+            --out "$RUNNER_TEMP/sigstore-trusted-root.json"
+          sha256sum "$RUNNER_TEMP/sigstore-trusted-root.json"
+
+      - name: Verify exact keyless identity with explicit trusted root
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/cosign" verify-blob \
             --bundle dist/release-manifest.sigstore.json \
+            --trusted-root "$RUNNER_TEMP/sigstore-trusted-root.json" \
             --certificate-identity 'https://github.com/ThameeraDananjaya/project-agnostic-secret-scanner/.github/workflows/release.yml@refs/tags/v1.0.0' \
             --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
             dist/release-manifest.json

@@ -31,11 +31,13 @@ func run(args []string) int {
 	bundle := flags.String("bundle", "release-manifest.sigstore.json", "Cosign bundle path relative to directory")
 	cosign := flags.String("cosign", "", "absolute path to the separately acquired pinned Cosign executable")
 	cosignSHA256 := flags.String("cosign-sha256", "", "expected lowercase SHA-256 of the Cosign executable")
-	if err := flags.Parse(args); err != nil || flags.NArg() != 0 || *directory == "" || *cosign == "" || *cosignSHA256 == "" {
+	trustedRoot := flags.String("trusted-root", "", "absolute path to the independently acquired Sigstore trusted root")
+	trustedRootSHA256 := flags.String("trusted-root-sha256", "", "expected lowercase SHA-256 recorded at trusted-root acquisition")
+	if err := flags.Parse(args); err != nil || flags.NArg() != 0 || *directory == "" || *cosign == "" || *cosignSHA256 == "" || *trustedRoot == "" || *trustedRootSHA256 == "" {
 		fmt.Fprintln(os.Stderr, "verification failed: complete bounded arguments are required")
 		return 40
 	}
-	signature, err := verify.NewCosignCommandVerifier(*cosign, *cosignSHA256)
+	signature, err := verify.NewCosignCommandVerifier(*cosign, *cosignSHA256, *trustedRoot, *trustedRootSHA256)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "verification failed: Cosign identity or digest rejected")
 		return 40

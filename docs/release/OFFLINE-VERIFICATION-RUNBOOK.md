@@ -59,8 +59,16 @@ flowchart TD
    stop.
 5. Download Cosign only from exact release `v3.1.3` and verify the platform
    SHA-256 above before execution.
-6. Copy the complete directory and pinned Cosign executable to a
-   network-disabled host. Never copy credentials or repository content there.
+6. While still online, run pinned Cosign
+   `trusted-root create --with-default-services --out trusted-root.json`. This
+   authenticates current Sigstore trust material through Cosign's TUF root.
+   Record the trusted-root SHA-256 independently and keep the file outside the
+   release directory. The 2026-09-03 preflight example was
+   `844a1c6de3986c9f02070266b25e0d1a2fa99ceccc89f6b9ad90aae47b62a16e`;
+   do not assume it remains current after rotation.
+7. Copy the complete release directory, pinned Cosign executable, trusted-root
+   file and its separately recorded digest to a network-disabled host. Never
+   copy credentials or repository content there.
 
 ```powershell
 gh release download v1.0.0 --repo ThameeraDananjaya/project-agnostic-secret-scanner --dir C:\quarantine\pscan-v1.0.0
@@ -74,7 +82,7 @@ gh release verify v1.0.0 --repo ThameeraDananjaya/project-agnostic-secret-scanne
 
 ## Offline verifier parameters and output
 
-All five parameters are mandatory in practice; the two relative paths have
+All seven parameters are mandatory in practice; the two relative paths have
 fixed defaults.
 
 | Parameter | Type | Meaning and validation |
@@ -84,13 +92,15 @@ fixed defaults.
 | `--bundle` | safe relative path | Default `release-manifest.sigstore.json`; absence or mutation rejects. |
 | `--cosign` | existing regular file | Absolute path to separately acquired pinned Cosign; links reject. |
 | `--cosign-sha256` | 64 lowercase hex | Must equal the platform digest above and current executable bytes. |
+| `--trusted-root` | existing regular file outside release directory | Sigstore trusted-root JSON acquired through pinned Cosign/TUF during online quarantine. Links reject. |
+| `--trusted-root-sha256` | 64 lowercase hex | Independently recorded digest from the authenticated online acquisition; current bytes must match. |
 
 ```powershell
-.\scanner-release-verifier-windows-amd64.exe --directory C:\quarantine\pscan-v1.0.0 --cosign C:\quarantine\tools\cosign-windows-amd64.exe --cosign-sha256 9fe59be0eca1271873ce019061335eb1ac419b7059202e797828467ddabe33be
+.\scanner-release-verifier-windows-amd64.exe --directory C:\quarantine\pscan-v1.0.0 --cosign C:\quarantine\tools\cosign-windows-amd64.exe --cosign-sha256 9fe59be0eca1271873ce019061335eb1ac419b7059202e797828467ddabe33be --trusted-root C:\quarantine\trust\trusted-root.json --trusted-root-sha256 <recorded-64-lowercase-hex>
 ```
 
 ```bash
-./scanner-release-verifier-linux-amd64 --directory /quarantine/pscan-v1.0.0 --cosign /quarantine/tools/cosign-linux-amd64 --cosign-sha256 4629c757b7618056f8ddd7e2625ae9fdd94c0372a65049520bc7d9df9efc7f71
+./scanner-release-verifier-linux-amd64 --directory /quarantine/pscan-v1.0.0 --cosign /quarantine/tools/cosign-linux-amd64 --cosign-sha256 4629c757b7618056f8ddd7e2625ae9fdd94c0372a65049520bc7d9df9efc7f71 --trusted-root /quarantine/trust/trusted-root.json --trusted-root-sha256 <recorded-64-lowercase-hex>
 ```
 
 Success is exactly one content-free line:

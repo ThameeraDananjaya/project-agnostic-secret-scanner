@@ -3,10 +3,36 @@ package supplychain_test
 import (
 	"encoding/json"
 	"errors"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/ThameeraDananjaya/project-agnostic-secret-scanner/internal/verify"
 )
+
+func TestCosignCommandVerifierBindsExecutableAndTrustedRootBytes(t *testing.T) {
+	root := t.TempDir()
+	cosignPath := filepath.Join(root, "cosign")
+	trustedRootPath := filepath.Join(root, "trusted-root.json")
+	cosignBytes := []byte("synthetic-cosign-executable")
+	trustedRootBytes := []byte(`{"synthetic":"trusted-root"}`)
+	if err := os.WriteFile(cosignPath, cosignBytes, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(trustedRootPath, trustedRootBytes, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := verify.NewCosignCommandVerifier(cosignPath, verify.DigestBytes(cosignBytes), trustedRootPath, verify.DigestBytes(trustedRootBytes)); err != nil {
+		t.Fatalf("exact Cosign and trusted-root bytes rejected: %v", err)
+	}
+	trustedRootBytes[0] ^= 1
+	if err := os.WriteFile(trustedRootPath, trustedRootBytes, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := verify.NewCosignCommandVerifier(cosignPath, verify.DigestBytes(cosignBytes), trustedRootPath, verify.DigestBytes([]byte(`{"synthetic":"trusted-root"}`))); !errors.Is(err, verify.ErrBindingMismatch) {
+		t.Fatalf("mutated trusted-root bytes did not fail closed: %v", err)
+	}
+}
 
 func TestReleaseManifestParserRejectsUnknownDuplicateAndUnsupportedMembers(t *testing.T) {
 	if _, err := verify.ParseReleaseManifest([]byte(`{"schemaFamily":"scanner-release-manifest","schemaFamily":"scanner-release-manifest"}`)); !errors.Is(err, verify.ErrInvalidReference) {

@@ -40,6 +40,15 @@ major tags, `latest`, auto-update and pipe-to-shell installation are forbidden.
 | `sigstore/cosign-installer` | `6f9f17788090df1f26f669e9d70d6ae9567deba6` (`v4.1.2`); Apache-2.0 | Exact tag commit resolved through GitHub API |
 | SBOM | SPDX 2.3 JSON | Official SPDX specification; deterministic document generation is local |
 
+Exact Cosign v3.1.3 execution after claim confirmed commit
+`11926fa5bbbbde47e88fc006b625a17769b743b2`, Linux amd64, and the supported
+`verify-blob` bundle/identity/issuer/trusted-root flags. It also confirmed the
+legacy `--offline` flag is absent. Pinned Cosign/TUF produced a current trusted
+root with SHA-256
+`844a1c6de3986c9f02070266b25e0d1a2fa99ceccc89f6b9ad90aae47b62a16e`;
+the upstream Cosign bundle then verified with that explicit root under Docker
+`--network none`. No signing command or credential was used.
+
 The existing Gitleaks licence corpus was independently reconciled before claim:
 63 modules, 64 licence/notice files, zero extras, zero missing files, zero
 digest mismatches, zero UTF-8 or carriage-return failures, and zero unclassified

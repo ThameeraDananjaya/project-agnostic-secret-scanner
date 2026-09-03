@@ -19,6 +19,12 @@ creates SBOM-bound GitHub attestations and creates one draft containing every
 asset. It has no publish command. Publication needs a separate PSCAN-07 owner
 decision after independent acquisition and verification.
 
+Cosign v3.1.3 removed the legacy `--offline` flag. The workflow acquires an
+authenticated Sigstore trusted-root document through pinned Cosign/TUF and
+passes it explicitly to `verify-blob`. Consumer verification acquires the root
+independently online, records its digest, then runs the same bundle verification
+inside a network-disabled boundary.
+
 ```mermaid
 flowchart LR
     A[Accepted local commit] --> B{Remote setup approval}

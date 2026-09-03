@@ -78,7 +78,7 @@ jobs:
   sign-attest-and-draft:
     needs: build
     if: >-
-      vars.PSCAN_RELEASE_GATE == 'PSCAN-07-OWNER-APPROVED' &&
+      vars.PSCAN_RELEASE_GATE == 'PSCAN-06-SIGNING-APPROVED' &&
       github.repository == 'ThameeraDananjaya/project-agnostic-secret-scanner' &&
       github.ref == 'refs/tags/v1.0.0' &&
       inputs.release_version == 'v1.0.0'

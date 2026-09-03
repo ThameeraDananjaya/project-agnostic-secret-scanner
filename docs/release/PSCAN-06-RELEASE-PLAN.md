@@ -3,7 +3,7 @@
 The workflow is manual-dispatch, exact-tag and exact-commit bound. Its build job
 has read-only contents permission. Its signing/draft job is skipped unless
 repository variable `PSCAN_RELEASE_GATE` exactly equals
-`PSCAN-07-OWNER-APPROVED`, is protected by environment `release-v1`, and runs
+`PSCAN-06-SIGNING-APPROVED`, is protected by environment `release-v1`, and runs
 at `refs/tags/v1.0.0` in the exact repository. Creating those controls remains
 owner-gated.
 
@@ -14,7 +14,8 @@ read-only. Workflow-transfer evidence is uncompressed and retained one day; it
 is not a release.
 
 The gated job verifies Cosign `v3.1.3` by SHA-256, requests one GitHub OIDC
-identity, signs the manifest, verifies its fixed identity and issuer offline,
+identity, signs the manifest, verifies its fixed identity and issuer against an
+explicit authenticated trusted root,
 creates SBOM-bound GitHub attestations and creates one draft containing every
 asset. It has no publish command. Publication needs a separate PSCAN-07 owner
 decision after independent acquisition and verification.

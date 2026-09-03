@@ -9,8 +9,10 @@ official Go 1.27.1 archive and full-digest Docker image:
    accepted PSCAN-10 digests;
 3. build the runner, release verifier and deterministic packaging/SBOM tools
    for Linux amd64 and Windows amd64 with Go 1.27.1;
-4. pass all Go tests, all-package vet and compile every package/test for Windows
-   amd64 with networking disabled and the module cache read-only;
+4. pass all Go tests and all-package vet serially (`-p=1`) so the inherited
+   100-millisecond deadline adversarial case is not distorted by unrelated
+   concurrent package builds; compile every package/test for Windows amd64 with
+   networking disabled and the module cache read-only;
 5. build the complete release candidate twice from the same source commit and
    prove every file byte-identical;
 6. parse every JSON contract and generated JSON asset, verify SPDX 2.3

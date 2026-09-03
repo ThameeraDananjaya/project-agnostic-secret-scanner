@@ -195,13 +195,13 @@ Copy-Item -LiteralPath (Join-Path $dist 'gitleaks-windows-amd64.exe') -Destinati
 
 $packageArguments = @(
     'run','--rm','--pull=never','--network','none','--read-only','--cap-drop','ALL','--security-opt','no-new-privileges','--pids-limit','64','--memory','1g','--memory-swap','1g','--cpus','1',
-    '--tmpfs','/tmp:rw,noexec,nosuid,nodev,size=64m',
+    '--tmpfs','/tmp:rw,exec,nosuid,nodev,size=64m',
     '--mount',"type=bind,src=$raw,dst=/tools,readonly",
     '--mount',"type=bind,src=$linuxStage,dst=/input/linux,readonly",
     '--mount',"type=bind,src=$windowsStage,dst=/input/windows,readonly",
     '--mount',"type=bind,src=$dist,dst=/dist",
     $image,'/bin/sh','-ceu',
-    "chmod +x /tools/packager-linux-amd64; /tools/packager-linux-amd64 -root /input/linux -output /dist/project-agnostic-secret-scanner_v1.0.0_linux_amd64.tar.gz -format tar.gz -epoch $epoch; /tools/packager-linux-amd64 -root /input/windows -output /dist/project-agnostic-secret-scanner_v1.0.0_windows_amd64.zip -format zip -epoch $epoch"
+    "cp /tools/packager-linux-amd64 /tmp/packager; chmod 0755 /tmp/packager; /tmp/packager -root /input/linux -output /dist/project-agnostic-secret-scanner_v1.0.0_linux_amd64.tar.gz -format tar.gz -epoch $epoch; /tmp/packager -root /input/windows -output /dist/project-agnostic-secret-scanner_v1.0.0_windows_amd64.zip -format zip -epoch $epoch"
 )
 & docker @packageArguments
 if ($LASTEXITCODE -ne 0) { throw 'Deterministic packaging failed' }

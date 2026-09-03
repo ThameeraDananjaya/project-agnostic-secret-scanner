@@ -104,7 +104,7 @@ function New-ExactGitTreeArchive(
     Write-Utf8 $pathManifest ($paths -join "`n")
     Write-Utf8 $modeManifest ($modes -join "`n")
 
-    & git -C $Repository -c core.autocrlf=false -c core.eol=lf archive --format=tar --output $ArchivePath $ExpectedTree
+    & git -C $Repository -c core.autocrlf=false -c core.eol=lf -c tar.umask=0022 archive --format=tar --output $ArchivePath $ExpectedTree
     if ($LASTEXITCODE -ne 0 -or !(Test-Path -LiteralPath $ArchivePath -PathType Leaf) -or (Get-Item -LiteralPath $ArchivePath).Length -eq 0) {
         throw "$Label exact-tree archive materialization failed"
     }

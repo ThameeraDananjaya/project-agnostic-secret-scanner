@@ -54,6 +54,13 @@ asset integrity test plus the complete offline release build. The recovery
 workflow performs both independent release builds through separate actual
 CRLF checkouts.
 
+The first exact-tree author attempt, commit `29e2b43`, failed closed before
+compilation after all blob-byte and path-set checks passed but the extracted
+mode check found Git's Windows tar default had emitted `0664` for a `100644`
+blob. No build result from that attempt is accepted. The bounded correction
+pins archive `tar.umask=0022`; the exact-mode verifier remains mandatory and
+must prove `0644`/`0755` after extraction.
+
 The commit containing this record supersedes `5ca7722` as the Correction C1
 tooling candidate. Two clean forced-CRLF builds and exact-candidate validation
 remain required after that commit exists. Actual general-purpose Linux UID/GID

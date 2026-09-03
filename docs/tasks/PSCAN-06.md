@@ -25,8 +25,10 @@ Correction C1 recovery recorded in
 claim, implement or accept the correction. Correction C1 was subsequently
 claimed alone from exact clean authority commit
 `3fb1b0a55dc4f48dd35464c63c768f497efbc89b` and locally implemented as a
-candidate. Definitive author validation and independent skeptical acceptance
-remain open. PSCAN-06 remains the sole open task and remains unaccepted.
+candidate `f4ad42664eabedba61226bccdea2bc64e1156b7e`. Two network-disabled builds
+and all checks callable on the Windows author host pass, but actual-Linux host
+positive/wrong-owner proof and independent skeptical acceptance remain open.
+PSCAN-06 remains the sole open task and remains unaccepted.
 
 ## Objective
 

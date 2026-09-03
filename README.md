@@ -4,9 +4,10 @@ This repository is the local product workspace for an independently versioned,
 offline secret-scanning package. The product is governed by
 PASS-OUTCOME-SPEC-001.
 
-Current state: **PSCAN-06 Correction C1 is locally implemented as a candidate;
-definitive author validation, independent acceptance and all remote/signing
-gates remain open. PSCAN-07 is unselected and PSCAN-08 remains inactive.**
+Current state: **PSCAN-06 Correction C1 is locally implemented as candidate
+`f4ad426`; callable author checks pass, but actual-Linux host proof, independent
+acceptance and all remote/signing gates remain open. PSCAN-07 is unselected and
+PSCAN-08 remains inactive.**
 
 The public repository and locked product tag `v1.0.0` exist, but the authorized
 release workflow failed closed before building and no signed release exists.

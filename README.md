@@ -5,7 +5,7 @@ offline secret-scanning package. The product is governed by
 PASS-OUTCOME-SPEC-001.
 
 Current state: **PSCAN-06 Correction C1 is locally implemented as candidate
-`f4ad426`; callable author checks pass, but actual-Linux host proof, independent
+`f24b832`; callable author checks pass, but actual-Linux host proof, independent
 acceptance and all remote/signing gates remain open. PSCAN-07 is unselected and
 PSCAN-08 remains inactive.**
 

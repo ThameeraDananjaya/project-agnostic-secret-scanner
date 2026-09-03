@@ -7,7 +7,7 @@
 | PSCAN-03 | Rejected and closed fail-closed; not accepted | `evidence/PSCAN-03/CLOSEOUT-REJECTED.md` |
 | PSCAN-04 | Completed and independently accepted locally | Exact activation `a21b030e1658f1f98ac4e4d001af12185d9ed311`; evidence-bearing closeout commit |
 | PSCAN-05 | Completed and independently accepted locally | Exact activation `50b4186`; corrected evidence-bearing closeout commit |
-| PSCAN-06 | Remote gate attempted and failed closed during pinned acquisition; unaccepted and open | Run `33709197614`; `evidence/PSCAN-06/REMOTE-GATE-FAILURE-001.md` |
+| PSCAN-06 | Correction C1 owner-approved and authority recorded; unclaimed, unimplemented, unaccepted and open | `evidence/PSCAN-06/CORRECTION-C1-AUTHORITY.md` |
 | PSCAN-07 | Proposed; unselected; signing/publication gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-06 |
 | PSCAN-08 | Inactive; technically and legally gated | Material-gap evidence plus separate owner approval required |
 | PSCAN-09 | Completed and independently accepted locally | Activation `f486989`; accepted closeout commit |
@@ -53,9 +53,14 @@ and locked tag `v1.0.0` was created at the validated candidate. Authorized run
 `33709197614` failed closed during pinned dependency acquisition because its
 Linux Docker bind-mounted Go module cache was not writable. No build artifact,
 signature, attestation, draft release or publication was created. PSCAN-06 is
-unaccepted and open pending a new owner-approved correction boundary; the
-public locked tag must not be moved or deleted. PSCAN-07 remains proposed and
-unselected. PSCAN-08 remains inactive,
+unaccepted and open. On 2026-09-03 the owner approved the bounded
+contract-preserving Correction C1 recovery. Its authority bundle records a
+Linux cache-ownership correction and a dual-identity release design that keeps
+the public locked `v1.0.0` tag fixed at the accepted product-source candidate
+while separately binding correction tooling and workflow identity. The
+correction is unclaimed and unimplemented; it must begin in a fresh session
+from the committed Correction C1 authority bundle. No correction remote action
+is approved. PSCAN-07 remains proposed and unselected. PSCAN-08 remains inactive,
 unselected and ineligible because
 accepted evidence did not establish a material required-class Gitleaks gap;
 separate technical and AGPL owner approval would also be required. No

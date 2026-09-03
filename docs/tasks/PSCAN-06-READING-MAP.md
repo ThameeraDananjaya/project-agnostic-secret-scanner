@@ -63,6 +63,8 @@ fresh implementation session:
 58. `evidence/PSCAN-05/ACCEPTANCE.md`
 59. `evidence/PSCAN-05/CLOSEOUT.md`
 60. `evidence/PSCAN-06/ACTIVATION.md`
+61. `evidence/PSCAN-06/REMOTE-GATE-FAILURE-001.md`
+62. `evidence/PSCAN-06/CORRECTION-C1-AUTHORITY.md`
 
 Then verify the exact activation commit, branch and clean Git status; the
 activated allowed and forbidden paths; the absence of another selected,
@@ -96,3 +98,12 @@ network or credential isolation cannot be proved, zero-spend cannot be
 maintained, a remote gate is reached without exact approval, or any missing,
 stale, conflicting, unsupported or untrustworthy condition would otherwise be
 treated as pass.
+
+For Correction C1, begin from the exact committed correction-authority bundle,
+not from the original candidate or failed workflow run alone. Re-read the
+locked product tag locally and remotely without mutation. Treat the product
+source identity and correction-tooling/workflow identity as separate mandatory
+roles, and verify that every implementation path is present in the narrower
+Correction C1 path list in `docs/tasks/PSCAN-06.md`. The Correction C1 approval
+does not authorize a push, tooling tag, settings change, workflow run, signing,
+attestation, draft release or publication.

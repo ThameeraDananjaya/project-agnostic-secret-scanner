@@ -73,9 +73,11 @@ MPL-2.0 5.
   all assets, independently verify, then obtain a separate exact publication
   approval.
 - GitHub artifact attestations on Free/Pro/Team are available for public
-  repositories. They require `id-token: write`, `contents: read` and
-  `attestations: write`. The release workflow gives these permissions only to
-  its gated provenance job; build/test jobs remain `contents: read`.
+  repositories. Exact `actions/attest` v4.2.2 documentation requires
+  `id-token: write`, `attestations: write` and `artifact-metadata: write`;
+  release upload also requires `contents: write`. The release workflow gives
+  these permissions only to its gated signing/attestation/draft job; build/test
+  jobs remain `contents: read`.
 - GitHub Actions OIDC issuer is exactly
   `https://token.actions.githubusercontent.com`. The keyless certificate
   identity is restricted to the intended repository, exact release workflow

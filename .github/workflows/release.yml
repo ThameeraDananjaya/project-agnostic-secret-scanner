@@ -89,6 +89,7 @@ jobs:
       contents: write
       id-token: write
       attestations: write
+      artifact-metadata: write
     env:
       GH_TOKEN: ${{ github.token }}
       COSIGN_SHA256: 4629c757b7618056f8ddd7e2625ae9fdd94c0372a65049520bc7d9df9efc7f71

@@ -41,6 +41,10 @@ Full action pins:
 - `actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c`
 - `actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6`
 
+The attestation job alone receives `id-token: write`, `attestations: write` and
+`artifact-metadata: write`; its draft upload also needs `contents: write`.
+These permissions are absent from the build job.
+
 No Gitleaks action, mutable action tag, signing key, stored cloud credential,
 larger runner, paid feature, auto-update, TruffleHog material, automatic
 publication or consuming-project data is present.

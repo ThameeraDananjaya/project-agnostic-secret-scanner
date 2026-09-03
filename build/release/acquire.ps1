@@ -94,9 +94,11 @@ tar -xzf /input/gitleaks.tar.gz -C /work/gitleaks --strip-components=1
 test "$(/work/runner/go/bin/go version)" = "go version go1.27.1 linux/amd64"
 test "$(/work/engine/go/bin/go version)" = "go version go1.27.0 linux/amd64"
 cd /src
-env GOTOOLCHAIN=local GOMODCACHE=/gomodcache GOCACHE=/work/runner-cache GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org /work/runner/go/bin/go mod download
+env GOTOOLCHAIN=local GOFLAGS=-mod=readonly GOMODCACHE=/gomodcache GOCACHE=/work/runner-cache GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org /work/runner/go/bin/go mod download
+env GOTOOLCHAIN=local GOFLAGS=-mod=readonly GOMODCACHE=/gomodcache GOCACHE=/work/runner-cache GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org /work/runner/go/bin/go list -m all >/work/runner-modules.txt
 cd /work/gitleaks
-env GOTOOLCHAIN=local GOMODCACHE=/gomodcache GOCACHE=/work/engine-cache GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org /work/engine/go/bin/go mod download
+env GOTOOLCHAIN=local GOFLAGS=-mod=readonly GOMODCACHE=/gomodcache GOCACHE=/work/engine-cache GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org /work/engine/go/bin/go mod download all
+env GOTOOLCHAIN=local GOFLAGS=-mod=readonly GOMODCACHE=/gomodcache GOCACHE=/work/engine-cache GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org /work/engine/go/bin/go list -m all >/work/engine-modules.txt
 '@
 )
 

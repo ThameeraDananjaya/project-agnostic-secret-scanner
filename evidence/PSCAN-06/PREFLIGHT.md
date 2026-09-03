@@ -104,7 +104,14 @@ archive and exact Gitleaks source archive, verified all three recorded SHA-256
 values, and populated the module cache with network access. Its first host
 command timed out after the downloads/cache were present but before the ledger;
 the resumable script revalidated existing bytes, completed the cache operation
-and wrote `acquisition-ledger.json`. No unverified partial file was admitted.
+and wrote `acquisition-ledger.json`. The first clean build then proved that this
+ledger did not contain the complete lazy Gitleaks module graph; the offline
+build rejected it. A second acquisition attempt correctly rejected a proposed
+scanner `download all` operation because it would update the read-only committed
+`go.sum`. The corrected third acquisition keeps the scanner graph read-only and
+uses `go mod download all` plus a complete module-list load only for Gitleaks,
+with `GOFLAGS=-mod=readonly`. It completed and wrote a fresh ledger. Neither
+failed cache is admitted. No unverified partial file was promoted.
 
 ## Exact proposed remote changes still requiring approval
 

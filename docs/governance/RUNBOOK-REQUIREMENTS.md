@@ -77,3 +77,12 @@ PSCAN-07 acceptance confirms every documented input/output matches the released
 schemas and CLI, every command works on Windows amd64 and Linux amd64 as stated,
 every Mermaid diagram renders, every link resolves, and no example exposes or
 normalizes unsafe behavior.
+
+## PSCAN-06 release verification supplement
+
+`docs/release/OFFLINE-VERIFICATION-RUNBOOK.md` documents every release-verifier
+parameter, stdout/exit behavior, release-manifest 1.1 field and asset payload;
+Windows and Linux examples; fixed identity/tool digests; online quarantine and
+offline custody; revocation refresh, rollback, retirement and operator
+evidence; and Mermaid trust-flow and state diagrams. Remote creation, settings,
+workflow, signing, draft and publication actions remain separately owner-gated.

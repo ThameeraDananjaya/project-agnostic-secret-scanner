@@ -1,8 +1,9 @@
 # Third-Party Notices
 
-PSCAN-10 freshly revalidates the exact Gitleaks v8.30.1 MIT licence and bounded
-rule config for evaluation. No Gitleaks binary is committed or released. The exact source,
-config, licence, toolchain and reproducible output digests are bound in
+PSCAN-10 freshly revalidated the exact Gitleaks v8.30.1 MIT licence and bounded
+rule config. PSCAN-06 locally assembles, but does not publish, the exact
+source-built binaries. Source, config, licence, toolchain and reproducible
+output digests are bound in
 `build/gitleaks/manifest.json`.
 
 Gitleaks is Copyright (c) 2019 Zachary Rice and is distributed under the MIT
@@ -20,6 +21,13 @@ The PSCAN-10 packages directly use `github.com/mholt/archives` v0.1.2,
 exact raw bytes before preparation. Those licence files are a subset of the
 same 63-module inventory and were freshly reproduced without differences during
 PSCAN-10.
+
+The PSCAN-06 workflow source references exact commits of `actions/checkout`,
+`actions/upload-artifact`, `actions/download-artifact` and `actions/attest`;
+each upstream repository declares the MIT licence. It downloads Cosign v3.1.3
+only by an exact asset URL plus SHA-256; Cosign declares Apache-2.0. Those tools
+are build/signing infrastructure and are not linked into the runner or engine.
+Their actions, execution, signing and distribution remain separately gated.
 
 Before any third-party material is admitted, the responsible task must verify
 the exact source revision, licence text, redistribution obligations, notices,

@@ -7,9 +7,13 @@ workflow, immutable-release plan, and offline verifier guidance.
 
 ## State
 
-Activated by the owner's exact `ACTIVATE PSCAN-06` command on 2026-09-02.
-Unclaimed and not implemented. Remote, settings, spending, signing and
-publication gates remain reserved. No successor is selected or activated.
+Activated by the owner's exact `ACTIVATE PSCAN-06` command on 2026-09-02 and
+claimed alone on 2026-09-03 in a fresh implementation session from exact clean
+activation commit `058ffcd446c6431b2e1afeed769d02c7b1f307f8` after the complete
+reading-map and current preflight. A local implementation candidate is ready
+for clean-commit reproducibility and skeptical review. Remote,
+settings, spending, signing and publication gates remain reserved. No successor
+is selected or activated.
 
 ## Objective
 

@@ -38,3 +38,9 @@ content-free.
 
 See [`docs/security/THREAT-MODEL.md`](docs/security/THREAT-MODEL.md) for the full
 planned control and validation mapping.
+
+Release verification is fail-closed. A mismatch in repository owner ID, exact
+workflow/tag identity, GitHub OIDC issuer, Cosign bundle, manifest, asset
+digest/size, licence corpus, SBOM, compatibility or revocation evidence makes
+the release unusable. The public release identity never signs project receipts,
+and release jobs never receive project credentials or candidate repositories.

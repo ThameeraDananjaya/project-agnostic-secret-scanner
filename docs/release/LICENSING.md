@@ -77,3 +77,12 @@ raw classification; those modules and their compiled transitive licence files
 are already a subset of the same recorded Gitleaks graph. No binary, release,
 SBOM, signature, publication or legal
 approval is created by PSCAN-10.
+
+## PSCAN-06 release bundle
+
+PSCAN-06 bundles carry the MIT product licence, complete
+`THIRD_PARTY_NOTICES.md`, the digest-bound Gitleaks module licence manifest and
+all 64 corresponding licence/notice texts. The signed manifest binds standalone
+licence evidence and both deterministic platform archives, so any byte change
+rejects. Workflow actions are MIT licensed and Cosign is Apache-2.0; they are
+build infrastructure and are not linked into the scanner binary.

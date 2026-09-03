@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:project-agnostic-secret-scanner:release-manifest:1.1",
+  "title": "Scanner Release Manifest 1.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaFamily", "manifestSchemaVersion", "releaseVersion",
+    "sourceRevision", "sourceTree", "runnerVersion", "goToolchainVersion", "runnerBindings",
+    "engineBindings", "rulePack", "schemaBindings", "releaseIdentity",
+    "compatibility", "revocation", "assets", "createdAt"
+  ],
+  "properties": {
+    "schemaFamily": { "type": "string", "const": "scanner-release-manifest" },
+    "manifestSchemaVersion": { "type": "string", "const": "1.1" },
+    "releaseVersion": { "type": "string", "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "sourceRevision": { "$ref": "#/$defs/gitOid" },
+    "sourceTree": { "$ref": "#/$defs/gitOid" },
+    "runnerVersion": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "goToolchainVersion": { "type": "string", "pattern": "^go[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "runnerBindings": {
+      "type": "array", "minItems": 2, "maxItems": 2, "uniqueItems": true,
+      "items": { "$ref": "#/$defs/platformDigest" }
+    },
+    "engineBindings": {
+      "type": "array", "minItems": 2, "maxItems": 2, "uniqueItems": true,
+      "items": { "$ref": "#/$defs/engineBinding" }
+    },
+    "rulePack": { "$ref": "#/$defs/namedDigest" },
+    "schemaBindings": {
+      "type": "array", "minItems": 1, "maxItems": 32, "uniqueItems": true,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["family", "version", "path", "sha256"],
+        "properties": {
+          "family": { "$ref": "#/$defs/token" },
+          "version": { "$ref": "#/$defs/schemaVersion" },
+          "path": { "$ref": "#/$defs/path" },
+          "sha256": { "$ref": "#/$defs/digest" }
+        }
+      }
+    },
+    "releaseIdentity": {
+      "type": "object", "additionalProperties": false,
+      "required": ["repository", "repositoryOwnerId", "workflow", "ref", "oidcIssuer", "certificateIdentity"],
+      "properties": {
+        "repository": { "type": "string", "const": "ThameeraDananjaya/project-agnostic-secret-scanner" },
+        "repositoryOwnerId": { "type": "integer", "const": 50274860 },
+        "workflow": { "type": "string", "const": ".github/workflows/release.yml" },
+        "ref": { "type": "string", "const": "refs/tags/v1.0.0" },
+        "oidcIssuer": { "type": "string", "const": "https://token.actions.githubusercontent.com" },
+        "certificateIdentity": { "type": "string", "const": "https://github.com/ThameeraDananjaya/project-agnostic-secret-scanner/.github/workflows/release.yml@refs/tags/v1.0.0" }
+      }
+    },
+    "compatibility": {
+      "type": "object", "additionalProperties": false,
+      "required": ["minimumRunnerVersion", "supportedOperatingSystems", "supportedArchitectures", "testSummaryAsset", "limitationsAsset"],
+      "properties": {
+        "minimumRunnerVersion": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+        "supportedOperatingSystems": { "type": "array", "const": ["linux", "windows"] },
+        "supportedArchitectures": { "type": "array", "const": ["amd64"] },
+        "testSummaryAsset": { "$ref": "#/$defs/path" },
+        "limitationsAsset": { "$ref": "#/$defs/path" }
+      }
+    },
+    "revocation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["discoveryLocation", "snapshotAsset", "checkpointAsset", "schemaVersion", "maximumSnapshotAgeHours"],
+      "properties": {
+        "discoveryLocation": { "type": "string", "format": "uri" },
+        "snapshotAsset": { "$ref": "#/$defs/path" },
+        "checkpointAsset": { "$ref": "#/$defs/path" },
+        "schemaVersion": { "type": "string", "const": "1.1" },
+        "maximumSnapshotAgeHours": { "type": "integer", "const": 24 }
+      }
+    },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "assets": {
+      "type": "array", "minItems": 10, "maxItems": 256, "uniqueItems": true,
+      "items": { "$ref": "#/$defs/asset" }
+    }
+  },
+  "$defs": {
+    "digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "gitOid": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "schemaVersion": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+$" },
+    "token": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:+-]{0,127}$" },
+    "path": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._+/-]{0,255}$" },
+    "namedDigest": {
+      "type": "object", "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": { "path": { "$ref": "#/$defs/path" }, "sha256": { "$ref": "#/$defs/digest" } }
+    },
+    "engineBinding": {
+      "type": "object", "additionalProperties": false,
+      "required": ["name", "version", "sourceRevision", "os", "arch", "path", "sha256"],
+      "properties": {
+        "name": { "type": "string", "const": "gitleaks" },
+        "version": { "type": "string", "const": "8.30.1" },
+        "sourceRevision": { "type": "string", "const": "83d9cd684c87d95d656c1458ef04895a7f1cbd8e" },
+        "os": { "type": "string", "enum": ["linux", "windows"] },
+        "arch": { "type": "string", "const": "amd64" },
+        "path": { "$ref": "#/$defs/path" },
+        "sha256": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "asset": {
+      "type": "object", "additionalProperties": false,
+      "required": ["path", "kind", "os", "arch", "size", "sha256"],
+      "properties": {
+        "path": { "$ref": "#/$defs/path" },
+        "kind": { "type": "string", "enum": ["platform-bundle", "runner", "engine", "verifier", "rules", "schema", "checksums", "licence", "licence-manifest", "sbom", "test-summary", "limitations", "compatibility", "revocation-snapshot", "revocation-checkpoint", "documentation"] },
+        "os": { "type": "string", "enum": ["none", "windows", "linux"] },
+        "arch": { "type": "string", "enum": ["none", "amd64"] },
+        "size": { "type": "integer", "minimum": 1, "maximum": 1073741824 },
+        "sha256": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "platformDigest": {
+      "type": "object", "additionalProperties": false,
+      "required": ["os", "arch", "path", "sha256"],
+      "properties": {
+        "os": { "type": "string", "enum": ["linux", "windows"] },
+        "arch": { "type": "string", "const": "amd64" },
+        "path": { "$ref": "#/$defs/path" },
+        "sha256": { "$ref": "#/$defs/digest" }
+      }
+    }
+  }
+}

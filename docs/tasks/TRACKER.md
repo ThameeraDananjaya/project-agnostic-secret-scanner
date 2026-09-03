@@ -7,7 +7,7 @@
 | PSCAN-03 | Rejected and closed fail-closed; not accepted | `evidence/PSCAN-03/CLOSEOUT-REJECTED.md` |
 | PSCAN-04 | Completed and independently accepted locally | Exact activation `a21b030e1658f1f98ac4e4d001af12185d9ed311`; evidence-bearing closeout commit |
 | PSCAN-05 | Completed and independently accepted locally | Exact activation `50b4186`; corrected evidence-bearing closeout commit |
-| PSCAN-06 | Locally implemented, reproduced, validated and reviewed; acceptance/closeout pending exact remote/signing gate | Activation `058ffcd4`; validated candidate `a13c28fe`; `evidence/PSCAN-06/GATE.md` |
+| PSCAN-06 | Remote gate attempted and failed closed during pinned acquisition; unaccepted and open | Run `33709197614`; `evidence/PSCAN-06/REMOTE-GATE-FAILURE-001.md` |
 | PSCAN-07 | Proposed; unselected; signing/publication gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-06 |
 | PSCAN-08 | Inactive; technically and legally gated | Material-gap evidence plus separate owner approval required |
 | PSCAN-09 | Completed and independently accepted locally | Activation `f486989`; accepted closeout commit |
@@ -47,9 +47,15 @@ exact clean activation commit
 reading map and current official/read-only preflight. Candidate
 `a13c28fe7273bc8dc6545f97966a02889524eb4c` passed two clean network-disabled
 builds, byte-for-byte reproduction, complete local tests and skeptical review.
-Acceptance and closeout remain pending the exact remote/signing gate; every
-remote, settings, workflow, signing, spending and publication action remains
-reserved. PSCAN-07 remains proposed and unselected. PSCAN-08 remains inactive,
+The owner approved the exact remote/signing gate on 2026-09-03. The public
+repository and approved controls were created and read back, `main` was pushed,
+and locked tag `v1.0.0` was created at the validated candidate. Authorized run
+`33709197614` failed closed during pinned dependency acquisition because its
+Linux Docker bind-mounted Go module cache was not writable. No build artifact,
+signature, attestation, draft release or publication was created. PSCAN-06 is
+unaccepted and open pending a new owner-approved correction boundary; the
+public locked tag must not be moved or deleted. PSCAN-07 remains proposed and
+unselected. PSCAN-08 remains inactive,
 unselected and ineligible because
 accepted evidence did not establish a material required-class Gitleaks gap;
 separate technical and AGPL owner approval would also be required. No

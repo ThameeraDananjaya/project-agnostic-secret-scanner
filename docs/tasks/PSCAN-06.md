@@ -12,10 +12,13 @@ alone on 2026-09-03 in a fresh implementation session from exact clean
 activation commit `058ffcd446c6431b2e1afeed769d02c7b1f307f8` after the complete
 reading-map and current preflight. Candidate
 `a13c28fe7273bc8dc6545f97966a02889524eb4c` is locally implemented,
-reproduced, validated and skeptically reviewed. PSCAN-06 is not accepted or
-closed because repository creation, settings read-back, workflow execution,
-keyless signing, attestation and draft-release proof remain behind the exact
-owner gate in `evidence/PSCAN-06/GATE.md`. No successor is selected or
+reproduced, validated and skeptically reviewed. The owner approved the exact
+remote/signing gate on 2026-09-03. Repository creation and control read-back
+succeeded, but authorized workflow run `33709197614` failed closed during
+pinned dependency acquisition because the Linux runner could not write the
+bind-mounted Go module cache. PSCAN-06 is not accepted or closed; no signing,
+attestation, draft release or publication occurred. Exact evidence is in
+`evidence/PSCAN-06/REMOTE-GATE-FAILURE-001.md`. No successor is selected or
 activated.
 
 ## Objective

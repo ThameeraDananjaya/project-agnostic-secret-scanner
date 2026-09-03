@@ -13,10 +13,20 @@ import (
 const (
 	repository          = "ThameeraDananjaya/project-agnostic-secret-scanner"
 	repositoryOwnerID   = int64(50274860)
-	workflow            = ".github/workflows/release.yml"
-	releaseRef          = "refs/tags/v1.0.0"
+	workflow            = ".github/workflows/release-recovery-v1.0.0.yml"
+	releaseRef          = "refs/tags/release-tooling-v1.0.0-c1"
 	oidcIssuer          = "https://token.actions.githubusercontent.com"
-	certificateIdentity = "https://github.com/ThameeraDananjaya/project-agnostic-secret-scanner/.github/workflows/release.yml@refs/tags/v1.0.0"
+	certificateIdentity = "https://github.com/ThameeraDananjaya/project-agnostic-secret-scanner/.github/workflows/release-recovery-v1.0.0.yml@refs/tags/release-tooling-v1.0.0-c1"
+	productSourceTag    = "v1.0.0"
+	productSourceCommit = "a13c28fe7273bc8dc6545f97966a02889524eb4c"
+	productSourceTree   = "217b711ddea51fd0ea7e808edd2e27fdecef8427"
+	releaseToolingTag   = "release-tooling-v1.0.0-c1"
+	workflowTrigger     = "workflow_dispatch"
+)
+
+var (
+	releaseToolingCommit = "UNSET"
+	releaseToolingTree   = "UNSET"
 )
 
 func main() {
@@ -33,7 +43,8 @@ func run(args []string) int {
 	cosignSHA256 := flags.String("cosign-sha256", "", "expected lowercase SHA-256 of the Cosign executable")
 	trustedRoot := flags.String("trusted-root", "", "absolute path to the independently acquired Sigstore trusted root")
 	trustedRootSHA256 := flags.String("trusted-root-sha256", "", "expected lowercase SHA-256 recorded at trusted-root acquisition")
-	if err := flags.Parse(args); err != nil || flags.NArg() != 0 || *directory == "" || *cosign == "" || *cosignSHA256 == "" || *trustedRoot == "" || *trustedRootSHA256 == "" {
+	if err := flags.Parse(args); err != nil || flags.NArg() != 0 || *directory == "" || *cosign == "" || *cosignSHA256 == "" || *trustedRoot == "" || *trustedRootSHA256 == "" ||
+		releaseToolingCommit == "UNSET" || releaseToolingTree == "UNSET" {
 		fmt.Fprintln(os.Stderr, "verification failed: complete bounded arguments are required")
 		return 40
 	}
@@ -47,7 +58,10 @@ func run(args []string) int {
 		Policy: verify.ReleaseTrustPolicy{
 			Repository: repository, RepositoryOwnerID: repositoryOwnerID, Workflow: workflow,
 			Ref: releaseRef, OIDCIssuer: oidcIssuer, CertificateIdentity: certificateIdentity,
-			ReleaseVersion: "v1.0.0",
+			ReleaseVersion: "v1.0.0", ManifestSchemaVersion: "2.0",
+			ProductSourceTag: productSourceTag, ProductSourceCommit: productSourceCommit, ProductSourceTree: productSourceTree,
+			ReleaseToolingTag: releaseToolingTag, ReleaseToolingCommit: releaseToolingCommit, ReleaseToolingTree: releaseToolingTree,
+			WorkflowSHA: releaseToolingCommit, Trigger: workflowTrigger,
 		},
 		Signature: signature,
 		Now:       time.Now().UTC(),

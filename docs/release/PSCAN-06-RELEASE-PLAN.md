@@ -1,21 +1,27 @@
 # PSCAN-06 Release Control Plan
 
-The workflow is manual-dispatch, exact-tag and exact-commit bound. Its build job
-has read-only contents permission. Its signing/draft job is skipped unless
-repository variable `PSCAN_RELEASE_GATE` exactly equals
-`PSCAN-06-SIGNING-APPROVED`, is protected by environment `release-v1`, and runs
-at `refs/tags/v1.0.0` in the exact repository. Creating those controls remains
-owner-gated.
+Correction C1 uses a separate manual-dispatch recovery workflow, exact product
+source and exact correction-tooling identities. Its build job has read-only
+contents permission and runs only from proposed tooling tag
+`release-tooling-v1.0.0-c1`. Its signing/draft job is skipped unless repository
+variable `PSCAN_RELEASE_C1_GATE` exactly equals
+`PSCAN-06-C1-SIGNING-APPROVED`, is protected by environment `release-v1`, and
+the product source remains locked tag `v1.0.0`, commit
+`a13c28fe7273bc8dc6545f97966a02889524eb4c`. Creating the tooling tag or gate
+and running the workflow remain separately owner-gated.
 
 Build acquisition accepts only digest-pinned Go/Gitleaks archives and the
-full-digest Docker image. Compilation, tests, vet, Windows cross-compilation and
-two byte-for-byte builds then run with networking disabled and the module cache
-read-only. Workflow-transfer evidence is uncompressed and retained one day; it
-is not a release.
+full-digest Docker image. Before any dependency download it maps the Linux host
+numeric UID/GID and proves cache write, atomic rename, read and delete. The
+workflow also proves actual Linux wrong-owner and read-only-cache rejection.
+Compilation, tests, vet, Windows cross-compilation and two byte-for-byte builds
+then run with networking disabled and the module cache read-only. Workflow-
+transfer evidence is uncompressed and retained one day; it is not a release.
 
 The gated job verifies Cosign `v3.1.3` by SHA-256, requests one GitHub OIDC
-identity, signs the manifest, verifies its fixed identity and issuer against an
-explicit authenticated trusted root,
+identity, signs schema-`2.0` manifest bytes, and verifies exact repository,
+workflow ref, workflow SHA, trigger, certificate identity and issuer against an
+explicit authenticated trusted root. It then
 creates SBOM-bound GitHub attestations and creates one draft containing every
 asset. It has no publish command. Publication needs a separate PSCAN-07 owner
 decision after independent acquisition and verification.

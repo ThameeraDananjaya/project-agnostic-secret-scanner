@@ -31,3 +31,27 @@ The final local execution of this contract is recorded in
 `evidence/PSCAN-06/VALIDATION.md`. It binds candidate
 `a13c28fe7273bc8dc6545f97966a02889524eb4c` and does not promote any reserved
 remote or signing state to passed evidence.
+
+## Correction C1 validation addendum
+
+The correction tooling must additionally prove from its exact clean candidate:
+
+1. the cache canary completes write, same-filesystem atomic rename, exact read
+   and delete before any dependency download or success ledger;
+2. an actual Linux numeric UID/GID positive case passes while wrong-owner and
+   read-only bind mounts reject without acquired bytes or a ledger;
+3. the acquisition container retains a read-only root, `--cap-drop ALL` and
+   no-new-privileges and uses no privileged mode, added capability, mode `0777`
+   or host user namespace;
+4. schema `2.0` exactly binds the immutable product-source and correction-
+   tooling roles, while every required-field omission, identity mutation, role
+   swap, old-schema masquerade and unknown major rejects;
+5. Cosign verification constrains repository, workflow ref, workflow SHA,
+   trigger, certificate identity and GitHub OIDC issuer;
+6. two independent network-disabled builds use the completed module cache
+   read-only and produce byte-identical assets; and
+7. the shipped runner, Gitleaks engines and rules retain the previously
+   accepted product-source digests.
+
+Local author validation remains non-acceptance. Independent skeptical review
+and every remote/signing/publication owner gate remain open.

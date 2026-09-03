@@ -22,9 +22,11 @@ attestation, draft release or publication occurred. Exact evidence is in
 activated. On 2026-09-03 the owner approved the bounded contract-preserving
 Correction C1 recovery recorded in
 `evidence/PSCAN-06/CORRECTION-C1-AUTHORITY.md`. This approval record does not
-claim, implement or accept the correction. Correction C1 must begin in a fresh
-session from its committed authority bundle. PSCAN-06 remains the sole open
-task and remains unaccepted.
+claim, implement or accept the correction. Correction C1 was subsequently
+claimed alone from exact clean authority commit
+`3fb1b0a55dc4f48dd35464c63c768f497efbc89b` and locally implemented as a
+candidate. Definitive author validation and independent skeptical acceptance
+remain open. PSCAN-06 remains the sole open task and remains unaccepted.
 
 ## Objective
 

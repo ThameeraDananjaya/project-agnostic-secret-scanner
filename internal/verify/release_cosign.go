@@ -41,14 +41,26 @@ func (v *CosignCommandVerifier) VerifyManifest(ctx context.Context, manifestPath
 	if err != nil || refreshed.path != v.path {
 		return ErrBindingMismatch
 	}
-	command := exec.CommandContext(ctx, v.path,
+	arguments := []string{
 		"verify-blob",
 		"--bundle", bundlePath,
 		"--trusted-root", v.trustedRoot,
 		"--certificate-identity", identity.CertificateIdentity,
 		"--certificate-oidc-issuer", identity.OIDCIssuer,
-		manifestPath,
-	)
+	}
+	if identity.WorkflowSHA != "" || identity.Trigger != "" {
+		if identity.Repository == "" || identity.Ref == "" || identity.WorkflowSHA == "" || identity.Trigger == "" {
+			return ErrInvalidReference
+		}
+		arguments = append(arguments,
+			"--certificate-github-workflow-repository", identity.Repository,
+			"--certificate-github-workflow-ref", identity.Ref,
+			"--certificate-github-workflow-sha", identity.WorkflowSHA,
+			"--certificate-github-workflow-trigger", identity.Trigger,
+		)
+	}
+	arguments = append(arguments, manifestPath)
+	command := exec.CommandContext(ctx, v.path, arguments...)
 	command.Stdin = nil
 	command.Stdout = io.Discard
 	command.Stderr = io.Discard

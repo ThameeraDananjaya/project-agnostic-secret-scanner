@@ -13,6 +13,14 @@
 
 These are design defaults, not action authorization.
 
+Correction C1 preserves `v1.0.0` at product-source commit
+`a13c28fe7273bc8dc6545f97966a02889524eb4c`. Any recovery must use separately
+accepted immutable tooling tag `release-tooling-v1.0.0-c1` and bind its exact
+commit, tree, workflow path/ref/SHA and trigger independently from the product
+tag/commit/tree. Neither identity may stand in for the other. Creating that tag,
+enabling its gate or running the recovery workflow requires a later exact owner
+decision.
+
 ## Separation of authorities
 
 | Authority | May do | May not do |

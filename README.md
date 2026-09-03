@@ -4,13 +4,14 @@ This repository is the local product workspace for an independently versioned,
 offline secret-scanning package. The product is governed by
 PASS-OUTCOME-SPEC-001.
 
-Current state: **PSCAN-09 completed and independently accepted locally. PSCAN-10
-and every other successor remain proposed/unselected; PSCAN-08 remains
-inactive**.
+Current state: **PSCAN-06 Correction C1 is locally implemented as a candidate;
+definitive author validation, independent acceptance and all remote/signing
+gates remain open. PSCAN-07 is unselected and PSCAN-08 remains inactive.**
 
-There is no runnable scanner, release, remote repository, or consuming-project
-integration yet. A passing scanner result will never authorize merge,
-deployment, production use, legal compliance, or go-live.
+The public repository and locked product tag `v1.0.0` exist, but the authorized
+release workflow failed closed before building and no signed release exists.
+There is no consuming-project integration. A passing scanner result never
+authorizes merge, deployment, production use, legal compliance, or go-live.
 
 ## Current authority
 
@@ -25,14 +26,16 @@ deployment, production use, legal compliance, or go-live.
 
 ## Product boundary
 
-The future product is a thin MIT-licensed Go runner with Gitleaks CLI as the
+The product is a thin MIT-licensed Go runner with Gitleaks CLI as the
 primary engine. Authoritative scanning will execute locally with no network or
 credentials, treat candidate material as data, retain no findings, and return
 only content-free outcomes. Projects remain the authority for their policies,
 allowlists, receipts, keys, evidence custody, deployment gates, and retention.
 
-The PSCAN-02 contract/workspace skeleton and rejected non-authoritative PSCAN-03
-candidate exist in repository history; there is no accepted pass-capable
-scanner, workflow, release, credential, signing key, remote repository or
-project integration. Exact-object primary coverage is proposed only as
-unselected PSCAN-10.
+PSCAN-09 established the controlling outcome contract; PSCAN-10 supplied the
+accepted exact-object primary coverage; PSCAN-04 supplied accepted internal
+artifact normalization; and PSCAN-05 supplied accepted policy/reference
+verification. PSCAN-06 remains open until its correction is independently
+accepted and separately owner-gated remote signing/release work succeeds. No
+credential, long-lived signing key, signed release or project integration is
+present.

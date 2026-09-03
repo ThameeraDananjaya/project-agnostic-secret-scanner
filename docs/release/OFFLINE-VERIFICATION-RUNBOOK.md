@@ -14,11 +14,15 @@ part of the release documentation bundle.
 |---|---|
 | Repository | `ThameeraDananjaya/project-agnostic-secret-scanner` |
 | Repository owner ID | `50274860` |
-| Workflow | `.github/workflows/release.yml` |
-| Git ref and release | `refs/tags/v1.0.0` and `v1.0.0` |
+| Product source | tag `v1.0.0`; commit `a13c28fe7273bc8dc6545f97966a02889524eb4c`; tree `217b711ddea51fd0ea7e808edd2e27fdecef8427` |
+| Release tooling | tag `release-tooling-v1.0.0-c1`; exact accepted commit/tree embedded in the verifier and manifest |
+| Workflow | `.github/workflows/release-recovery-v1.0.0.yml` |
+| Workflow ref and trigger | `refs/tags/release-tooling-v1.0.0-c1`; `workflow_dispatch` |
+| Workflow SHA | exact accepted correction-tooling commit; must equal the manifest tooling commit |
+| Release | `v1.0.0` |
 | OIDC issuer | `https://token.actions.githubusercontent.com` |
-| Certificate identity | `https://github.com/ThameeraDananjaya/project-agnostic-secret-scanner/.github/workflows/release.yml@refs/tags/v1.0.0` |
-| Manifest schema | `scanner-release-manifest` `1.1` |
+| Certificate identity | `https://github.com/ThameeraDananjaya/project-agnostic-secret-scanner/.github/workflows/release-recovery-v1.0.0.yml@refs/tags/release-tooling-v1.0.0-c1` |
+| Manifest schema | `scanner-release-manifest` `2.0` |
 | Cosign | `v3.1.3`; Linux amd64 SHA-256 `4629c757b7618056f8ddd7e2625ae9fdd94c0372a65049520bc7d9df9efc7f71`; Windows amd64 SHA-256 `9fe59be0eca1271873ce019061335eb1ac419b7059202e797828467ddabe33be` |
 
 Names do not substitute for numeric identity. The repository ID and observed
@@ -35,7 +39,7 @@ flowchart TD
     C -->|yes| D[Move complete set to network-disabled verifier host]
     D --> E[Verify pinned Cosign executable digest]
     E --> F[Verify manifest bundle, OIDC issuer and exact certificate identity]
-    F --> G[Strictly parse manifest 1.1]
+    F --> G[Strictly parse manifest 2.0 and both identity roles]
     G --> H[Verify every file size and SHA-256; reject extras and links]
     H --> I[Verify licence, SBOM, compatibility, limitations and revocation evidence]
     I --> J{Any mismatch, conflict, rollback or revocation?}
@@ -114,23 +118,24 @@ mean reject. Any other exit, partial output, missing line or manually ignored
 warning is not a pass. Output never contains file contents, signatures,
 credentials, findings or candidate data.
 
-## Release-manifest 1.1 payload
+## Release-manifest 2.0 payload
 
 | Field | Type | Bound meaning |
 |---|---|---|
-| `schemaFamily`, `manifestSchemaVersion` | strings | Exact family and `1.1`; unknown/duplicate members reject. |
-| `releaseVersion` | semver tag | Exact `v1.0.0`; also fixes the ref. |
-| `sourceRevision`, `sourceTree` | 40 lowercase hex | Exact committed source and tree. |
+| `schemaFamily`, `manifestSchemaVersion` | strings | Exact family and `2.0`; unknown/duplicate members reject. |
+| `releaseVersion` | semver tag | Exact product release `v1.0.0`; it is not the workflow ref. |
+| `productSource` | tag/commit/tree object | Exact immutable `v1.0.0` product role. |
+| `releaseTooling` | tag/commit/tree/workflow/ref/SHA/trigger object | Exact immutable correction-tooling role. Workflow SHA must equal the tooling commit. |
 | `runnerVersion`, `goToolchainVersion` | versions | Runner `1.0.0` and exact Go patch. |
 | `runnerBindings[]` | two platform digests | One Windows amd64 and one Linux amd64 path and SHA-256. |
 | `engineBindings[]` | two engine objects | Gitleaks name, version, source commit, platform, path and SHA-256. |
 | `rulePack` | path and SHA-256 | Exact generic rule configuration, never project policy. |
 | `schemaBindings[]` | family/version/path/digest | Every scanner-owned shipped schema. |
-| `releaseIdentity` | identity object | Repository, numeric owner, workflow, tag ref, issuer and certificate URI. |
+| `releaseIdentity` | identity object | Repository, numeric owner, recovery workflow, tooling ref, workflow SHA, trigger, issuer and certificate URI. |
 | `compatibility` | compatibility object | Platforms and bound test-summary/limitation assets. |
 | `revocation` | revocation object | Discovery, bootstrap snapshot/checkpoint, schema and 24-hour refresh rule. Discovery is never trusted by transport alone. |
 | `assets[]` | asset objects | Safe path, kind, platform, exact length and SHA-256 for every payload. Manifest and bundle are outside the list to avoid a circular digest; the bundle signs the manifest bytes. |
-| `createdAt` | UTC timestamp | Deterministic source-commit time, not build wall clock. |
+| `createdAt` | UTC timestamp | Deterministic correction-tooling commit time, not build wall clock. |
 
 Each asset object is exactly:
 
@@ -140,6 +145,14 @@ Each asset object is exactly:
 
 The checksum file covers prior payloads; the signed manifest binds the checksum
 file. This avoids checksum/manifest cycles.
+
+Schema `1.0` and `1.1` remain historical supported inputs under their original
+single-source rules. They cannot contain the `2.0` identity roles or be relabeled
+as `2.0`. The recovery verifier is compiled with the exact accepted tooling
+commit/tree; a product/tooling role swap, omission, ambiguity or mutation
+rejects before any scanner execution. Cosign verification separately constrains
+repository, workflow ref, workflow SHA, trigger, certificate identity and
+issuer from the signed certificate claims.
 
 ## Revocation, rollback and retirement
 

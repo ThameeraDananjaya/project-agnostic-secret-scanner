@@ -71,8 +71,26 @@ type ReleaseIdentity struct {
 	RepositoryOwnerID   int64  `json:"repositoryOwnerId"`
 	Workflow            string `json:"workflow"`
 	Ref                 string `json:"ref"`
+	WorkflowSHA         string `json:"workflowSha,omitempty"`
+	Trigger             string `json:"trigger,omitempty"`
 	OIDCIssuer          string `json:"oidcIssuer"`
 	CertificateIdentity string `json:"certificateIdentity"`
+}
+
+type ProductSourceIdentity struct {
+	Tag    string `json:"tag"`
+	Commit string `json:"commit"`
+	Tree   string `json:"tree"`
+}
+
+type ReleaseToolingIdentity struct {
+	Tag         string `json:"tag"`
+	Commit      string `json:"commit"`
+	Tree        string `json:"tree"`
+	Workflow    string `json:"workflow"`
+	WorkflowRef string `json:"workflowRef"`
+	WorkflowSHA string `json:"workflowSha"`
+	Trigger     string `json:"trigger"`
 }
 
 type ReleaseCompatibility struct {
@@ -92,32 +110,43 @@ type ReleaseRevocation struct {
 }
 
 type ReleaseManifest struct {
-	SchemaFamily          string               `json:"schemaFamily"`
-	ManifestSchemaVersion string               `json:"manifestSchemaVersion"`
-	ReleaseVersion        string               `json:"releaseVersion"`
-	SourceRevision        string               `json:"sourceRevision"`
-	SourceTree            string               `json:"sourceTree"`
-	RunnerVersion         string               `json:"runnerVersion"`
-	GoToolchainVersion    string               `json:"goToolchainVersion"`
-	RunnerBindings        []PlatformDigest     `json:"runnerBindings"`
-	EngineBindings        []EngineBinding      `json:"engineBindings"`
-	RulePack              NamedDigest          `json:"rulePack"`
-	SchemaBindings        []SchemaBinding      `json:"schemaBindings"`
-	ReleaseIdentity       ReleaseIdentity      `json:"releaseIdentity"`
-	Compatibility         ReleaseCompatibility `json:"compatibility"`
-	Revocation            ReleaseRevocation    `json:"revocation"`
-	Assets                []ReleaseAsset       `json:"assets"`
-	CreatedAt             string               `json:"createdAt"`
+	SchemaFamily          string                  `json:"schemaFamily"`
+	ManifestSchemaVersion string                  `json:"manifestSchemaVersion"`
+	ReleaseVersion        string                  `json:"releaseVersion"`
+	SourceRevision        string                  `json:"sourceRevision,omitempty"`
+	SourceTree            string                  `json:"sourceTree,omitempty"`
+	ProductSource         *ProductSourceIdentity  `json:"productSource,omitempty"`
+	ReleaseTooling        *ReleaseToolingIdentity `json:"releaseTooling,omitempty"`
+	RunnerVersion         string                  `json:"runnerVersion"`
+	GoToolchainVersion    string                  `json:"goToolchainVersion"`
+	RunnerBindings        []PlatformDigest        `json:"runnerBindings"`
+	EngineBindings        []EngineBinding         `json:"engineBindings"`
+	RulePack              NamedDigest             `json:"rulePack"`
+	SchemaBindings        []SchemaBinding         `json:"schemaBindings"`
+	ReleaseIdentity       ReleaseIdentity         `json:"releaseIdentity"`
+	Compatibility         ReleaseCompatibility    `json:"compatibility"`
+	Revocation            ReleaseRevocation       `json:"revocation"`
+	Assets                []ReleaseAsset          `json:"assets"`
+	CreatedAt             string                  `json:"createdAt"`
 }
 
 type ReleaseTrustPolicy struct {
-	Repository          string
-	RepositoryOwnerID   int64
-	Workflow            string
-	Ref                 string
-	OIDCIssuer          string
-	CertificateIdentity string
-	ReleaseVersion      string
+	Repository            string
+	RepositoryOwnerID     int64
+	Workflow              string
+	Ref                   string
+	OIDCIssuer            string
+	CertificateIdentity   string
+	ReleaseVersion        string
+	ManifestSchemaVersion string
+	ProductSourceTag      string
+	ProductSourceCommit   string
+	ProductSourceTree     string
+	ReleaseToolingTag     string
+	ReleaseToolingCommit  string
+	ReleaseToolingTree    string
+	WorkflowSHA           string
+	Trigger               string
 }
 
 type ReleaseSignatureVerifier interface {
@@ -268,12 +297,14 @@ func decodeStrictFile(path string, destination any) error {
 }
 
 func validateReleaseManifest(m ReleaseManifest) error {
-	if m.SchemaFamily != "scanner-release-manifest" || m.ManifestSchemaVersion != "1.1" ||
-		!releaseVersionPattern.MatchString(m.ReleaseVersion) || !gitOIDPattern.MatchString(m.SourceRevision) ||
-		!gitOIDPattern.MatchString(m.SourceTree) || !runnerVersionPattern.MatchString(m.RunnerVersion) ||
+	if m.SchemaFamily != "scanner-release-manifest" || !releaseVersionPattern.MatchString(m.ReleaseVersion) ||
+		!runnerVersionPattern.MatchString(m.RunnerVersion) ||
 		!toolchainVersionPattern.MatchString(m.GoToolchainVersion) || len(m.RunnerBindings) != 2 || len(m.EngineBindings) != 2 ||
 		len(m.SchemaBindings) == 0 || len(m.SchemaBindings) > 32 || len(m.Assets) < 10 || len(m.Assets) > MaximumReleaseAssets {
 		return ErrInvalidReference
+	}
+	if err := validateReleaseIdentityVersion(m); err != nil {
+		return err
 	}
 	if _, err := parseCanonicalTime(m.CreatedAt); err != nil {
 		return err
@@ -348,15 +379,71 @@ func validateReleaseManifest(m ReleaseManifest) error {
 	return nil
 }
 
+func validateReleaseIdentityVersion(m ReleaseManifest) error {
+	switch m.ManifestSchemaVersion {
+	case "1.1":
+		if !gitOIDPattern.MatchString(m.SourceRevision) || !gitOIDPattern.MatchString(m.SourceTree) ||
+			m.ProductSource != nil || m.ReleaseTooling != nil ||
+			m.ReleaseIdentity.WorkflowSHA != "" || m.ReleaseIdentity.Trigger != "" {
+			return ErrInvalidReference
+		}
+	case "2.0":
+		if m.ProductSource == nil || m.ReleaseTooling == nil {
+			return ErrInvalidReference
+		}
+		product := m.ProductSource
+		tooling := m.ReleaseTooling
+		identity := m.ReleaseIdentity
+		if m.SourceRevision != "" || m.SourceTree != "" || m.ReleaseVersion != "v1.0.0" ||
+			product.Tag != "v1.0.0" || product.Commit != "a13c28fe7273bc8dc6545f97966a02889524eb4c" ||
+			product.Tree != "217b711ddea51fd0ea7e808edd2e27fdecef8427" ||
+			tooling.Tag != "release-tooling-v1.0.0-c1" || !gitOIDPattern.MatchString(tooling.Commit) ||
+			!gitOIDPattern.MatchString(tooling.Tree) || tooling.Workflow != ".github/workflows/release-recovery-v1.0.0.yml" ||
+			tooling.WorkflowRef != "refs/tags/release-tooling-v1.0.0-c1" || tooling.WorkflowSHA != tooling.Commit ||
+			tooling.Trigger != "workflow_dispatch" || identity.Workflow != tooling.Workflow || identity.Ref != tooling.WorkflowRef ||
+			identity.WorkflowSHA != tooling.WorkflowSHA || identity.Trigger != tooling.Trigger {
+			return ErrInvalidReference
+		}
+	default:
+		return ErrInvalidReference
+	}
+	return nil
+}
+
 func checkReleasePolicy(m ReleaseManifest, p ReleaseTrustPolicy, now time.Time) error {
 	identity := m.ReleaseIdentity
 	if p.Repository == "" || p.RepositoryOwnerID <= 0 || p.Workflow == "" || p.Ref == "" || p.OIDCIssuer == "" || p.CertificateIdentity == "" || p.ReleaseVersion == "" ||
 		identity.Repository != p.Repository || identity.RepositoryOwnerID != p.RepositoryOwnerID || identity.Workflow != p.Workflow || identity.Ref != p.Ref ||
 		identity.OIDCIssuer != p.OIDCIssuer || identity.CertificateIdentity != p.CertificateIdentity || m.ReleaseVersion != p.ReleaseVersion ||
 		identity.Repository != "ThameeraDananjaya/project-agnostic-secret-scanner" || identity.RepositoryOwnerID != 50274860 ||
-		identity.Workflow != ".github/workflows/release.yml" || identity.Ref != "refs/tags/"+m.ReleaseVersion ||
 		identity.OIDCIssuer != "https://token.actions.githubusercontent.com" ||
 		identity.CertificateIdentity != "https://github.com/"+identity.Repository+"/"+identity.Workflow+"@"+identity.Ref {
+		return ErrBindingMismatch
+	}
+	switch m.ManifestSchemaVersion {
+	case "1.1":
+		if p.ManifestSchemaVersion != "" && p.ManifestSchemaVersion != "1.1" {
+			return ErrBindingMismatch
+		}
+		if identity.Workflow != ".github/workflows/release.yml" || identity.Ref != "refs/tags/"+m.ReleaseVersion ||
+			identity.WorkflowSHA != "" || identity.Trigger != "" {
+			return ErrBindingMismatch
+		}
+	case "2.0":
+		if m.ProductSource == nil || m.ReleaseTooling == nil {
+			return ErrBindingMismatch
+		}
+		product := m.ProductSource
+		tooling := m.ReleaseTooling
+		if p.ManifestSchemaVersion != "2.0" || p.ProductSourceTag == "" || p.ProductSourceCommit == "" || p.ProductSourceTree == "" ||
+			p.ReleaseToolingTag == "" || p.ReleaseToolingCommit == "" || p.ReleaseToolingTree == "" || p.WorkflowSHA == "" || p.Trigger == "" ||
+			product.Tag != p.ProductSourceTag || product.Commit != p.ProductSourceCommit || product.Tree != p.ProductSourceTree ||
+			tooling.Tag != p.ReleaseToolingTag || tooling.Commit != p.ReleaseToolingCommit || tooling.Tree != p.ReleaseToolingTree ||
+			tooling.Workflow != p.Workflow || tooling.WorkflowRef != p.Ref || tooling.WorkflowSHA != p.WorkflowSHA || tooling.Trigger != p.Trigger ||
+			identity.WorkflowSHA != p.WorkflowSHA || identity.Trigger != p.Trigger {
+			return ErrBindingMismatch
+		}
+	default:
 		return ErrBindingMismatch
 	}
 	created, _ := parseCanonicalTime(m.CreatedAt)

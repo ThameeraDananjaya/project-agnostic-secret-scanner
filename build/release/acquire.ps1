@@ -23,6 +23,39 @@ $downloads = Join-Path $cache 'downloads'
 $moduleCache = Join-Path $cache 'gomodcache'
 New-Item -ItemType Directory -Path $downloads,$moduleCache -Force | Out-Null
 
+& docker image inspect $image *> $null
+if ($LASTEXITCODE -ne 0) {
+    if (!$AllowImagePull) {
+        throw 'Pinned build image is absent; rerun only with explicit -AllowImagePull during the networked acquisition phase'
+    }
+    & docker pull $image
+    if ($LASTEXITCODE -ne 0) { throw 'Pinned build image pull failed' }
+}
+
+. (Join-Path $PSScriptRoot 'cache-canary.ps1')
+$hostUID = $null
+$hostGID = $null
+$platformMode = 'windows-docker-desktop-default-user'
+if ($IsLinux) {
+    $hostUIDText = (& id -u).Trim()
+    $hostGIDText = (& id -g).Trim()
+    if ($LASTEXITCODE -ne 0 -or $hostUIDText -notmatch '^\d+$' -or $hostGIDText -notmatch '^\d+$') {
+        throw 'Linux host numeric UID/GID discovery failed before dependency acquisition'
+    }
+    $hostUID = [int]$hostUIDText
+    $hostGID = [int]$hostGIDText
+    & chmod 0700 -- $cache $downloads $moduleCache
+    if ($LASTEXITCODE -ne 0) { throw 'Linux cache mode preparation failed before dependency acquisition' }
+    foreach ($path in @($cache,$downloads,$moduleCache)) {
+        $owner = (& stat -c '%u:%g' -- $path).Trim()
+        if ($LASTEXITCODE -ne 0 -or $owner -ne "${hostUID}:${hostGID}") {
+            throw "Linux cache ownership does not match the invoking host identity: $path"
+        }
+    }
+    $platformMode = 'linux-host-numeric-uid-gid'
+}
+Invoke-ReleaseCacheCanary -Image $image -ModuleCache $moduleCache -HostUID $hostUID -HostGID $hostGID
+
 $artifacts = @(
     [ordered]@{
         Name = 'go1.27.1.linux-amd64.tar.gz'
@@ -57,21 +90,12 @@ foreach ($artifact in $artifacts) {
     }
 }
 
-& docker image inspect $image *> $null
-if ($LASTEXITCODE -ne 0) {
-    if (!$AllowImagePull) {
-        throw 'Pinned build image is absent; rerun only with explicit -AllowImagePull during the networked acquisition phase'
-    }
-    & docker pull $image
-    if ($LASTEXITCODE -ne 0) { throw 'Pinned build image pull failed' }
-}
-
 $runnerGo = (Resolve-Path (Join-Path $downloads 'go1.27.1.linux-amd64.tar.gz')).Path
 $engineGo = (Resolve-Path (Join-Path $downloads 'go1.27.0.linux-amd64.tar.gz')).Path
 $gitleaks = (Resolve-Path (Join-Path $downloads 'gitleaks-83d9cd684c87d95d656c1458ef04895a7f1cbd8e.tar.gz')).Path
 
 $arguments = @(
-    'run', '--rm', '--pull=never',
+    'run', '--rm', '--pull=never', '--read-only',
     '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
     '--pids-limit', '256', '--memory', '4g', '--memory-swap', '4g', '--cpus', '2',
     '--tmpfs', '/work:rw,exec,nosuid,nodev,size=1g',
@@ -102,15 +126,28 @@ env GOTOOLCHAIN=local GOFLAGS=-mod=readonly GOMODCACHE=/gomodcache GOCACHE=/work
 '@
 )
 
+if ($hostUID -ne $null) {
+    $runIndex = $arguments.IndexOf('--tmpfs')
+    $arguments = $arguments[0..($runIndex - 1)] + @('--user', "${hostUID}:${hostGID}") + $arguments[$runIndex..($arguments.Count - 1)]
+    $arguments[$arguments.IndexOf('/work:rw,exec,nosuid,nodev,size=1g')] = "/work:rw,exec,nosuid,nodev,size=1g,mode=0700,uid=$hostUID,gid=$hostGID"
+}
+
 & docker @arguments
 if ($LASTEXITCODE -ne 0) { throw 'Pinned dependency acquisition failed' }
 
 $ledger = [ordered]@{
-    schemaVersion = '1.0'
+    schemaVersion = '2.0'
     acquiredAt = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')
     image = $image
     artifacts = $artifacts
     moduleCache = 'gomodcache'
+    cacheCanary = [ordered]@{
+        semantics = 'write-atomic-rename-read-delete'
+        completedBeforeNetworkDependencyAcquisition = $true
+        hostIdentityMode = $platformMode
+        hostUID = $hostUID
+        hostGID = $hostGID
+    }
     networkBoundary = 'Network enabled only in this acquisition phase; builds require --network none and read-only cache mounts.'
 }
 $json = $ledger | ConvertTo-Json -Depth 8

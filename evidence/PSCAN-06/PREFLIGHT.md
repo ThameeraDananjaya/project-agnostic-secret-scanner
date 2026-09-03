@@ -11,8 +11,8 @@
 - Git remotes: none configured.
 - Activation diff: only the four PSCAN-06 activation-bundle paths recorded in
   `evidence/PSCAN-06/ACTIVATION.md`.
-- `ACTIVATE PSCAN-06` was not run, replayed or recorded in this implementation
-  session.
+- The already-recorded activation command was not run or replayed in this
+  implementation session.
 - The complete ordered reading map and all 60 listed authorities were read
   before this claim. Every tracked file already present under the allowed
   implementation paths was then inspected before editing: 96 files totaling

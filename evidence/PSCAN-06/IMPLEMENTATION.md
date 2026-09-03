@@ -52,3 +52,24 @@ candidate is committed.
 
 No remote, settings, workflow, signing, credential, spend, publication,
 TruffleHog or successor action occurred.
+
+## Final locally validated implementation candidate
+
+- Candidate commit: `a13c28fe7273bc8dc6545f97966a02889524eb4c`.
+- Candidate tree: `217b711ddea51fd0ea7e808edd2e27fdecef8427`.
+- The verifier binds the exact separately acquired Cosign executable and an
+  independently acquired Sigstore trusted-root document by SHA-256. It passes
+  the root explicitly to Cosign v3.1.3 and does not use the removed legacy
+  `--offline` flag. Network isolation remains a caller/container boundary.
+- The signing/attestation/draft job requires the exact repository variable
+  value `PSCAN-06-SIGNING-APPROVED`. It does not select PSCAN-07. Publication
+  remains a separate PSCAN-07 owner decision and is absent from the workflow.
+- `actions/attest` receives only its current documented write permissions in
+  the gated job, including `artifact-metadata: write`. Every action is pinned
+  to a complete 40-character commit.
+- The direct trusted-root mutation test is under the permitted
+  `tests/integration/supply-chain/**` path. The final activation-to-candidate
+  diff contains only PSCAN-06 allowed paths.
+
+The exact build, artifact, adversarial and skeptical-review results are in
+`evidence/PSCAN-06/VALIDATION.md` and `evidence/PSCAN-06/REVIEW.md`.

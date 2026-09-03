@@ -26,3 +26,8 @@ official Go 1.27.1 archive and full-digest Docker image:
 Native Windows execution, GitHub repository/settings read-back, workflow
 execution, signing, attestation, draft upload and publication are not replaced
 by local success. Each remains `UNPROVEN` until its separately approved gate.
+
+The final local execution of this contract is recorded in
+`evidence/PSCAN-06/VALIDATION.md`. It binds candidate
+`a13c28fe7273bc8dc6545f97966a02889524eb4c` and does not promote any reserved
+remote or signing state to passed evidence.

@@ -7,13 +7,16 @@ workflow, immutable-release plan, and offline verifier guidance.
 
 ## State
 
-Activated by the owner's exact `ACTIVATE PSCAN-06` command on 2026-09-02 and
-claimed alone on 2026-09-03 in a fresh implementation session from exact clean
+Previously activated by the recorded owner command on 2026-09-02 and claimed
+alone on 2026-09-03 in a fresh implementation session from exact clean
 activation commit `058ffcd446c6431b2e1afeed769d02c7b1f307f8` after the complete
-reading-map and current preflight. A local implementation candidate is ready
-for clean-commit reproducibility and skeptical review. Remote,
-settings, spending, signing and publication gates remain reserved. No successor
-is selected or activated.
+reading-map and current preflight. Candidate
+`a13c28fe7273bc8dc6545f97966a02889524eb4c` is locally implemented,
+reproduced, validated and skeptically reviewed. PSCAN-06 is not accepted or
+closed because repository creation, settings read-back, workflow execution,
+keyless signing, attestation and draft-release proof remain behind the exact
+owner gate in `evidence/PSCAN-06/GATE.md`. No successor is selected or
+activated.
 
 ## Objective
 

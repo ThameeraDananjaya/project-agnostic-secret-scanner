@@ -34,6 +34,90 @@ function Write-Utf8([string]$Path, [string]$Value) {
     [IO.File]::WriteAllText($Path, $Value.Replace("`r`n", "`n") + $(if ($Value.EndsWith("`n")) { '' } else { "`n" }), [Text.UTF8Encoding]::new($false))
 }
 
+function Get-GitBlobSha256([string]$Repository, [string]$ObjectID) {
+    if ($ObjectID -notmatch '^[0-9a-f]{40}$') { throw "Unsupported Git blob identity: $ObjectID" }
+    $startInfo = [Diagnostics.ProcessStartInfo]::new()
+    $startInfo.FileName = 'git'
+    $startInfo.UseShellExecute = $false
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+    foreach ($argument in @('-C',$Repository,'cat-file','blob',$ObjectID)) {
+        [void]$startInfo.ArgumentList.Add($argument)
+    }
+    $process = [Diagnostics.Process]::new()
+    $process.StartInfo = $startInfo
+    [void]$process.Start()
+    $sha256 = [Security.Cryptography.SHA256]::Create()
+    try {
+        $digest = $sha256.ComputeHash($process.StandardOutput.BaseStream)
+    } finally {
+        $sha256.Dispose()
+    }
+    $errorText = $process.StandardError.ReadToEnd()
+    $process.WaitForExit()
+    if ($process.ExitCode -ne 0) { throw "Exact Git blob read failed for $ObjectID`: $errorText" }
+    return ([BitConverter]::ToString($digest)).Replace('-','').ToLowerInvariant()
+}
+
+function New-ExactGitTreeArchive(
+    [string]$Repository,
+    [string]$Revision,
+    [string]$ExpectedTree,
+    [string]$ArchivePath,
+    [string]$Label
+) {
+    $objectType = (& git -C $Repository cat-file -t $Revision).Trim()
+    $resolvedTree = (& git -C $Repository rev-parse "$Revision`^{tree}").Trim()
+    if ($LASTEXITCODE -ne 0 -or $objectType -ne 'commit' -or $resolvedTree -ne $ExpectedTree) {
+        throw "$Label commit/tree identity cannot be proven"
+    }
+
+    $entries = @(& git -C $Repository ls-tree -r --full-tree $ExpectedTree)
+    if ($LASTEXITCODE -ne 0 -or $entries.Count -eq 0) { throw "$Label Git tree enumeration failed closed" }
+    $hashLines = [Collections.Generic.List[string]]::new()
+    $pathLines = [Collections.Generic.List[string]]::new()
+    $modeLines = [Collections.Generic.List[string]]::new()
+    foreach ($entry in $entries) {
+        if ($entry -notmatch '^(?<mode>100644|100755) blob (?<object>[0-9a-f]{40})\t(?<path>[A-Za-z0-9._+@/-]+)$') {
+            throw "$Label Git tree contains an unsupported type, mode or path: $entry"
+        }
+        $path = $Matches.path
+        if ($path.StartsWith('/') -or $path.Contains('//') -or $path.Split('/') -contains '..') {
+            throw "$Label Git tree contains an unsafe path: $path"
+        }
+        $digest = Get-GitBlobSha256 -Repository $Repository -ObjectID $Matches.object
+        $hashLines.Add("$digest  $path")
+        $pathLines.Add($path)
+        $modeLines.Add("$($Matches.mode)`t$path")
+    }
+    $paths = $pathLines.ToArray()
+    [Array]::Sort($paths, [StringComparer]::Ordinal)
+    $hashes = $hashLines.ToArray()
+    [Array]::Sort($hashes, [StringComparer]::Ordinal)
+    $modes = $modeLines.ToArray()
+    [Array]::Sort($modes, [StringComparer]::Ordinal)
+
+    $hashManifest = "$ArchivePath.blobs.sha256"
+    $pathManifest = "$ArchivePath.paths"
+    $modeManifest = "$ArchivePath.modes"
+    Write-Utf8 $hashManifest ($hashes -join "`n")
+    Write-Utf8 $pathManifest ($paths -join "`n")
+    Write-Utf8 $modeManifest ($modes -join "`n")
+
+    & git -C $Repository -c core.autocrlf=false -c core.eol=lf archive --format=tar --output $ArchivePath $ExpectedTree
+    if ($LASTEXITCODE -ne 0 -or !(Test-Path -LiteralPath $ArchivePath -PathType Leaf) -or (Get-Item -LiteralPath $ArchivePath).Length -eq 0) {
+        throw "$Label exact-tree archive materialization failed"
+    }
+    return [pscustomobject]@{
+        Archive = $ArchivePath
+        ArchiveSHA256 = (Get-FileHash -LiteralPath $ArchivePath -Algorithm SHA256).Hash.ToLowerInvariant()
+        BlobManifest = $hashManifest
+        PathManifest = $pathManifest
+        ModeManifest = $modeManifest
+        FileCount = $entries.Count
+    }
+}
+
 function Copy-ReleaseFile([string]$Source, [string]$Name) {
     $destination = Join-Path $dist $Name
     Copy-Item -LiteralPath $Source -Destination $destination
@@ -42,6 +126,10 @@ function Copy-ReleaseFile([string]$Source, [string]$Name) {
 
 $status = & git -C $root status --porcelain=v1
 if ($LASTEXITCODE -ne 0 -or $status) { throw 'Release build requires an exact clean Git worktree' }
+$repositoryRoot = (& git -C $root rev-parse --show-toplevel).Trim()
+if ($LASTEXITCODE -ne 0 -or [IO.Path]::GetFullPath($repositoryRoot) -ne [IO.Path]::GetFullPath($root)) {
+    throw 'Release build repository root identity is ambiguous'
+}
 $toolingRevision = (& git -C $root rev-parse HEAD).Trim()
 $toolingTree = (& git -C $root rev-parse 'HEAD^{tree}').Trim()
 $created = ([DateTimeOffset]::Parse((& git -C $root show -s --format=%cI HEAD).Trim())).UtcDateTime.ToString('yyyy-MM-ddTHH:mm:ssZ')
@@ -59,8 +147,9 @@ if ($LASTEXITCODE -ne 0 -or $resolvedProductTag -ne $productRevision -or $resolv
     throw 'Locked product tag, commit or tree identity does not match Correction C1 authority'
 }
 $productArchive = Join-Path $raw 'product-source.tar'
-& git -C $root archive --format=tar --output=$productArchive $productRevision
-if ($LASTEXITCODE -ne 0 -or !(Test-Path -LiteralPath $productArchive -PathType Leaf)) { throw 'Locked product-source materialization failed' }
+$toolingArchive = Join-Path $raw 'release-tooling-source.tar'
+$productMaterialization = New-ExactGitTreeArchive -Repository $root -Revision $productRevision -ExpectedTree $productTree -ArchivePath $productArchive -Label 'Locked product source'
+$toolingMaterialization = New-ExactGitTreeArchive -Repository $root -Revision $toolingRevision -ExpectedTree $toolingTree -ArchivePath $toolingArchive -Label 'Correction tooling source'
 
 $runnerGo = Join-Path $acquisition 'downloads\go1.27.1.linux-amd64.tar.gz'
 $engineGo = Join-Path $acquisition 'downloads\go1.27.0.linux-amd64.tar.gz'
@@ -87,25 +176,40 @@ $arguments = @(
     '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
     '--pids-limit', '512', '--memory', '8g', '--memory-swap', '8g', '--cpus', '2',
     '--tmpfs', '/work:rw,exec,nosuid,nodev,size=4g',
-    '--mount', "type=bind,src=$root,dst=/src,readonly",
     '--mount', "type=bind,src=$productArchive,dst=/input/product-source.tar,readonly",
+    '--mount', "type=bind,src=$($productMaterialization.BlobManifest),dst=/input/product-source.blobs.sha256,readonly",
+    '--mount', "type=bind,src=$($productMaterialization.PathManifest),dst=/input/product-source.paths,readonly",
+    '--mount', "type=bind,src=$($productMaterialization.ModeManifest),dst=/input/product-source.modes,readonly",
+    '--mount', "type=bind,src=$toolingArchive,dst=/input/release-tooling-source.tar,readonly",
+    '--mount', "type=bind,src=$($toolingMaterialization.BlobManifest),dst=/input/release-tooling-source.blobs.sha256,readonly",
+    '--mount', "type=bind,src=$($toolingMaterialization.PathManifest),dst=/input/release-tooling-source.paths,readonly",
+    '--mount', "type=bind,src=$($toolingMaterialization.ModeManifest),dst=/input/release-tooling-source.modes,readonly",
     '--mount', "type=bind,src=$runnerGo,dst=/input/runner-go.tar.gz,readonly",
     '--mount', "type=bind,src=$engineGo,dst=/input/engine-go.tar.gz,readonly",
     '--mount', "type=bind,src=$gitleaksSource,dst=/input/gitleaks.tar.gz,readonly",
     '--mount', "type=bind,src=$moduleCache,dst=/gomodcache,readonly",
     '--mount', "type=bind,src=$raw,dst=/out",
-    '--workdir', '/src',
+    '--workdir', '/work/tooling',
     $image,
     '/usr/bin/env', '-i', 'PATH=/usr/bin:/bin', 'HOME=/work', "SOURCE_DATE_EPOCH=$epoch",
     '/bin/sh', '-ceu', @'
 echo "63d339f0da5ab53635a56f2490a7984dfe12dfcff22ad749f63edaf590168445  /input/runner-go.tar.gz" | sha256sum -c -
 echo "675c26c449cbb18fc24b74650de1eabbae6e16f64326fd85a283fb3b58280685  /input/engine-go.tar.gz" | sha256sum -c -
 echo "6b2638a733b85619dc80bdf28e84e4fed7e526a761ab5c148fbf67695aea2115  /input/gitleaks.tar.gz" | sha256sum -c -
-mkdir -p /work/runner /work/engine /work/gitleaks /work/product /work/cache /work/tmp /out/product
+test "$(sha256sum /input/product-source.tar | cut -d ' ' -f 1)" = "$PSCAN_PRODUCT_ARCHIVE_SHA256"
+test "$(sha256sum /input/release-tooling-source.tar | cut -d ' ' -f 1)" = "$PSCAN_TOOLING_ARCHIVE_SHA256"
+mkdir -p /work/runner /work/engine /work/gitleaks /work/product /work/tooling /work/cache /work/tmp /out/product /out/tooling-materialized/contracts/release-manifest /out/tooling-materialized/docs/release
 tar -xzf /input/runner-go.tar.gz -C /work/runner
 tar -xzf /input/engine-go.tar.gz -C /work/engine
 tar -xzf /input/gitleaks.tar.gz -C /work/gitleaks --strip-components=1
 tar -xf /input/product-source.tar -C /work/product
+tar -xf /input/release-tooling-source.tar -C /work/tooling
+(cd /work/product && sha256sum --quiet -c /input/product-source.blobs.sha256 && find . -type f -printf '%P\n' | LC_ALL=C sort > /work/product.paths && cmp /input/product-source.paths /work/product.paths)
+(cd /work/tooling && sha256sum --quiet -c /input/release-tooling-source.blobs.sha256 && find . -type f -printf '%P\n' | LC_ALL=C sort > /work/tooling.paths && cmp /input/release-tooling-source.paths /work/tooling.paths)
+while IFS="$(printf '\t')" read -r expected_mode path; do test "$(stat -c '%a' "/work/product/$path")" = "${expected_mode#100}"; done < /input/product-source.modes
+while IFS="$(printf '\t')" read -r expected_mode path; do test "$(stat -c '%a' "/work/tooling/$path")" = "${expected_mode#100}"; done < /input/release-tooling-source.modes
+test "$(wc -l < /input/product-source.paths)" -eq "$PSCAN_PRODUCT_FILE_COUNT"
+test "$(wc -l < /input/release-tooling-source.paths)" -eq "$PSCAN_TOOLING_FILE_COUNT"
 test "$(/work/runner/go/bin/go version)" = "go version go1.27.1 linux/amd64"
 test "$(/work/engine/go/bin/go version)" = "go version go1.27.0 linux/amd64"
 test "$(sha256sum /work/gitleaks/go.mod | cut -d ' ' -f 1)" = "607c140abf2a872e70423972d4dfc7fa658ebe10365d0ea995269ed292add7a3"
@@ -124,21 +228,25 @@ GOOS=linux GOARCH=amd64 /work/runner/go/bin/go build -mod=readonly -trimpath -bu
 GOOS=windows GOARCH=amd64 /work/runner/go/bin/go build -mod=readonly -trimpath -buildvcs=false -ldflags '-s -w -buildid=' -o /out/scanner-runner-windows-amd64.exe ./cmd/scanner-runner
 cp -R rules contracts licenses /out/product/
 cp LICENSE THIRD_PARTY_NOTICES.md /out/product/
-cd /src
+cd /work/tooling
 verifier_ldflags="-s -w -buildid= -X=main.releaseToolingCommit=$PSCAN_TOOLING_REVISION -X=main.releaseToolingTree=$PSCAN_TOOLING_TREE"
 GOOS=linux GOARCH=amd64 /work/runner/go/bin/go build -mod=readonly -trimpath -buildvcs=false -ldflags "$verifier_ldflags" -o /out/scanner-release-verifier-linux-amd64 ./build/release/cmd/release-verifier
 GOOS=windows GOARCH=amd64 /work/runner/go/bin/go build -mod=readonly -trimpath -buildvcs=false -ldflags "$verifier_ldflags" -o /out/scanner-release-verifier-windows-amd64.exe ./build/release/cmd/release-verifier
 GOOS=linux GOARCH=amd64 /work/runner/go/bin/go build -mod=readonly -trimpath -buildvcs=false -ldflags '-s -w -buildid=' -o /out/packager-linux-amd64 ./build/release/cmd/packager
 GOOS=linux GOARCH=amd64 /work/runner/go/bin/go build -mod=readonly -trimpath -buildvcs=false -ldflags '-s -w -buildid=' -o /out/sbom-linux-amd64 ./build/release/cmd/sbom
 /work/runner/go/bin/go list -mod=readonly -m -json all > /out/modules.json
+PSCAN_GITLEAKS_BINARY=/out/gitleaks-linux-amd64 PSCAN_GITLEAKS_CONFIG=/work/product/rules/generic/gitleaks-v8.30.1.toml PSCAN_GITLEAKS_IGNORE=/work/product/rules/generic/gitleaks-ignore-empty-v1.txt /work/runner/go/bin/go test -p=1 -count=1 -run '^TestPinnedRuleAndCoverageIntegrityBindings$' ./tests/acceptance/gitleaks
 PSCAN_GITLEAKS_BINARY=/out/gitleaks-linux-amd64 PSCAN_GITLEAKS_CONFIG=/work/product/rules/generic/gitleaks-v8.30.1.toml PSCAN_GITLEAKS_IGNORE=/work/product/rules/generic/gitleaks-ignore-empty-v1.txt /work/runner/go/bin/go test -p=1 -count=1 ./...
 /work/runner/go/bin/go vet -p=1 ./...
 GOOS=windows GOARCH=amd64 /work/runner/go/bin/go test -p=1 -exec /bin/true ./...
 /out/sbom-linux-amd64 -input /out/modules.json -output /out/sbom.spdx.json -revision "$PSCAN_PRODUCT_REVISION" -created "$PSCAN_CREATED"
+cp /work/tooling/contracts/release-manifest/schema-2.0.json /out/tooling-materialized/contracts/release-manifest/schema-2.0.json
+cp /work/tooling/docs/release/OFFLINE-VERIFICATION-RUNBOOK.md /out/tooling-materialized/docs/release/OFFLINE-VERIFICATION-RUNBOOK.md
+cp /work/tooling/docs/release/SCANNER-IO-REFERENCE.md /out/tooling-materialized/docs/release/SCANNER-IO-REFERENCE.md
 '@
 )
 $revisionIndex = $arguments.IndexOf('/usr/bin/env')
-$arguments = $arguments[0..($revisionIndex)] + @('-i','PATH=/usr/bin:/bin','HOME=/work',"SOURCE_DATE_EPOCH=$epoch","PSCAN_PRODUCT_REVISION=$productRevision","PSCAN_TOOLING_REVISION=$toolingRevision","PSCAN_TOOLING_TREE=$toolingTree","PSCAN_CREATED=$created") + $arguments[($revisionIndex + 5)..($arguments.Count - 1)]
+$arguments = $arguments[0..($revisionIndex)] + @('-i','PATH=/usr/bin:/bin','HOME=/work',"SOURCE_DATE_EPOCH=$epoch","PSCAN_PRODUCT_REVISION=$productRevision","PSCAN_TOOLING_REVISION=$toolingRevision","PSCAN_TOOLING_TREE=$toolingTree","PSCAN_CREATED=$created","PSCAN_PRODUCT_ARCHIVE_SHA256=$($productMaterialization.ArchiveSHA256)","PSCAN_TOOLING_ARCHIVE_SHA256=$($toolingMaterialization.ArchiveSHA256)","PSCAN_PRODUCT_FILE_COUNT=$($productMaterialization.FileCount)","PSCAN_TOOLING_FILE_COUNT=$($toolingMaterialization.FileCount)") + $arguments[($revisionIndex + 5)..($arguments.Count - 1)]
 
 $arguments[$arguments.Count - 1] = ConvertTo-LFPosixShellPayload -Payload $arguments[$arguments.Count - 1]
 Assert-LFPosixShellPayload -Payload $arguments[$arguments.Count - 1]
@@ -157,26 +265,27 @@ Copy-ReleaseFile (Join-Path $raw 'scanner-release-verifier-windows-amd64.exe') '
 Copy-ReleaseFile (Join-Path $raw 'gitleaks-linux-amd64') 'gitleaks-linux-amd64' | Out-Null
 Copy-ReleaseFile (Join-Path $raw 'gitleaks-windows-amd64.exe') 'gitleaks-windows-amd64.exe' | Out-Null
 $productFiles = Join-Path $raw 'product'
+$toolingFiles = Join-Path $raw 'tooling-materialized'
 Copy-ReleaseFile (Join-Path $productFiles 'rules\generic\gitleaks-v8.30.1.toml') 'rules-gitleaks-v8.30.1.toml' | Out-Null
 Copy-ReleaseFile (Join-Path $productFiles 'rules\generic\gitleaks-ignore-empty-v1.txt') 'rules-gitleaks-ignore-empty-v1.txt' | Out-Null
 Copy-ReleaseFile (Join-Path $productFiles 'contracts\scan-request\schema-1.1.json') 'schema-scan-request-1.1.json' | Out-Null
 Copy-ReleaseFile (Join-Path $productFiles 'contracts\scan-outcome\schema-1.0.json') 'schema-scan-outcome-1.0.json' | Out-Null
 Copy-ReleaseFile (Join-Path $productFiles 'contracts\release-manifest\schema-1.1.json') 'schema-release-manifest-1.1.json' | Out-Null
-Copy-ReleaseFile (Join-Path $root 'contracts\release-manifest\schema-2.0.json') 'schema-release-manifest-2.0.json' | Out-Null
+Copy-ReleaseFile (Join-Path $toolingFiles 'contracts\release-manifest\schema-2.0.json') 'schema-release-manifest-2.0.json' | Out-Null
 Copy-ReleaseFile (Join-Path $productFiles 'contracts\global-revocation\schema-1.1.json') 'schema-global-revocation-1.1.json' | Out-Null
 Copy-ReleaseFile (Join-Path $productFiles 'contracts\rule-pack\schema-1.0.json') 'schema-rule-pack-1.0.json' | Out-Null
 Copy-ReleaseFile (Join-Path $productFiles 'LICENSE') 'LICENSE.txt' | Out-Null
 Copy-ReleaseFile (Join-Path $productFiles 'THIRD_PARTY_NOTICES.md') 'THIRD_PARTY_NOTICES.md' | Out-Null
 Copy-ReleaseFile (Join-Path $productFiles 'licenses\gitleaks\modules\manifest.json') 'GITLEAKS-LICENCE-MANIFEST.json' | Out-Null
 Copy-ReleaseFile (Join-Path $raw 'sbom.spdx.json') 'sbom.spdx.json' | Out-Null
-Copy-ReleaseFile (Join-Path $root 'docs\release\OFFLINE-VERIFICATION-RUNBOOK.md') 'OFFLINE-VERIFICATION-RUNBOOK.md' | Out-Null
-Copy-ReleaseFile (Join-Path $root 'docs\release\SCANNER-IO-REFERENCE.md') 'SCANNER-IO-REFERENCE.md' | Out-Null
+Copy-ReleaseFile (Join-Path $toolingFiles 'docs\release\OFFLINE-VERIFICATION-RUNBOOK.md') 'OFFLINE-VERIFICATION-RUNBOOK.md' | Out-Null
+Copy-ReleaseFile (Join-Path $toolingFiles 'docs\release\SCANNER-IO-REFERENCE.md') 'SCANNER-IO-REFERENCE.md' | Out-Null
 
 $testSummary = [ordered]@{
     schemaVersion = '2.0'; productSourceRevision = $productRevision; releaseToolingRevision = $toolingRevision; createdAt = $created
     authoritativeEnvironment = 'pinned-network-disabled-linux-container'
     goToolchain = 'go1.27.1'; engineToolchain = 'go1.27.0'
-    commands = @('go test -count=1 ./...', 'go vet ./...', 'GOOS=windows GOARCH=amd64 go test -exec /bin/true ./...')
+    commands = @("go test -count=1 -run '^TestPinnedRuleAndCoverageIntegrityBindings$' ./tests/acceptance/gitleaks", 'go test -count=1 ./...', 'go vet ./...', 'GOOS=windows GOARCH=amd64 go test -exec /bin/true ./...')
     linuxExecution = 'PASS'; windowsCompilation = 'PASS'; windowsNativeExecution = 'UNPROVEN_SMART_APP_CONTROL'
     signing = 'NOT_PERFORMED_OWNER_GATE'; remoteWorkflow = 'NOT_PERFORMED_OWNER_GATE'
 }

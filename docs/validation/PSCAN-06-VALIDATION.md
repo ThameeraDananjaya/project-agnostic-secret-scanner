@@ -54,6 +54,12 @@ The correction tooling must additionally prove from its exact clean candidate:
    shell payloads are converted to LF immediately before invocation, raw
    carriage-return payloads reject, the exact normalized payloads parse in the
    pinned network-disabled image, and the read-only cache still fails closed;
+   both complete reproducibility builds must execute from separate actual CRLF
+   checkouts while all build inputs are first materialized from and verified
+   against the exact product and correction-tooling Git trees, including exact
+   path sets, modes and raw blob SHA-256 values; archive, tree, byte, cleanliness
+   or extraction ambiguity must fail closed; no integrity asset normalization
+   is permitted;
    and
 8. the shipped runner, Gitleaks engines and rules retain the previously
    accepted product-source digests.

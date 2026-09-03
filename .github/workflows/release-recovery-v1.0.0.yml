@@ -87,13 +87,13 @@ jobs:
         shell: pwsh
         run: ./build/release/acquire.ps1 -CacheDirectory "$env:RUNNER_TEMP/pscan-acquisition" -AllowImagePull
 
-      - name: Build and validate without network
+      - name: Build and validate from an actual CRLF checkout without network
         shell: pwsh
-        run: ./build/release/build.ps1 -AcquisitionDirectory "$env:RUNNER_TEMP/pscan-acquisition" -OutputDirectory "$env:RUNNER_TEMP/pscan-release-a"
+        run: ./build/release/test-crlf-shell-payloads.ps1 -WorkingDirectory "$env:RUNNER_TEMP/pscan-crlf-build-a" -AcquisitionDirectory "$env:RUNNER_TEMP/pscan-acquisition" -BuildOutputDirectory "$env:RUNNER_TEMP/pscan-release-a"
 
-      - name: Independently rebuild without network
+      - name: Independently rebuild from a second actual CRLF checkout without network
         shell: pwsh
-        run: ./build/release/build.ps1 -AcquisitionDirectory "$env:RUNNER_TEMP/pscan-acquisition" -OutputDirectory "$env:RUNNER_TEMP/pscan-release-b"
+        run: ./build/release/test-crlf-shell-payloads.ps1 -WorkingDirectory "$env:RUNNER_TEMP/pscan-crlf-build-b" -AcquisitionDirectory "$env:RUNNER_TEMP/pscan-acquisition" -BuildOutputDirectory "$env:RUNNER_TEMP/pscan-release-b"
 
       - name: Compare every reproduced byte
         shell: pwsh

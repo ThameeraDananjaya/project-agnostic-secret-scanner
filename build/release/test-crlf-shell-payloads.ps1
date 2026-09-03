@@ -1,10 +1,12 @@
 param(
-    [string]$WorkingDirectory
+    [string]$WorkingDirectory,
+    [string]$AcquisitionDirectory,
+    [string]$BuildOutputDirectory
 )
 
 $ErrorActionPreference = 'Stop'
 $image = 'golang@sha256:ded31c68586d2e49e760acc2e65a884b23d032e9bbbed0ae0c55abd3fcaf4452'
-$releaseRoot = $PSScriptRoot
+$sourceRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 
 if ([string]::IsNullOrWhiteSpace($WorkingDirectory)) {
     $WorkingDirectory = Join-Path ([IO.Path]::GetTempPath()) ("pscan-06-c1-crlf-" + [guid]::NewGuid().ToString('N'))
@@ -16,11 +18,6 @@ if (Test-Path -LiteralPath $testRoot) {
     }
 } else {
     New-Item -ItemType Directory -Path $testRoot | Out-Null
-}
-
-function Write-CrlfCopy([string]$Source, [string]$Destination) {
-    $content = [IO.File]::ReadAllText($Source).Replace("`r`n", "`n").Replace("`r", "`n")
-    [IO.File]::WriteAllText($Destination, $content.Replace("`n", "`r`n"), [Text.UTF8Encoding]::new($false))
 }
 
 function Get-EmbeddedPayload([string]$Path, [string]$Marker) {
@@ -47,16 +44,34 @@ function Require-Empty([string]$Path) {
 }
 
 $fixtureRoot = Join-Path $testRoot 'checkout'
-New-Item -ItemType Directory -Path $fixtureRoot | Out-Null
-foreach ($name in @('shell-payload.ps1','cache-canary.ps1','acquire.ps1','build.ps1')) {
-    Write-CrlfCopy (Join-Path $releaseRoot $name) (Join-Path $fixtureRoot $name)
+$sourceStatus = & git -C $sourceRoot status --porcelain=v1
+if ($LASTEXITCODE -ne 0 -or $sourceStatus) { throw 'CRLF regression source repository must be exactly clean' }
+$sourceRevision = (& git -C $sourceRoot rev-parse HEAD).Trim()
+$sourceTree = (& git -C $sourceRoot rev-parse 'HEAD^{tree}').Trim()
+& git clone --no-hardlinks --no-checkout --quiet $sourceRoot $fixtureRoot
+if ($LASTEXITCODE -ne 0) { throw 'Local CRLF fixture clone failed' }
+& git -C $fixtureRoot config core.autocrlf true
+& git -C $fixtureRoot checkout --quiet --detach $sourceRevision
+if ($LASTEXITCODE -ne 0) { throw 'Exact CRLF fixture checkout failed' }
+$fixtureRevision = (& git -C $fixtureRoot rev-parse HEAD).Trim()
+$fixtureTree = (& git -C $fixtureRoot rev-parse 'HEAD^{tree}').Trim()
+$fixtureStatus = & git -C $fixtureRoot status --porcelain=v1
+if ($LASTEXITCODE -ne 0 -or $fixtureStatus -or $fixtureRevision -ne $sourceRevision -or $fixtureTree -ne $sourceTree) {
+    throw 'CRLF fixture identity or cleanliness cannot be proven'
+}
+$crlfIntegrityAsset = Join-Path $fixtureRoot 'rules\generic\gitleaks-ignore-empty-v1.txt'
+$crlfIntegrityBytes = [IO.File]::ReadAllBytes($crlfIntegrityAsset)
+$crlfIntegrityEol = (& git -C $fixtureRoot ls-files --eol -- 'rules/generic/gitleaks-ignore-empty-v1.txt') -join "`n"
+if ($crlfIntegrityEol -notmatch 'w/crlf' -or $crlfIntegrityBytes -notcontains 13) {
+    throw 'Fixture did not create an actual CRLF checkout of the pinned integrity asset'
 }
 
-. (Join-Path $fixtureRoot 'shell-payload.ps1')
+$fixtureReleaseRoot = Join-Path $fixtureRoot 'build\release'
+. (Join-Path $fixtureReleaseRoot 'shell-payload.ps1')
 $payloadCases = @(
-    [ordered]@{Name='cache-canary';Path=(Join-Path $fixtureRoot 'cache-canary.ps1');Marker='PSCAN-06-C1-CACHE-CANARY'},
-    [ordered]@{Name='acquisition';Path=(Join-Path $fixtureRoot 'acquire.ps1');Marker='/work/runner/go/bin/go mod download'},
-    [ordered]@{Name='build';Path=(Join-Path $fixtureRoot 'build.ps1');Marker='verifier_ldflags='}
+    [ordered]@{Name='cache-canary';Path=(Join-Path $fixtureReleaseRoot 'cache-canary.ps1');Marker='PSCAN-06-C1-CACHE-CANARY'},
+    [ordered]@{Name='acquisition';Path=(Join-Path $fixtureReleaseRoot 'acquire.ps1');Marker='/work/runner/go/bin/go mod download'},
+    [ordered]@{Name='build';Path=(Join-Path $fixtureReleaseRoot 'build.ps1');Marker='verifier_ldflags='}
 )
 
 & docker image inspect $image *> $null
@@ -94,14 +109,14 @@ $normalizationCounts = [ordered]@{
     'build.ps1' = 2
 }
 foreach ($entry in $normalizationCounts.GetEnumerator()) {
-    $content = [IO.File]::ReadAllText((Join-Path $fixtureRoot $entry.Key))
+    $content = [IO.File]::ReadAllText((Join-Path $fixtureReleaseRoot $entry.Key))
     $count = ([regex]::Matches($content, 'ConvertTo-LFPosixShellPayload\s+-Payload')).Count
     if ($count -ne $entry.Value) {
         throw "$($entry.Key) does not normalize every Docker POSIX shell payload immediately before invocation"
     }
 }
 
-. (Join-Path $fixtureRoot 'cache-canary.ps1')
+. (Join-Path $fixtureReleaseRoot 'cache-canary.ps1')
 $positiveCache = Join-Path $testRoot 'positive-cache'
 $readOnlyCache = Join-Path $testRoot 'read-only-cache'
 New-Item -ItemType Directory -Path $positiveCache,$readOnlyCache | Out-Null
@@ -117,4 +132,22 @@ try {
 if (!$readOnlyRejected) { throw 'CRLF read-only cache unexpectedly passed the pre-acquisition canary' }
 Require-Empty $readOnlyCache
 
-Write-Output 'CRLF shell-payload regression PASS raw-CR=REJECT normalized-CR=ABSENT canary=PASS acquisition-syntax=PASS build-syntax=PASS read-only-cache=REJECT'
+$completeBuild = 'SKIPPED'
+if ([string]::IsNullOrWhiteSpace($AcquisitionDirectory) -xor [string]::IsNullOrWhiteSpace($BuildOutputDirectory)) {
+    throw 'AcquisitionDirectory and BuildOutputDirectory must be supplied together'
+}
+if (![string]::IsNullOrWhiteSpace($AcquisitionDirectory)) {
+    $buildScript = Join-Path $fixtureReleaseRoot 'build.ps1'
+    & pwsh -NoProfile -File $buildScript -AcquisitionDirectory $AcquisitionDirectory -OutputDirectory $BuildOutputDirectory
+    if ($LASTEXITCODE -ne 0) { throw 'Complete offline release build from the CRLF checkout failed' }
+    $dist = Join-Path ([IO.Path]::GetFullPath($BuildOutputDirectory)) 'dist'
+    $testSummary = Get-Content -LiteralPath (Join-Path $dist 'TEST-SUMMARY.json') -Raw | ConvertFrom-Json
+    $manifest = Get-Content -LiteralPath (Join-Path $dist 'release-manifest.json') -Raw | ConvertFrom-Json
+    if ($testSummary.commands -notcontains "go test -count=1 -run '^TestPinnedRuleAndCoverageIntegrityBindings$' ./tests/acceptance/gitleaks" -or
+        $manifest.releaseTooling.commit -ne $sourceRevision -or $manifest.releaseTooling.tree -ne $sourceTree) {
+        throw 'CRLF build did not prove the pinned integrity test and exact tooling identity'
+    }
+    $completeBuild = 'PASS'
+}
+
+Write-Output "CRLF checkout regression PASS checkout-asset-CR=PROVED raw-shell-CR=REJECT normalized-shell-CR=ABSENT canary=PASS acquisition-syntax=PASS build-syntax=PASS read-only-cache=REJECT pinned-asset-integrity=$completeBuild complete-build=$completeBuild"

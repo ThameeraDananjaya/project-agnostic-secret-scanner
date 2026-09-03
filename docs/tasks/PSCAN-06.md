@@ -27,14 +27,15 @@ claimed alone from exact clean authority commit
 `3fb1b0a55dc4f48dd35464c63c768f497efbc89b` and locally implemented as a
 candidate `f24b832ebe5f6749aa0ab910e1b9be279065ebb1`, but independent review
 rejected it after reproducing carriage-return corruption in Docker POSIX shell
-payloads from a Windows CRLF checkout. Correction C1 iteration 003 repaired
-that defect as exact candidate
-`5ca77226ed3996a8267caf02da366d0beb915c8d`. The forced-CRLF regression,
-fresh acquisition, two network-disabled builds, 30-file byte comparison and
-all callable checks pass. Actual-Linux host positive/wrong-owner proof and
-independent skeptical acceptance remain open. Exact author evidence is in
-`evidence/PSCAN-06/CORRECTION-C1-AUTHOR-VALIDATION-003.md`. PSCAN-06 remains
-the sole open task and remains unaccepted.
+payloads from a Windows CRLF checkout. Iteration 003 candidate
+`5ca77226ed3996a8267caf02da366d0beb915c8d` fixed shell transport but was
+independently rejected after a complete CRLF-checkout build consumed
+checkout-transformed integrity bytes and failed the pinned-rule binding test.
+Correction C1 iteration 004 is the bounded exact-Git-tree materialization
+repair recorded in `evidence/PSCAN-06/CORRECTION-C1-ITERATION-004.md`; its exact
+candidate and fresh validation evidence are pending. Actual-Linux host
+positive/wrong-owner proof and independent skeptical acceptance remain open.
+PSCAN-06 remains the sole open task and remains unaccepted.
 
 ## Objective
 

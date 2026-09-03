@@ -73,7 +73,7 @@ jobs:
           set -euo pipefail
           install -d -m 0700 "$RUNNER_TEMP/cache-positive" "$RUNNER_TEMP/cache-wrong-owner" "$RUNNER_TEMP/cache-read-only"
           sudo chown root:root "$RUNNER_TEMP/cache-wrong-owner"
-          sudo chmod 0700 "$RUNNER_TEMP/cache-wrong-owner"
+          sudo chmod 0755 "$RUNNER_TEMP/cache-wrong-owner"
           pwsh ./build/release/test-cache-boundary.ps1 \
             -PositiveCacheDirectory "$RUNNER_TEMP/cache-positive" \
             -WrongOwnerCacheDirectory "$RUNNER_TEMP/cache-wrong-owner" \

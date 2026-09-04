@@ -7,7 +7,7 @@
 | PSCAN-03 | Rejected and closed fail-closed; not accepted | `evidence/PSCAN-03/CLOSEOUT-REJECTED.md` |
 | PSCAN-04 | Completed and independently accepted locally | Exact activation `a21b030e1658f1f98ac4e4d001af12185d9ed311`; evidence-bearing closeout commit |
 | PSCAN-05 | Completed and independently accepted locally | Exact activation `50b4186`; corrected evidence-bearing closeout commit |
-| PSCAN-06 | Correction C2 iteration 002 fail-closed image admission is owner-approved, unclaimed, unimplemented and unaccepted; PSCAN-06 remains open | `evidence/PSCAN-06/CORRECTION-C2-ITERATION-002-AUTHORITY.md` |
+| PSCAN-06 | Correction C2 iteration 002 is claimed and locally implemented as an author candidate; author validation is non-acceptance and independent review remains open | `evidence/PSCAN-06/CORRECTION-C2-ITERATION-002-IMPLEMENTATION.md` |
 | PSCAN-07 | Proposed; unselected; signing/publication gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-06 |
 | PSCAN-08 | Inactive; technically and legally gated | Material-gap evidence plus separate owner approval required |
 | PSCAN-09 | Completed and independently accepted locally | Activation `f486989`; accepted closeout commit |
@@ -88,8 +88,12 @@ local candidate. Author validation is non-acceptance. Skeptical inspection then
 found that generic Docker image-inspection failure was classified as image
 absence and could reach the networked pull branch. The owner approved bounded
 Correction C2 iteration 002 to make that admission state fail closed. The
-iteration is unclaimed and unimplemented; it must begin in a fresh session from
-its committed authority bundle. No correction remote action is approved.
+iteration was claimed alone in fresh session
+`01a06e1c-5c06-7763-958a-fdb623bae6aa` from exact clean authority commit
+`281bea031bb6bbaf1be3059977074df2a88ecdf4` and implemented as a bounded local
+author candidate. Its deterministic fake-engine validation is author evidence,
+not acceptance. Actual Linux execution and independent skeptical review remain
+open. No correction remote action is approved.
 PSCAN-07 remains proposed and
 unselected. PSCAN-08 remains inactive,
 unselected and ineligible because

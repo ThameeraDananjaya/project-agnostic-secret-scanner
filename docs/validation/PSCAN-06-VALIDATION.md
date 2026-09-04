@@ -104,3 +104,31 @@ candidate must additionally prove:
 
 Author-local proof is not independent acceptance and cannot authorize a pull,
 tag, push, workflow run, signing, attestation, draft or publication action.
+
+## Correction C2 iteration 002 validation addendum
+
+The iteration-002 candidate must additionally prove at the Docker command
+boundary that:
+
+1. a successful structured engine response and an exact filtered structured
+   inventory are required before absence can be concluded; no inspect exit,
+   stderr text, ambient exit state, missing output or malformed data is absence;
+2. only an empty exact-reference inventory from the responsive engine reaches
+   the one exact pull, and the pull is followed by a fresh independent
+   repository-digest inspection with no retry;
+3. every invocation captures its own exit code, stdout, stderr and timeout, with
+   bounded output and rejection of any invalid boundary result;
+4. the full `RepoDigests` value is an array containing exactly one canonical
+   engine repository-digest string; null, scalar, empty, malformed, aliases,
+   duplicates, mixed exact-plus-other, wrong-repository and wrong-digest values
+   all reject;
+5. a deterministic fake-engine harness proves exact command count, arguments
+   and order for present, absent, daemon, permission, timeout, invalid-command,
+   deceptive-text, malformed, pull-failure and post-pull failure cases, with
+   zero later action for every rejection; and
+6. the only pull-capable call is inside the mandatory orchestrator after its
+   fixed host-cache and host-only CRLF prerequisites. Legacy acquisition
+   verification cannot pull, even when its historical switch name is supplied.
+
+These checks are network-free author validation only. Actual Linux execution
+and independent skeptical acceptance remain mandatory.

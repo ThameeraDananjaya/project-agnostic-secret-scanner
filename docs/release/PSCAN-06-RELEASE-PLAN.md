@@ -11,12 +11,18 @@ the product source remains locked tag `v1.0.0`, commit
 and running the workflow remain separately owner-gated.
 
 Build acquisition accepts only digest-pinned Go/Gitleaks archives and the exact
-canonical Docker image repository plus digest. Before any image pull, it maps
-the Linux host numeric UID/GID, proves host cache write, atomic rename, read and
-delete, proves wrong-owner/read-only rejection, and proves CRLF normalization
-without Docker. Image admission permits one explicit pull only for
+canonical Docker image repository plus digest. Before any image pull, the
+mandatory orchestrator maps the Linux host numeric UID/GID, proves host cache
+write, atomic rename, read and delete, proves wrong-owner/read-only rejection,
+and executes the fixed host-only CRLF proof. A successful structured engine
+response plus an empty exact-reference structured inventory is the only
+conclusive-absence state. Inspect errors, stderr text, timeouts, malformed data
+and every unknown state stop without a pull. Image admission permits one
+explicit pull only for
 `docker.io/library/golang@sha256:ded31c68586d2e49e760acc2e65a884b23d032e9bbbed0ae0c55abd3fcaf4452`,
-then re-inspects the canonical repository digest. Container cache and shell
+then freshly re-inspects the complete repository-digest set and accepts exactly
+one canonical engine identity. Acquisition and image-verification helpers have
+no pull capability. Container cache and shell
 parser proofs follow with `--pull=never --network none`.
 Compilation, tests, vet, Windows cross-compilation and two byte-for-byte builds
 then run with networking disabled and the module cache read-only. Workflow-

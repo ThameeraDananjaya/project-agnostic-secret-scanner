@@ -422,5 +422,9 @@ in `evidence/PSCAN-06/CORRECTION-C2-ITERATION-002-AUTHORITY.md`.
 
 This approval supersedes candidate `e7faf0f` only as a readiness claim. The
 candidate and its partial author evidence remain immutable history. Iteration
-002 is owner-approved, unclaimed, unimplemented and unaccepted. It begins only
-in a fresh session from the committed iteration-002 authority bundle.
+002 was claimed alone in fresh session
+`01a06e1c-5c06-7763-958a-fdb623bae6aa` from exact clean authority commit
+`281bea031bb6bbaf1be3059977074df2a88ecdf4` and locally implemented as a bounded
+author candidate. Author validation is not acceptance. Actual Linux execution,
+fresh-runner proof and independent skeptical review remain open; PSCAN-06 is
+unaccepted and no successor or remote action is authorized.

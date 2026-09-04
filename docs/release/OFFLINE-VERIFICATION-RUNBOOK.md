@@ -199,11 +199,16 @@ tag/ref `release-tooling-v1.0.0-c2`, the exact accepted C2 commit/tree if one is
 later accepted, and certificate identity ending in
 `@refs/tags/release-tooling-v1.0.0-c2`. Schema `2.0` remains C1-only.
 
-Before any separately approved remote run, independently verify that the host-
-only cache and CRLF phases precede image admission; that admission names only
+Before any separately approved remote run, independently verify that the
+mandatory admission orchestrator itself completes the host-only cache and CRLF
+phases before any Docker command; that admission names only
 `docker.io/library/golang@sha256:ded31c68586d2e49e760acc2e65a884b23d032e9bbbed0ae0c55abd3fcaf4452`;
-and that Docker inspection proves the same canonical repository digest after
-any explicitly permitted pull. Container cache and shell-parser proofs must
+that only an empty exact-reference structured inventory from a separately
+proved responsive engine can authorize its single pull; and that a fresh
+Docker inspection proves the complete repository-digest set contains exactly
+one canonical identity after any pull. Daemon, permission, timeout, protocol,
+stderr, malformed, scalar, null, duplicate, alias, mixed or unknown evidence
+must stop with no pull or later action. Container cache and shell-parser proofs must
 use `--pull=never --network none`. Dependency acquisition is the only networked
 build phase, and reproducibility builds must remain network-disabled with the
 completed cache read-only.

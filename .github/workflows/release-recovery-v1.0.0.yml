@@ -100,15 +100,6 @@ jobs:
           -SourceRevision "$env:GITHUB_SHA"
           -WorkingDirectory "$env:RUNNER_TEMP/pscan-source-trust"
 
-      - name: Prove CRLF normalization without inspecting or running an image
-        shell: pwsh
-        run: >-
-          & "$env:PSCAN_EXACT_TOOLING_ROOT/build/release/test-crlf-shell-payloads.ps1"
-          -SourceRepository "$env:GITHUB_WORKSPACE"
-          -SourceRevision "$env:GITHUB_SHA"
-          -WorkingDirectory "$env:RUNNER_TEMP/pscan-crlf-regression"
-          -Phase HostOnly
-
       - name: Prove image identity admission cases without Docker
         shell: pwsh
         run: '& "$env:PSCAN_EXACT_TOOLING_ROOT/build/release/test-image-admission.ps1"'
@@ -127,14 +118,16 @@ jobs:
             -ReadOnlyCacheDirectory "$RUNNER_TEMP/cache-read-only" \
             -Phase Host
 
-      - name: Prepare exact acquisition cache paths and admit the pinned image
+      - name: Run mandatory host prerequisites and admit the pinned image
         shell: bash
         run: |
           set -euo pipefail
           install -d -m 0700 "$RUNNER_TEMP/pscan-acquisition" "$RUNNER_TEMP/pscan-acquisition/downloads" "$RUNNER_TEMP/pscan-acquisition/gomodcache"
           pwsh "$PSCAN_EXACT_TOOLING_ROOT/build/release/admit-image.ps1" \
             -CacheDirectory "$RUNNER_TEMP/pscan-acquisition" \
-            -AllowImagePull
+            -SourceRepository "$GITHUB_WORKSPACE" \
+            -SourceRevision "$GITHUB_SHA" \
+            -WorkingDirectory "$RUNNER_TEMP/pscan-crlf-regression"
 
       - name: Prove offline container cache rejection after image admission
         shell: pwsh

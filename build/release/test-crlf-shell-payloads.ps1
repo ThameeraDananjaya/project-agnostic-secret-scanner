@@ -3,11 +3,12 @@ param(
     [string]$AcquisitionDirectory,
     [string]$BuildOutputDirectory,
     [string]$SourceRepository,
-    [string]$SourceRevision
+    [string]$SourceRevision,
+    [ValidateSet('HostOnly','Container','Build','All')][string]$Phase = 'All'
 )
 
 $ErrorActionPreference = 'Stop'
-$image = 'golang@sha256:ded31c68586d2e49e760acc2e65a884b23d032e9bbbed0ae0c55abd3fcaf4452'
+$image = 'docker.io/library/golang@sha256:ded31c68586d2e49e760acc2e65a884b23d032e9bbbed0ae0c55abd3fcaf4452'
 if ([string]::IsNullOrWhiteSpace($SourceRepository)) {
     if ([string]::IsNullOrWhiteSpace($env:PSCAN_VERIFIED_REPOSITORY_ROOT)) { throw 'CRLF regression requires an explicit verified source repository' }
     $SourceRepository = $env:PSCAN_VERIFIED_REPOSITORY_ROOT
@@ -21,7 +22,7 @@ $sourceRoot = [IO.Path]::GetFullPath((Resolve-Path -LiteralPath $SourceRepositor
 $sourceTrust = Assert-ExactGitSourceTrust -Repository $sourceRoot -ExpectedRevision $SourceRevision
 
 if ([string]::IsNullOrWhiteSpace($WorkingDirectory)) {
-    $WorkingDirectory = Join-Path ([IO.Path]::GetTempPath()) ("pscan-06-c1-crlf-" + [guid]::NewGuid().ToString('N'))
+    $WorkingDirectory = Join-Path ([IO.Path]::GetTempPath()) ("pscan-06-c2-crlf-" + [guid]::NewGuid().ToString('N'))
 }
 $testRoot = [IO.Path]::GetFullPath($WorkingDirectory)
 if (Test-Path -LiteralPath $testRoot) {
@@ -74,14 +75,12 @@ if ($crlfIntegrityEol -notmatch 'w/crlf' -or $crlfIntegrityBytes -notcontains 13
 $fixtureReleaseRoot = Join-Path $fixtureRoot 'build\release'
 . (Join-Path $PSScriptRoot 'shell-payload.ps1')
 $payloadCases = @(
-    [ordered]@{Name='cache-canary';Path=(Join-Path $fixtureReleaseRoot 'cache-canary.ps1');Marker='PSCAN-06-C1-CACHE-CANARY'},
+    [ordered]@{Name='cache-canary';Path=(Join-Path $fixtureReleaseRoot 'cache-canary.ps1');Marker='PSCAN-06-C2-CONTAINER-CACHE-CANARY'},
     [ordered]@{Name='acquisition';Path=(Join-Path $fixtureReleaseRoot 'acquire.ps1');Marker='/work/runner/go/bin/go mod download'},
     [ordered]@{Name='build';Path=(Join-Path $fixtureReleaseRoot 'build.ps1');Marker='verifier_ldflags='}
 )
 
-& docker image inspect $image *> $null
-if ($LASTEXITCODE -ne 0) { throw 'Pinned image is required for the CRLF shell-payload regression' }
-
+$normalizedCases = [Collections.Generic.List[object]]::new()
 foreach ($case in $payloadCases) {
     $rawPayload = Get-EmbeddedPayload -Path $case.Path -Marker $case.Marker
     if ($rawPayload.IndexOf([char]13) -lt 0) {
@@ -97,12 +96,23 @@ foreach ($case in $payloadCases) {
 
     $normalized = ConvertTo-LFPosixShellPayload -Payload $rawPayload
     Assert-LFPosixShellPayload -Payload $normalized
+    $normalizedCases.Add([pscustomobject]@{Name=$case.Name;Payload=$normalized})
+}
+
+if ($Phase -eq 'HostOnly') {
+    Write-Output 'CRLF host-only regression PASS checkout-asset-CR=PROVED raw-shell-CR=REJECT normalized-shell-CR=ABSENT docker=NOT_INVOKED'
+    return
+}
+
+. (Join-Path $PSScriptRoot 'image-admission.ps1')
+$image = Assert-AdmittedReleaseImage -Image $image
+foreach ($case in $normalizedCases) {
     $dockerArguments = @(
         'run','--rm','--pull=never','--network','none','--read-only',
         '--cap-drop','ALL','--security-opt','no-new-privileges',
         '--pids-limit','32','--memory','128m','--memory-swap','128m','--cpus','1',
         '--tmpfs','/work:rw,noexec,nosuid,nodev,size=16m,mode=0700',
-        $image,'/bin/sh','-n','-c',$normalized
+        $image,'/bin/sh','-n','-c',$case.Payload
     )
     & docker @dockerArguments
     if ($LASTEXITCODE -ne 0) { throw "$($case.Name) normalized payload failed pinned offline shell parsing" }
@@ -142,6 +152,7 @@ if ([string]::IsNullOrWhiteSpace($AcquisitionDirectory) -xor [string]::IsNullOrW
     throw 'AcquisitionDirectory and BuildOutputDirectory must be supplied together'
 }
 if (![string]::IsNullOrWhiteSpace($AcquisitionDirectory)) {
+    if ($Phase -notin @('Build','All')) { throw 'A complete build is only valid in the Build or All phase' }
     $buildLauncher = Join-Path $PSScriptRoot 'invoke-exact-build.ps1'
     & pwsh -NoProfile -File $buildLauncher -RepositoryRoot $fixtureRoot -ExpectedToolingRevision $SourceRevision -AcquisitionDirectory $AcquisitionDirectory -OutputDirectory $BuildOutputDirectory -AllowCanonicalEolProjection
     if ($LASTEXITCODE -ne 0) { throw 'Complete offline release build from the CRLF checkout failed' }

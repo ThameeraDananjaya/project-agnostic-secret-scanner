@@ -50,3 +50,23 @@ product version. The correction-tooling tag may exist only after a later exact
 owner gate at an independently accepted tooling commit. Push, tag creation,
 workflow execution, signing, attestation, draft creation and publication remain
 remote mutations outside local implementation authority.
+
+## Correction C2 amendment
+
+The C1 identity and schema `2.0` remain immutable historical evidence. C2 uses
+new manifest schema `2.1` and proposed tooling tag
+`release-tooling-v1.0.0-c2`; it does not reinterpret a C1 manifest as C2.
+
+Before any image pull, the invoking host proves write, same-filesystem rename,
+exact read and delete on the exact cache path, and the CRLF harness proves raw
+CR rejection plus LF normalization without invoking Docker. The only permitted
+image acquisition is
+`docker.io/library/golang@sha256:ded31c68586d2e49e760acc2e65a884b23d032e9bbbed0ae0c55abd3fcaf4452`.
+Admission requires Docker inspection output to bind the canonical repository
+and digest both before reuse and after the one explicitly enabled pull.
+Container cache and shell-parser proofs then run with `--pull=never --network
+none`; dependency acquisition is separate, and both builds remain offline.
+
+This amendment changes neither locked tag. Creation of the C2 tag, any pull on
+a remote runner, workflow execution, signing, attestation, draft creation and
+publication remain separately gated remote actions.

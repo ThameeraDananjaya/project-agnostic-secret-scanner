@@ -190,3 +190,24 @@ manifest hash; certificate identity/issuer; revocation checkpoint/head and
 refresh time; verifier stdout/exit; operator; and final
 `ACCEPTED_FOR_LOCAL_CUSTODY` or `REJECTED`. Never record credentials, findings,
 candidate bytes, project identity, project policy or receipts here.
+
+## Correction C2 proposed verification addendum
+
+This addendum describes the unaccepted C2 candidate and does not change the C1
+instructions above. A C2 release set must use manifest schema `2.1`, proposed
+tag/ref `release-tooling-v1.0.0-c2`, the exact accepted C2 commit/tree if one is
+later accepted, and certificate identity ending in
+`@refs/tags/release-tooling-v1.0.0-c2`. Schema `2.0` remains C1-only.
+
+Before any separately approved remote run, independently verify that the host-
+only cache and CRLF phases precede image admission; that admission names only
+`docker.io/library/golang@sha256:ded31c68586d2e49e760acc2e65a884b23d032e9bbbed0ae0c55abd3fcaf4452`;
+and that Docker inspection proves the same canonical repository digest after
+any explicitly permitted pull. Container cache and shell-parser proofs must
+use `--pull=never --network none`. Dependency acquisition is the only networked
+build phase, and reproducibility builds must remain network-disabled with the
+completed cache read-only.
+
+Until C2 is independently accepted and each remote gate is separately approved,
+do not create the C2 tag, pull on a remote runner, run the workflow, sign,
+attest, draft, publish or treat these proposed instructions as release proof.

@@ -375,3 +375,16 @@ fully pinned and permissions minimal; no credential enters scan execution; no
 unapproved remote/spend/publication occurred.
 
 Stop after PSCAN-06 closeout with PSCAN-07 unselected.
+
+## Correction C2 implementation status
+
+Correction C2 was claimed alone in a fresh session from exact clean authority
+commit `d4eca19e04862d660ca6ac0e9b64eec4fb06b61c`. The bounded local candidate
+separates host-only pre-image proofs, exact canonical digest image admission,
+offline container proofs, networked dependency acquisition, and offline
+reproducible builds. It adds release-manifest schema `2.1` and C2 verifier
+policy without modifying schema `2.0` or either locked tag.
+
+This is author implementation only. Independent skeptical acceptance, actual
+fresh-runner execution and every pull/tag/push/workflow/signing/attestation/
+draft/publication gate remain open. PSCAN-07 and PSCAN-08 remain unselected.

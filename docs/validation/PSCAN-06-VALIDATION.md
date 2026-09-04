@@ -76,3 +76,31 @@ The correction tooling must additionally prove from its exact clean candidate:
 
 Local author validation remains non-acceptance. Independent skeptical review
 and every remote/signing/publication owner gate remain open.
+
+## Correction C2 validation addendum
+
+The C1 addendum remains historical and schema `2.0` remains unchanged. The C2
+candidate must additionally prove:
+
+1. host positive, wrong-owner and read-only cache cases execute before any
+   Docker inspection, execution or pull and leave no canary, ledger or acquired
+   bytes on rejection;
+2. CRLF checkout, raw-CR rejection and exact LF normalization complete in a
+   host-only phase that cannot require an image;
+3. image admission accepts only the canonical `docker.io/library/golang`
+   repository at digest
+   `sha256:ded31c68586d2e49e760acc2e65a884b23d032e9bbbed0ae0c55abd3fcaf4452`,
+   revalidates Docker `RepoDigests`, and rejects short-name ambiguity, mutable
+   tags, wrong repositories, wrong digests, absence without explicit pull,
+   pull failure and post-pull inspection mismatch before execution;
+4. container cache and shell-parser proofs occur only after admission and use
+   `--pull=never --network none`; dependency downloads occur only in the
+   acquisition phase; both builds use `--network none` and a read-only cache;
+5. schema `2.1`, the C2 tag/ref/workflow/SHA/trigger, and distinct product and
+   tooling roles validate exactly, while valid historical schema `2.0` C1
+   evidence continues to parse under its own policy; and
+6. the locked product and C1 tags, existing schema bytes and all accepted
+   product controls remain unchanged.
+
+Author-local proof is not independent acceptance and cannot authorize a pull,
+tag, push, workflow run, signing, attestation, draft or publication action.

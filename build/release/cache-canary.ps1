@@ -1,4 +1,5 @@
 . (Join-Path $PSScriptRoot 'shell-payload.ps1')
+. (Join-Path $PSScriptRoot 'image-admission.ps1')
 
 function Invoke-ReleaseCacheCanary {
     [CmdletBinding()]
@@ -10,6 +11,7 @@ function Invoke-ReleaseCacheCanary {
         [switch]$ReadOnlyCache
     )
 
+    $Image = Assert-AdmittedReleaseImage -Image $Image
     $resolvedCache = (Resolve-Path -LiteralPath $ModuleCache).Path
     $tmpfs = '/work:rw,noexec,nosuid,nodev,size=16m,mode=0700'
     $arguments = @(
@@ -40,9 +42,9 @@ cleanup() { rm -f "$canary" "$renamed"; }
 trap cleanup EXIT HUP INT TERM
 test ! -e "$canary"
 test ! -e "$renamed"
-printf '%s\n' 'PSCAN-06-C1-CACHE-CANARY' > "$canary"
+printf '%s\n' 'PSCAN-06-C2-CONTAINER-CACHE-CANARY' > "$canary"
 mv "$canary" "$renamed"
-test "$(cat "$renamed")" = 'PSCAN-06-C1-CACHE-CANARY'
+test "$(cat "$renamed")" = 'PSCAN-06-C2-CONTAINER-CACHE-CANARY'
 rm "$renamed"
 test ! -e "$canary"
 test ! -e "$renamed"

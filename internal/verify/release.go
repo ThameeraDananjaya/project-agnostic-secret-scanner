@@ -387,19 +387,24 @@ func validateReleaseIdentityVersion(m ReleaseManifest) error {
 			m.ReleaseIdentity.WorkflowSHA != "" || m.ReleaseIdentity.Trigger != "" {
 			return ErrInvalidReference
 		}
-	case "2.0":
+	case "2.0", "2.1":
 		if m.ProductSource == nil || m.ReleaseTooling == nil {
 			return ErrInvalidReference
 		}
 		product := m.ProductSource
 		tooling := m.ReleaseTooling
 		identity := m.ReleaseIdentity
+		expectedToolingTag := "release-tooling-v1.0.0-c1"
+		if m.ManifestSchemaVersion == "2.1" {
+			expectedToolingTag = "release-tooling-v1.0.0-c2"
+		}
+		expectedToolingRef := "refs/tags/" + expectedToolingTag
 		if m.SourceRevision != "" || m.SourceTree != "" || m.ReleaseVersion != "v1.0.0" ||
 			product.Tag != "v1.0.0" || product.Commit != "a13c28fe7273bc8dc6545f97966a02889524eb4c" ||
 			product.Tree != "217b711ddea51fd0ea7e808edd2e27fdecef8427" ||
-			tooling.Tag != "release-tooling-v1.0.0-c1" || !gitOIDPattern.MatchString(tooling.Commit) ||
+			tooling.Tag != expectedToolingTag || !gitOIDPattern.MatchString(tooling.Commit) ||
 			!gitOIDPattern.MatchString(tooling.Tree) || tooling.Workflow != ".github/workflows/release-recovery-v1.0.0.yml" ||
-			tooling.WorkflowRef != "refs/tags/release-tooling-v1.0.0-c1" || tooling.WorkflowSHA != tooling.Commit ||
+			tooling.WorkflowRef != expectedToolingRef || tooling.WorkflowSHA != tooling.Commit ||
 			tooling.Trigger != "workflow_dispatch" || identity.Workflow != tooling.Workflow || identity.Ref != tooling.WorkflowRef ||
 			identity.WorkflowSHA != tooling.WorkflowSHA || identity.Trigger != tooling.Trigger {
 			return ErrInvalidReference
@@ -429,13 +434,13 @@ func checkReleasePolicy(m ReleaseManifest, p ReleaseTrustPolicy, now time.Time) 
 			identity.WorkflowSHA != "" || identity.Trigger != "" {
 			return ErrBindingMismatch
 		}
-	case "2.0":
+	case "2.0", "2.1":
 		if m.ProductSource == nil || m.ReleaseTooling == nil {
 			return ErrBindingMismatch
 		}
 		product := m.ProductSource
 		tooling := m.ReleaseTooling
-		if p.ManifestSchemaVersion != "2.0" || p.ProductSourceTag == "" || p.ProductSourceCommit == "" || p.ProductSourceTree == "" ||
+		if p.ManifestSchemaVersion != m.ManifestSchemaVersion || p.ProductSourceTag == "" || p.ProductSourceCommit == "" || p.ProductSourceTree == "" ||
 			p.ReleaseToolingTag == "" || p.ReleaseToolingCommit == "" || p.ReleaseToolingTree == "" || p.WorkflowSHA == "" || p.Trigger == "" ||
 			product.Tag != p.ProductSourceTag || product.Commit != p.ProductSourceCommit || product.Tree != p.ProductSourceTree ||
 			tooling.Tag != p.ReleaseToolingTag || tooling.Commit != p.ReleaseToolingCommit || tooling.Tree != p.ReleaseToolingTree ||

@@ -5,7 +5,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$image = 'golang@sha256:ded31c68586d2e49e760acc2e65a884b23d032e9bbbed0ae0c55abd3fcaf4452'
+$image = 'docker.io/library/golang@sha256:ded31c68586d2e49e760acc2e65a884b23d032e9bbbed0ae0c55abd3fcaf4452'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $cache = [IO.Path]::GetFullPath($CacheDirectory)
 if (Test-Path -LiteralPath $cache) {
@@ -23,16 +23,6 @@ $downloads = Join-Path $cache 'downloads'
 $moduleCache = Join-Path $cache 'gomodcache'
 New-Item -ItemType Directory -Path $downloads,$moduleCache -Force | Out-Null
 
-& docker image inspect $image *> $null
-if ($LASTEXITCODE -ne 0) {
-    if (!$AllowImagePull) {
-        throw 'Pinned build image is absent; rerun only with explicit -AllowImagePull during the networked acquisition phase'
-    }
-    & docker pull $image
-    if ($LASTEXITCODE -ne 0) { throw 'Pinned build image pull failed' }
-}
-
-. (Join-Path $PSScriptRoot 'cache-canary.ps1')
 $hostUID = $null
 $hostGID = $null
 $platformMode = 'windows-docker-desktop-default-user'
@@ -54,6 +44,13 @@ if ($IsLinux) {
     }
     $platformMode = 'linux-host-numeric-uid-gid'
 }
+. (Join-Path $PSScriptRoot 'image-admission.ps1')
+$imageAdmission = Invoke-ReleaseImageAdmission -CacheDirectory $cache -AllowImagePull:$AllowImagePull
+$image = $imageAdmission.Image
+$hostUID = $imageAdmission.HostUID
+$hostGID = $imageAdmission.HostGID
+$platformMode = $imageAdmission.HostIdentityMode
+. (Join-Path $PSScriptRoot 'cache-canary.ps1')
 Invoke-ReleaseCacheCanary -Image $image -ModuleCache $moduleCache -HostUID $hostUID -HostGID $hostGID
 
 $artifacts = @(
@@ -138,17 +135,25 @@ Assert-LFPosixShellPayload -Payload $arguments[$arguments.Count - 1]
 if ($LASTEXITCODE -ne 0) { throw 'Pinned dependency acquisition failed' }
 
 $ledger = [ordered]@{
-    schemaVersion = '2.0'
+    schemaVersion = '2.1'
     acquiredAt = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')
     image = $image
     artifacts = $artifacts
     moduleCache = 'gomodcache'
     cacheCanary = [ordered]@{
-        semantics = 'write-atomic-rename-read-delete'
+        semantics = 'host-and-container-write-atomic-rename-read-delete'
         completedBeforeNetworkDependencyAcquisition = $true
+        completedBeforeImagePull = $true
         hostIdentityMode = $platformMode
         hostUID = $hostUID
         hostGID = $hostGID
+    }
+    imageAdmission = [ordered]@{
+        canonicalReference = $image
+        repository = 'docker.io/library/golang'
+        digest = 'sha256:ded31c68586d2e49e760acc2e65a884b23d032e9bbbed0ae0c55abd3fcaf4452'
+        pulledDuringThisInvocation = $imageAdmission.Pulled
+        postAdmissionRepoDigestProved = $true
     }
     networkBoundary = 'Network enabled only in this acquisition phase; builds require --network none and read-only cache mounts.'
 }

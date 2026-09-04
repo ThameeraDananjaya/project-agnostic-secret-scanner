@@ -139,6 +139,41 @@ func TestReleaseManifestV2RequiresDistinctCompleteIdentities(t *testing.T) {
 	}
 }
 
+func TestReleaseManifestV21BindsCorrectionC2AndPreservesC1Parsing(t *testing.T) {
+	c1 := minimumManifestV2()
+	raw, err := json.Marshal(c1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := verify.ParseReleaseManifest(raw); err != nil {
+		t.Fatalf("historical schema 2.0 C1 manifest rejected: %v", err)
+	}
+
+	c2 := minimumManifestV21()
+	raw, err = json.Marshal(c2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := verify.ParseReleaseManifest(raw); err != nil {
+		t.Fatalf("schema 2.1 C2 manifest rejected: %v", err)
+	}
+
+	for name, mutate := range map[string]func(*verify.ReleaseManifest){
+		"C1 tag under 2.1": func(m *verify.ReleaseManifest) { m.ReleaseTooling.Tag = "release-tooling-v1.0.0-c1" },
+		"C1 ref under 2.1": func(m *verify.ReleaseManifest) { m.ReleaseTooling.WorkflowRef = "refs/tags/release-tooling-v1.0.0-c1" },
+		"role swap": func(m *verify.ReleaseManifest) { m.ProductSource.Tag, m.ReleaseTooling.Tag = m.ReleaseTooling.Tag, m.ProductSource.Tag },
+	} {
+		t.Run(name, func(t *testing.T) {
+			candidate := minimumManifestV21()
+			mutate(&candidate)
+			raw, _ := json.Marshal(candidate)
+			if _, err := verify.ParseReleaseManifest(raw); !errors.Is(err, verify.ErrInvalidReference) {
+				t.Fatalf("invalid C2 identity was not rejected: %v", err)
+			}
+		})
+	}
+}
+
 func minimumManifest() verify.ReleaseManifest {
 	digest := verify.DigestBytes([]byte("x"))
 	assets := []verify.ReleaseAsset{}
@@ -174,6 +209,16 @@ func minimumManifestV2() verify.ReleaseManifest {
 		Workflow: ".github/workflows/release-recovery-v1.0.0.yml", WorkflowRef: "refs/tags/release-tooling-v1.0.0-c1", WorkflowSHA: "3fb1b0a55dc4f48dd35464c63c768f497efbc89b", Trigger: "workflow_dispatch",
 	}
 	manifest.ReleaseIdentity = releaseIdentityV2()
+	return manifest
+}
+
+func minimumManifestV21() verify.ReleaseManifest {
+	manifest := minimumManifestV2()
+	manifest.ManifestSchemaVersion = "2.1"
+	manifest.ReleaseTooling.Tag = "release-tooling-v1.0.0-c2"
+	manifest.ReleaseTooling.WorkflowRef = "refs/tags/release-tooling-v1.0.0-c2"
+	manifest.ReleaseIdentity.Ref = manifest.ReleaseTooling.WorkflowRef
+	manifest.ReleaseIdentity.CertificateIdentity = "https://github.com/ThameeraDananjaya/project-agnostic-secret-scanner/.github/workflows/release-recovery-v1.0.0.yml@refs/tags/release-tooling-v1.0.0-c2"
 	return manifest
 }
 

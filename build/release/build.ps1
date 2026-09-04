@@ -114,6 +114,7 @@ $resolvedProductTree = (Convert-StrictUtf8 -Bytes (Invoke-SourceTrustGit -Reposi
 if ($resolvedProductTag -ne $productRevision -or $resolvedProductTree -ne $productTree) {
     throw 'Locked product tag, commit or tree identity does not match Correction C1 authority'
 }
+$acquisition = [IO.Path]::GetFullPath((Resolve-Path -LiteralPath $AcquisitionDirectory).Path)
 
 if (Test-Path -LiteralPath $output) {
     if (Get-ChildItem -LiteralPath $output -Force | Select-Object -First 1) { throw 'Release output must be a new empty directory' }

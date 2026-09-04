@@ -213,6 +213,16 @@ use `--pull=never --network none`. Dependency acquisition is the only networked
 build phase, and reproducibility builds must remain network-disabled with the
 completed cache read-only.
 
+For iteration 003, verify the admission entrypoint rejects dot-sourcing and has
+no callback, script-block, executable, PATH or environment implementation
+selector. Verify Docker comes only from the fixed platform path and passes its
+platform identity check. Each command must capture stdout and stderr
+concurrently as raw bytes, reject the first byte above the independent 131072
+byte limits, decode strict UTF-8 only after both pipes close, and finish within
+the 15000 ms monotonic command budget. The fixed 2000 ms cleanup grace is for
+process-tree termination and pipe closure only; it never changes a timeout,
+overflow or cleanup uncertainty into trusted evidence.
+
 Until C2 is independently accepted and each remote gate is separately approved,
 do not create the C2 tag, pull on a remote runner, run the workflow, sign,
 attest, draft, publish or treat these proposed instructions as release proof.

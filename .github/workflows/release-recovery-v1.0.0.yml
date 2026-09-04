@@ -100,7 +100,7 @@ jobs:
           -SourceRevision "$env:GITHUB_SHA"
           -WorkingDirectory "$env:RUNNER_TEMP/pscan-source-trust"
 
-      - name: Prove image identity admission cases without Docker
+      - name: Prove private admission and bounded native process cases without Docker
         shell: pwsh
         run: '& "$env:PSCAN_EXACT_TOOLING_ROOT/build/release/test-image-admission.ps1"'
 

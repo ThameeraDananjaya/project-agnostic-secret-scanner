@@ -132,3 +132,27 @@ boundary that:
 
 These checks are network-free author validation only. Actual Linux execution
 and independent skeptical acceptance remain mandatory.
+
+## Correction C2 iteration 003 validation addendum
+
+Iteration 003 additionally requires:
+
+1. static and runtime rejection of callback, variable, function, alias,
+   script-block, dot-source, PATH and environment substitution against the
+   workflow-facing admission entrypoint;
+2. the complete iteration-002 present, conclusive-absence, identity and
+   untrusted state matrix through a structurally separate test-only model that
+   shares only immutable production parsing rules;
+3. native no-Docker fixtures at below, exact and above 131072 bytes on each
+   stream, including simultaneous streams, with live byte rejection and no
+   truncation;
+4. strict UTF-8 proof for read-boundary splits, invalid sequences and incomplete
+   final sequences;
+5. immediate, nonzero, start-failure, hang, flood, simultaneous-flood and
+   child/grandchild cases that return within the fixed 15000 ms command budget
+   plus 2000 ms cleanup grace and leave no live fixture descendant; and
+6. terminal representation of timeout, overflow, read, termination and pipe
+   uncertainty, with zero pull and zero later action.
+
+The native suite must run on Windows and actual Linux before independent
+acceptance. A local author run on only one platform is expressly incomplete.

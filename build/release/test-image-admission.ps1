@@ -1,10 +1,10 @@
 $ErrorActionPreference = 'Stop'
 
-foreach ($scriptName in @('image-admission.ps1', 'admit-image.ps1', 'test-image-admission.ps1')) {
-    [void][scriptblock]::Create((Get-Content -Raw (Join-Path $PSScriptRoot $scriptName)))
-}
-
-. (Join-Path $PSScriptRoot 'image-admission.ps1')
+$productionPath = Join-Path $PSScriptRoot 'admit-image.ps1'
+$sharedPath = Join-Path $PSScriptRoot 'image-admission.ps1'
+$workflowPath = Join-Path $PSScriptRoot '..\..\.github\workflows\release-recovery-v1.0.0.yml'
+foreach ($path in @($productionPath,$sharedPath,$PSCommandPath)) { [void][scriptblock]::Create((Get-Content -Raw -LiteralPath $path)) }
+. $sharedPath
 
 $exact = 'docker.io/library/golang@sha256:ded31c68586d2e49e760acc2e65a884b23d032e9bbbed0ae0c55abd3fcaf4452'
 $engineDigest = 'golang@sha256:ded31c68586d2e49e760acc2e65a884b23d032e9bbbed0ae0c55abd3fcaf4452'
@@ -17,229 +17,131 @@ $commandList = "docker|image|ls|--all|--no-trunc|--digests|--filter|reference=$e
 $commandInspect = "docker|image|inspect|--format|{{json .RepoDigests}}|$exact"
 $commandPull = "docker|pull|$exact"
 
-function New-FakeResult {
-    param(
-        [int]$ExitCode = 0,
-        [string]$StdOut = '',
-        [string]$StdErr = '',
-        [bool]$TimedOut = $false
-    )
-    return [pscustomobject]@{ ExitCode=$ExitCode; StdOut=$StdOut; StdErr=$StdErr; TimedOut=$TimedOut }
+function Assert-Equal($Actual,$Expected,[string]$Message) { if ($Actual -cne $Expected) { throw "$Message expected=[$Expected] actual=[$Actual]" } }
+function Assert-Sequence([string[]]$Actual,[string[]]$Expected,[string]$Name) {
+    if ($Actual.Count -ne $Expected.Count) { throw "$Name count mismatch expected=$($Expected.Count) actual=$($Actual.Count): $($Actual -join '; ')" }
+    for ($index=0;$index-lt$Expected.Count;$index++) { if ($Actual[$index] -cne $Expected[$index]) { throw "$Name order mismatch at $index expected=[$($Expected[$index])] actual=[$($Actual[$index])]" } }
+}
+function New-TestResult([int]$ExitCode=0,[string]$StdOut='',[string]$StdErr='',[string]$Terminal='') {
+    [pscustomobject]@{ ExitCode=$ExitCode; StdOut=$StdOut; StdErr=$StdErr; Terminal=$Terminal }
+}
+function Assert-TestCommandSuccess($Result,[string]$Operation) {
+    if ($null -eq $Result -or $Result.PSObject.Properties.Name -notcontains 'Terminal' -or $Result.PSObject.Properties.Name -notcontains 'ExitCode' -or $Result.PSObject.Properties.Name -notcontains 'StdOut' -or $Result.PSObject.Properties.Name -notcontains 'StdErr') { throw "$Operation returned invalid lifecycle evidence" }
+    if (![string]::IsNullOrEmpty($Result.Terminal)) { throw "$Operation returned terminal untrusted lifecycle evidence" }
+    if ($Result.ExitCode -ne 0 -or ![string]::IsNullOrEmpty($Result.StdErr)) { throw "$Operation failed and is untrusted" }
+    if ([Text.UTF8Encoding]::new($false,$true).GetByteCount($Result.StdOut) -gt 131072 -or [Text.UTF8Encoding]::new($false,$true).GetByteCount($Result.StdErr) -gt 131072) { throw "$Operation exceeded its byte limit" }
 }
 
-function Assert-Equal {
-    param($Actual,$Expected,[string]$Message)
-    if ($Actual -cne $Expected) { throw "$Message expected=[$Expected] actual=[$Actual]" }
-}
-
-function Assert-Sequence {
-    param([string[]]$Actual,[string[]]$Expected,[string]$Name)
-    if ($Actual.Count -ne $Expected.Count) {
-        throw "$Name command/event count mismatch expected=$($Expected.Count) actual=$($Actual.Count): $($Actual -join '; ')"
-    }
-    for ($index = 0; $index -lt $Expected.Count; $index++) {
-        if ($Actual[$index] -cne $Expected[$index]) {
-            throw "$Name order mismatch at $index expected=[$($Expected[$index])] actual=[$($Actual[$index])]"
-        }
-    }
-}
-
-$temporaryRoot = Join-Path ([IO.Path]::GetTempPath()) ('pscan-c2-iteration-002-' + [guid]::NewGuid().ToString('N'))
-[void](New-Item -ItemType Directory -Path $temporaryRoot)
-$cache = Join-Path $temporaryRoot 'cache'
-[void](New-Item -ItemType Directory -Path $cache)
-[void](New-Item -ItemType Directory -Path (Join-Path $cache 'downloads'))
-[void](New-Item -ItemType Directory -Path (Join-Path $cache 'gomodcache'))
-
-$script:FakeResults = $null
-$script:InvocationEvents = $null
-$script:ReleaseHostCacheCanaryInvoker = {
-    param([string]$Path)
-    [void]$script:InvocationEvents.Add('host-cache')
-    Invoke-HostCacheCanary -CacheDirectory $Path
-}
-$script:ReleaseHostOnlyCrlfProofInvoker = {
-    param([string]$SourceRepository,[string]$SourceRevision,[string]$WorkingDirectory)
-    [void]$script:InvocationEvents.Add('host-crlf')
-}
-$script:ReleaseDockerInvoker = {
-    param($Request)
-    [void]$script:InvocationEvents.Add(('docker|' + ($Request.Arguments -join '|')))
-    if ($script:FakeResults.Count -eq 0) { throw 'Fake engine received an unexpected Docker command' }
-    return $script:FakeResults.Dequeue()
-}
-
-function Invoke-FakeScenario {
-    param(
-        [Parameter(Mandatory = $true)][string]$Name,
-        [Parameter(Mandatory = $true)][object[]]$Results,
-        [Parameter(Mandatory = $true)][string[]]$ExpectedEvents,
-        [bool]$ExpectSuccess = $false,
-        [bool]$ExpectPulled = $false
-    )
-    $script:FakeResults = [Collections.Generic.Queue[object]]::new()
-    foreach ($result in $Results) { $script:FakeResults.Enqueue($result) }
-    $script:InvocationEvents = [Collections.Generic.List[string]]::new()
-    $laterActions = 0
-    $succeeded = $false
-    $admission = $null
+function Invoke-TestAdmissionModel {
+    param([string]$Name,[object[]]$Results,[string[]]$ExpectedEvents,[bool]$ExpectSuccess=$false,[bool]$ExpectPulled=$false)
+    $queue=[Collections.Generic.Queue[object]]::new();foreach($result in $Results){$queue.Enqueue($result)}
+    $events=[Collections.Generic.List[string]]::new();foreach($event in @('host-cache','host-cache','host-cache','host-crlf')){[void]$events.Add($event)}
+    $laterActions=0;$success=$false;$pulled=$false
+    function Take([string]$command){[void]$events.Add($command);if($queue.Count-eq 0){throw 'Unexpected command'};$queue.Dequeue()}
     try {
-        $admission = Invoke-ReleaseImageBootstrap `
-            -CacheDirectory $cache `
-            -SourceRepository $PSScriptRoot `
-            -SourceRevision '0000000000000000000000000000000000000000' `
-            -WorkingDirectory (Join-Path $temporaryRoot 'crlf-proof')
-        $succeeded = $true
-        $laterActions++
-    } catch {
-        if ($ExpectSuccess) { throw "$Name unexpectedly rejected: $($_.Exception.Message)" }
-    }
-    if (!$ExpectSuccess -and $succeeded) { throw "$Name unexpectedly admitted" }
-    if ($ExpectSuccess) {
-        Assert-Equal -Actual $admission.Image -Expected $exact -Message "$Name image"
-        Assert-Equal -Actual $admission.Pulled -Expected $ExpectPulled -Message "$Name pull state"
-        Assert-Equal -Actual $laterActions -Expected 1 -Message "$Name later-action gate"
-    } else {
-        Assert-Equal -Actual $laterActions -Expected 0 -Message "$Name later-action gate"
-    }
-    Assert-Sequence -Actual $script:InvocationEvents.ToArray() -Expected $ExpectedEvents -Name $Name
+        $result=Take $commandVersion;Assert-TestCommandSuccess $result 'engine';[void](Assert-ReleaseEngineEvidence -Json $result.StdOut)
+        $result=Take $commandList;Assert-TestCommandSuccess $result 'inventory';$state=Resolve-ReleaseImageListEvidence -Json $result.StdOut
+        if($state -eq 'ConclusiveAbsent'){$result=Take $commandPull;Assert-TestCommandSuccess $result 'pull';$pulled=$true}
+        $result=Take $commandInspect;Assert-TestCommandSuccess $result 'inspect';$digests=Read-ReleaseRepoDigestsEvidence -Json $result.StdOut;[void](Assert-ReleaseImageIdentityEvidence -Image $exact -RepoDigests $digests)
+        $success=$true;$laterActions++
+    } catch { if($ExpectSuccess){throw "$Name unexpectedly rejected: $($_.Exception.Message)"} }
+    if(!$ExpectSuccess-and$success){throw "$Name unexpectedly admitted"}
+    Assert-Equal $laterActions ($(if($ExpectSuccess){1}else{0})) "$Name later action"
+    if($ExpectSuccess){Assert-Equal $pulled $ExpectPulled "$Name pull state"}
+    Assert-Sequence $events.ToArray() $ExpectedEvents $Name
 }
 
-$hostPrefix = @('host-cache','host-cache','host-cache','host-crlf')
-$presentEvents = @($hostPrefix + @($commandVersion,$commandList,$commandInspect))
-$absentEvents = @($hostPrefix + @($commandVersion,$commandList,$commandPull,$commandInspect))
-$versionOnly = @($hostPrefix + @($commandVersion))
-$listReached = @($hostPrefix + @($commandVersion,$commandList))
+$hostEvents=@('host-cache','host-cache','host-cache','host-crlf')
+$present=@($hostEvents+@($commandVersion,$commandList,$commandInspect));$absent=@($hostEvents+@($commandVersion,$commandList,$commandPull,$commandInspect))
+$versionOnly=@($hostEvents+@($commandVersion));$listReached=@($hostEvents+@($commandVersion,$commandList))
+Invoke-TestAdmissionModel 'pre-existing-exact' @((New-TestResult -StdOut $engineJson),(New-TestResult -StdOut $listJson),(New-TestResult -StdOut ('["'+$engineDigest+'"]'))) $present $true $false
+Invoke-TestAdmissionModel 'conclusive-absence-single-pull' @((New-TestResult -StdOut $engineJson),(New-TestResult),(New-TestResult -StdOut 'pulled'),(New-TestResult -StdOut ('["'+$engineDigest+'"]'))) $absent $true $true
+Invoke-TestAdmissionModel 'daemon-unavailable' @((New-TestResult -ExitCode 1 -StdErr 'daemon')) $versionOnly
+Invoke-TestAdmissionModel 'permission-denial' @((New-TestResult -StdOut $engineJson),(New-TestResult -ExitCode 1 -StdErr 'permission')) $listReached
+Invoke-TestAdmissionModel 'timeout-terminal' @((New-TestResult -Terminal 'timeout')) $versionOnly
+Invoke-TestAdmissionModel 'overflow-terminal' @((New-TestResult -Terminal 'overflow')) $versionOnly
+Invoke-TestAdmissionModel 'read-terminal' @((New-TestResult -Terminal 'read')) $versionOnly
+Invoke-TestAdmissionModel 'cleanup-terminal' @((New-TestResult -Terminal 'cleanup uncertainty')) $versionOnly
+Invoke-TestAdmissionModel 'invalid-invocation' @((New-TestResult -ExitCode 125 -StdErr 'invalid')) $versionOnly
+Invoke-TestAdmissionModel 'unexpected-success-stderr' @((New-TestResult -StdOut $engineJson -StdErr 'warning')) $versionOnly
+Invoke-TestAdmissionModel 'malformed-engine' @((New-TestResult -StdOut '{')) $versionOnly
+Invoke-TestAdmissionModel 'malformed-list' @((New-TestResult -StdOut $engineJson),(New-TestResult -StdOut '{')) $listReached
+Invoke-TestAdmissionModel 'ambiguous-list' @((New-TestResult -StdOut $engineJson),(New-TestResult -StdOut ($listJson+"`n"+$listJson))) $listReached
+Invoke-TestAdmissionModel 'deceptive-absence' @((New-TestResult -StdOut $engineJson),(New-TestResult -StdOut $listJson),(New-TestResult -ExitCode 1 -StdErr 'No such image')) $present
 
+foreach($case in @(
+    @{N='empty';J=''},@{N='null';J='null'},@{N='scalar';J=('"'+$engineDigest+'"')},@{N='empty-array';J='[]'},@{N='malformed';J='['},
+    @{N='exact-plus-wrong';J=('["'+$engineDigest+'","'+$wrongDigest+'"]')},@{N='duplicate';J=('["'+$engineDigest+'","'+$engineDigest+'"]')},
+    @{N='alias';J=('["'+$exact+'"]')},@{N='wrong-repository';J=('["'+$wrongRepository+'"]')},@{N='wrong-digest';J=('["'+$wrongDigest+'"]')}
+)) { Invoke-TestAdmissionModel $case.N @((New-TestResult -StdOut $engineJson),(New-TestResult -StdOut $listJson),(New-TestResult -StdOut $case.J)) $present }
+Invoke-TestAdmissionModel 'pull-failure-no-retry' @((New-TestResult -StdOut $engineJson),(New-TestResult),(New-TestResult -ExitCode 1 -StdErr 'pull failed')) @($hostEvents+@($commandVersion,$commandList,$commandPull))
+Invoke-TestAdmissionModel 'post-pull-inspect-failure' @((New-TestResult -StdOut $engineJson),(New-TestResult),(New-TestResult -StdOut 'pulled'),(New-TestResult -ExitCode 1 -StdErr 'inspect failed')) $absent
+Invoke-TestAdmissionModel 'post-pull-mixed' @((New-TestResult -StdOut $engineJson),(New-TestResult),(New-TestResult -StdOut 'pulled'),(New-TestResult -StdOut ('["'+$engineDigest+'","'+$wrongDigest+'"]'))) $absent
+
+$production=Get-Content -Raw -LiteralPath $productionPath;$shared=Get-Content -Raw -LiteralPath $sharedPath;$testSource=Get-Content -Raw -LiteralPath $PSCommandPath;$workflow=Get-Content -Raw -LiteralPath $workflowPath
+foreach($forbidden in @('ReleaseDockerInvoker','ReleaseHostCacheCanaryInvoker','ReleaseHostOnlyCrlfProofInvoker','ReadToEnd','WaitForExit()','catch {}')) { if($production.Contains($forbidden)-or$shared.Contains($forbidden)){throw "Production retains forbidden boundary text: $forbidden"} }
+if(($production.Split("@('pull',",[StringSplitOptions]::None).Count-1)-ne 1){throw 'Closed entrypoint must contain exactly one exact pull construction'}
+if($shared.Contains("@('pull',")){throw 'Dot-sourceable helper retains pull authority'}
+foreach($required in @('131072','15000','2000','UTF8Encoding','ReadAsync','Kill($true)','ArgumentList.Add','Environment.Clear','Get-AuthenticodeSignature','/usr/bin/docker')){if(!$production.Contains($required)){throw "Production omits required closed-boundary marker: $required"}}
+foreach($forbiddenParam in @('ScriptBlock','Invoker','Callback','AllowImagePull','ExecutablePath')){if($production.Substring(0,$production.IndexOf('$ErrorActionPreference')).Contains($forbiddenParam)){throw "Production parameter block exposes $forbiddenParam"}}
+foreach($required in @('-SourceRepository','-SourceRevision','-WorkingDirectory')){if(!$workflow.Contains($required)){throw "Workflow omits $required"}}
+
+$temporaryRoot=Join-Path ([IO.Path]::GetTempPath()) ('pscan-c2-iteration-003-'+[guid]::NewGuid().ToString('N'))
+[void](New-Item -ItemType Directory -Path $temporaryRoot)
 try {
-    Invoke-FakeScenario -Name 'pre-existing-exact' -ExpectSuccess $true -ExpectPulled $false `
-        -Results @(
-            (New-FakeResult -StdOut $engineJson),
-            (New-FakeResult -StdOut $listJson),
-            (New-FakeResult -StdOut ('["' + $engineDigest + '"]'))
-        ) -ExpectedEvents $presentEvents
+    $dotSourceProbe=Join-Path $temporaryRoot 'dot-source-probe.ps1'
+    $escaped=$productionPath.Replace("'","''")
+    Set-Content -LiteralPath $dotSourceProbe -Encoding utf8NoBOM -Value @"
+function docker { throw 'ambient function reached' }
+Set-Alias -Name Invoke-ClosedNativeProcess -Value Write-Output
+`$script:ReleaseDockerInvoker={ throw 'ambient callback reached' }
+`$env:PATH='$(Join-Path $temporaryRoot 'hostile-path')'
+try { . '$escaped' -CacheDirectory '$escaped' -SourceRepository '$escaped' -SourceRevision '0000000000000000000000000000000000000000' -WorkingDirectory '$escaped' } catch { if (`$_.Exception.Message -notmatch 'cannot be dot-sourced') { throw }; exit 0 }
+exit 1
+"@
+    & (Get-Process -Id $PID).Path -NoProfile -NonInteractive -File $dotSourceProbe
+    if($LASTEXITCODE-ne 0){throw 'Dot-source and ambient-state bypass probe failed'}
 
-    Invoke-FakeScenario -Name 'conclusive-absence-single-pull' -ExpectSuccess $true -ExpectPulled $true `
-        -Results @(
-            (New-FakeResult -StdOut $engineJson),
-            (New-FakeResult -StdOut ''),
-            (New-FakeResult -StdOut 'pulled'),
-            (New-FakeResult -StdOut ('["' + $engineDigest + '"]'))
-        ) -ExpectedEvents $absentEvents
-
-    Invoke-FakeScenario -Name 'daemon-unavailable' `
-        -Results @((New-FakeResult -ExitCode 1 -StdErr 'daemon unavailable')) -ExpectedEvents $versionOnly
-    Invoke-FakeScenario -Name 'permission-denial' `
-        -Results @((New-FakeResult -StdOut $engineJson),(New-FakeResult -ExitCode 1 -StdErr 'permission denied')) -ExpectedEvents $listReached
-    Invoke-FakeScenario -Name 'timeout' `
-        -Results @((New-FakeResult -ExitCode -1 -TimedOut $true)) -ExpectedEvents $versionOnly
-    Invoke-FakeScenario -Name 'invalid-invocation' `
-        -Results @((New-FakeResult -ExitCode 125 -StdErr 'invalid invocation')) -ExpectedEvents $versionOnly
-    Invoke-FakeScenario -Name 'invalid-command-boundary-protocol' `
-        -Results @([pscustomobject]@{ ExitCode=0; StdOut=$engineJson; StdErr='' }) -ExpectedEvents $versionOnly
-    Invoke-FakeScenario -Name 'unexpected-success-stderr' `
-        -Results @((New-FakeResult -StdOut $engineJson -StdErr 'warning')) -ExpectedEvents $versionOnly
-    Invoke-FakeScenario -Name 'over-limit-command-output' `
-        -Results @((New-FakeResult -StdOut ('x' * ($script:ReleaseDockerOutputLimit + 1)))) -ExpectedEvents $versionOnly
-    Invoke-FakeScenario -Name 'malformed-engine-data' `
-        -Results @((New-FakeResult -StdOut '{')) -ExpectedEvents $versionOnly
-    Invoke-FakeScenario -Name 'malformed-image-list-data' `
-        -Results @((New-FakeResult -StdOut $engineJson),(New-FakeResult -StdOut '{')) -ExpectedEvents $listReached
-    Invoke-FakeScenario -Name 'ambiguous-image-list-data' `
-        -Results @((New-FakeResult -StdOut $engineJson),(New-FakeResult -StdOut ($listJson + "`n" + $listJson))) -ExpectedEvents $listReached
-    Invoke-FakeScenario -Name 'deceptive-absence-text' `
-        -Results @(
-            (New-FakeResult -StdOut $engineJson),
-            (New-FakeResult -StdOut $listJson),
-            (New-FakeResult -ExitCode 1 -StdErr 'No such image: absent')
-        ) -ExpectedEvents $presentEvents
-
-    $identityCases = @(
-        [ordered]@{ Name='empty-identity-output'; Json='' },
-        [ordered]@{ Name='null-identity'; Json='null' },
-        [ordered]@{ Name='scalar-identity'; Json=('"' + $engineDigest + '"') },
-        [ordered]@{ Name='empty-identity-array'; Json='[]' },
-        [ordered]@{ Name='malformed-identity'; Json='[' },
-        [ordered]@{ Name='exact-plus-wrong'; Json=('["' + $engineDigest + '","' + $wrongDigest + '"]') },
-        [ordered]@{ Name='exact-plus-alias'; Json=('["' + $engineDigest + '","' + $exact + '"]') },
-        [ordered]@{ Name='duplicate-canonical'; Json=('["' + $engineDigest + '","' + $engineDigest + '"]') },
-        [ordered]@{ Name='alias-only'; Json=('["' + $exact + '"]') },
-        [ordered]@{ Name='wrong-repository'; Json=('["' + $wrongRepository + '"]') },
-        [ordered]@{ Name='wrong-digest'; Json=('["' + $wrongDigest + '"]') }
-    )
-    foreach ($case in $identityCases) {
-        Invoke-FakeScenario -Name $case.Name `
-            -Results @(
-                (New-FakeResult -StdOut $engineJson),
-                (New-FakeResult -StdOut $listJson),
-                (New-FakeResult -StdOut $case.Json)
-            ) -ExpectedEvents $presentEvents
+    $tokens=$null;$errors=$null;$ast=[Management.Automation.Language.Parser]::ParseFile($productionPath,[ref]$tokens,[ref]$errors)
+    if($errors.Count){throw 'Production AST parse failed'}
+    $runner=$ast.Find({param($node)$node-is[Management.Automation.Language.FunctionDefinitionAst]-and$node.Name-ceq'Invoke-ClosedNativeProcess'},$true)
+    if($null-eq$runner){throw 'Private bounded runner is absent'}
+    . ([scriptblock]::Create($runner.Extent.Text))
+    $dockerOutputLimit=131072;$dockerBudgetMilliseconds=15000;$cleanupGraceMilliseconds=2000
+    $native=(Get-Process -Id $PID).Path
+    if($IsWindows){$sig=Microsoft.PowerShell.Security\Get-AuthenticodeSignature -LiteralPath $native;if($sig.Status-ne[Management.Automation.SignatureStatus]::Valid){throw 'Native fixture host is not signed system tooling'}}
+    $fixture=Join-Path $temporaryRoot 'native-fixture.ps1'
+    Set-Content -LiteralPath $fixture -Encoding utf8NoBOM -Value @'
+param([string]$Mode,[int]$Count=0,[string]$PidFile='')
+$out=[Console]::OpenStandardOutput();$err=[Console]::OpenStandardError()
+function Write-Bytes($stream,[byte[]]$bytes){$stream.Write($bytes,0,$bytes.Length);$stream.Flush()}
+switch($Mode){
+'stdout'{Write-Bytes $out ([byte[]](,[byte]97*$Count))}
+'stderr'{Write-Bytes $err ([byte[]](,[byte]98*$Count))}
+'both'{for($i=0;$i-lt$Count;$i+=1024){$n=[Math]::Min(1024,$Count-$i);Write-Bytes $out ([byte[]](,[byte]97*$n));Write-Bytes $err ([byte[]](,[byte]98*$n))}}
+'split-utf8'{Write-Bytes $out ([byte[]](0xE2,0x82));Start-Sleep -Milliseconds 25;Write-Bytes $out ([byte[]](0xAC))}
+'invalid-utf8'{Write-Bytes $out ([byte[]](0xC3,0x28))}
+'incomplete-utf8'{Write-Bytes $out ([byte[]](0xE2,0x82))}
+'nonzero'{exit 7}
+'hang'{Start-Sleep -Seconds 30}
+'child'{ $p=Start-Process -FilePath (Get-Process -Id $PID).Path -ArgumentList @('-NoProfile','-NonInteractive','-File',$PSCommandPath,'-Mode','hang') -PassThru -NoNewWindow;if($PidFile){Set-Content -LiteralPath $PidFile -Value $p.Id};Start-Sleep -Seconds 30 }
+'grandchild'{ $childFile=$PidFile+'.child';$p=Start-Process -FilePath (Get-Process -Id $PID).Path -ArgumentList @('-NoProfile','-NonInteractive','-File',$PSCommandPath,'-Mode','child','-PidFile',$childFile) -PassThru -NoNewWindow;Set-Content -LiteralPath $PidFile -Value $p.Id;Start-Sleep -Seconds 30 }
+default{throw 'unknown fixture mode'}
+}
+'@
+    function RunFixture([string]$mode,[int]$count=0,[string]$pidFile=''){
+        $fixtureArguments=@('-NoProfile','-NonInteractive','-File',$fixture,'-Mode',$mode,'-Count',[string]$count)
+        if(![string]::IsNullOrEmpty($pidFile)){$fixtureArguments+=@('-PidFile',$pidFile)}
+        Invoke-ClosedNativeProcess -ExecutablePath $native -Arguments $fixtureArguments -Operation "fixture-$mode"
     }
-
-    Invoke-FakeScenario -Name 'pull-failure-no-retry' `
-        -Results @(
-            (New-FakeResult -StdOut $engineJson),
-            (New-FakeResult -StdOut ''),
-            (New-FakeResult -ExitCode 1 -StdErr 'pull failed')
-        ) -ExpectedEvents @($hostPrefix + @($commandVersion,$commandList,$commandPull))
-    Invoke-FakeScenario -Name 'post-pull-inspect-failure' `
-        -Results @(
-            (New-FakeResult -StdOut $engineJson),
-            (New-FakeResult -StdOut ''),
-            (New-FakeResult -StdOut 'pulled'),
-            (New-FakeResult -ExitCode 1 -StdErr 'inspect failed')
-        ) -ExpectedEvents $absentEvents
-    Invoke-FakeScenario -Name 'post-pull-mixed-identity' `
-        -Results @(
-            (New-FakeResult -StdOut $engineJson),
-            (New-FakeResult -StdOut ''),
-            (New-FakeResult -StdOut 'pulled'),
-            (New-FakeResult -StdOut ('["' + $engineDigest + '","' + $wrongDigest + '"]'))
-        ) -ExpectedEvents $absentEvents
-
-    $script:InvocationEvents = [Collections.Generic.List[string]]::new()
-    $legacyRejected = $false
-    try { [void](Invoke-ReleaseImageAdmission -CacheDirectory $cache -AllowImagePull) }
-    catch { $legacyRejected = $true }
-    if (!$legacyRejected) { throw 'Legacy AllowImagePull request unexpectedly retained pull authority' }
-    Assert-Sequence -Actual $script:InvocationEvents.ToArray() -Expected @() -Name 'legacy-pull-authority'
-
-    $workflow = Get-Content -Raw (Join-Path $PSScriptRoot '..\..\.github\workflows\release-recovery-v1.0.0.yml')
-    $admitScript = Get-Content -Raw (Join-Path $PSScriptRoot 'admit-image.ps1')
-    $imageScript = Get-Content -Raw (Join-Path $PSScriptRoot 'image-admission.ps1')
-    if ($workflow.Contains('AllowImagePull') -or $admitScript.Contains('AllowImagePull')) {
-        throw 'Recovery workflow or mandatory orchestrator still exposes an image-pull bypass switch'
-    }
-    foreach ($required in @('-SourceRepository','-SourceRevision','-WorkingDirectory')) {
-        if (!$workflow.Contains($required)) { throw "Recovery workflow omits mandatory host prerequisite argument $required" }
-    }
-    if (($imageScript.Split("'pull',",[StringSplitOptions]::None).Count - 1) -ne 1) {
-        throw 'Image admission implementation does not contain exactly one pull-capable command boundary'
-    }
-    $order = @(
-        $workflow.IndexOf('Prove image identity admission cases without Docker'),
-        $workflow.IndexOf('Prove host cache ownership failures before any image operation'),
-        $workflow.IndexOf('Run mandatory host prerequisites and admit the pinned image'),
-        $workflow.IndexOf('Prove offline container cache rejection after image admission'),
-        $workflow.IndexOf('Acquire pinned public inputs after cache canary'),
-        $workflow.IndexOf('Build and validate from an actual CRLF checkout without network')
-    )
-    if ($order -contains -1) { throw 'Recovery workflow is missing an ordered admission boundary' }
-    for ($index=1; $index -lt $order.Count; $index++) {
-        if ($order[$index] -le $order[$index-1]) { throw 'Recovery workflow admission ordering is invalid' }
-    }
-
-    Write-Output 'Image admission iteration-002 PASS present=NO-PULL absent=ONE-PULL failures=ZERO-PULL identity-set=UNIQUE ordering=BOUND'
+    foreach($n in @(131071,131072)){ $r=RunFixture 'stdout' $n;Assert-Equal $r.StdOutByteCount $n "stdout-$n";$r=RunFixture 'stderr' $n;Assert-Equal $r.StdErrByteCount $n "stderr-$n" }
+    $r=RunFixture 'both' 131072;Assert-Equal $r.StdOutByteCount 131072 'both stdout';Assert-Equal $r.StdErrByteCount 131072 'both stderr'
+    $r=RunFixture 'split-utf8';Assert-Equal $r.StdOut '€' 'split UTF-8'
+    $r=RunFixture 'nonzero';Assert-Equal $r.ExitCode 7 'nonzero exit'
+    foreach($case in @(@{M='stdout';C=131073},@{M='stderr';C=131073},@{M='both';C=131073},@{M='invalid-utf8';C=0},@{M='incomplete-utf8';C=0},@{M='hang';C=0})){$failed=$false;$watch=[Diagnostics.Stopwatch]::StartNew();try{[void](RunFixture $case.M $case.C)}catch{$failed=$true};if(!$failed){throw "$($case.M) unexpectedly trusted"};if($watch.ElapsedMilliseconds-gt 17500){throw "$($case.M) exceeded bounded return"}}
+    $missing=Join-Path $temporaryRoot 'missing-native.exe';$failed=$false;try{[void](Invoke-ClosedNativeProcess -ExecutablePath $missing -Arguments @() -Operation 'fixture-start-failure')}catch{$failed=$true};if(!$failed){throw 'Start failure unexpectedly trusted'}
+    foreach($mode in @('child','grandchild')){$pidFile=Join-Path $temporaryRoot "$mode.pid";$failed=$false;try{[void](RunFixture $mode 0 $pidFile)}catch{$failed=$true};if(!$failed){throw "$mode unexpectedly trusted"};foreach($file in @($pidFile,$pidFile+'.child')){if(Test-Path $file){$fixturePid=[int](Get-Content -Raw $file);if(Get-Process -Id $fixturePid -ErrorAction SilentlyContinue){throw "$mode left a live descendant $fixturePid"}}}}
+    Write-Output 'Image admission iteration-003 PASS private=BOUND state-matrix=PASS byte-caps=LIVE utf8=STRICT timeout=MONOTONIC process-tree=TERMINAL'
 } finally {
-    $script:ReleaseDockerInvoker = $null
-    $script:ReleaseHostCacheCanaryInvoker = $null
-    $script:ReleaseHostOnlyCrlfProofInvoker = $null
-    $resolvedTemporaryRoot = [IO.Path]::GetFullPath($temporaryRoot)
-    $resolvedSystemTemp = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
-    if (!$resolvedTemporaryRoot.StartsWith($resolvedSystemTemp,[StringComparison]::OrdinalIgnoreCase)) {
-        throw "Unsafe test cleanup path: $resolvedTemporaryRoot"
-    }
-    if (Test-Path -LiteralPath $resolvedTemporaryRoot) {
-        Remove-Item -LiteralPath $resolvedTemporaryRoot -Recurse -Force
-    }
+    $resolved=[IO.Path]::GetFullPath($temporaryRoot);$temp=[IO.Path]::GetFullPath([IO.Path]::GetTempPath());if(!$resolved.StartsWith($temp,[StringComparison]::OrdinalIgnoreCase)){throw "Unsafe cleanup path: $resolved"};if(Test-Path -LiteralPath $resolved){Remove-Item -LiteralPath $resolved -Recurse -Force}
 }

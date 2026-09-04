@@ -469,7 +469,12 @@ acceptance cases and exclusions are controlling in
 `evidence/PSCAN-06/CORRECTION-C2-ITERATION-003-AUTHORITY.md`.
 
 This approval supersedes candidate `52f7ee2` only as a readiness claim. The
-candidate and its author evidence remain immutable history. Iteration 003 is
-owner-approved, unclaimed, unimplemented and unaccepted. It begins only in a
-fresh session from the committed iteration-003 authority bundle and from an
-exact clean source-trust-compliant checkout.
+candidate and its author evidence remain immutable history. Iteration 003 was
+claimed alone in fresh session
+`01a06e8c-6a86-74a2-819f-edcbc15fe6f8` from exact authority commit
+`5762d1ef6a7708629bad5f5bb33eba21ca1cdcd4` in an isolated checkout with clean
+tracked, untracked and ignored state. The bounded local implementation removes
+the production callback seams, closes the workflow entrypoint, and adds live
+byte, UTF-8, monotonic-time, pipe and process-tree tests. This is author work,
+not acceptance; actual-Linux execution and independent skeptical review remain
+open.

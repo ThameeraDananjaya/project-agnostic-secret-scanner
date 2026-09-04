@@ -24,6 +24,20 @@ then freshly re-inspects the complete repository-digest set and accepts exactly
 one canonical engine identity. Acquisition and image-verification helpers have
 no pull capability. Container cache and shell
 parser proofs follow with `--pull=never --network none`.
+
+Correction C2 iteration 003 makes the mandatory admission script a closed
+entrypoint: dot-sourcing is rejected, it accepts no callback, command runner,
+script block, executable or environment-selected implementation, and it runs
+the committed host-cache and host-only CRLF prerequisites directly. Docker is
+resolved only from the fixed Windows Docker Desktop or Linux `/usr/bin/docker`
+location, with Windows publisher-signature or Linux non-mutable-file checks and
+a recorded SHA-256. Every exact Docker operation clears the inherited process
+environment, uses an argument list, concurrently consumes raw stdout and
+stderr, enforces an independent 131072-byte limit per stream, decodes strict
+UTF-8 after complete closure, and applies a 15000 ms monotonic budget plus a
+fixed 2000 ms cleanup grace. Timeout, overflow, invalid UTF-8, read, exit,
+process-tree termination or pipe-closure uncertainty is terminal and cannot be
+retried or reclassified as image absence.
 Compilation, tests, vet, Windows cross-compilation and two byte-for-byte builds
 then run with networking disabled and the module cache read-only. Workflow-
 transfer evidence is uncompressed and retained one day; it is not a release.

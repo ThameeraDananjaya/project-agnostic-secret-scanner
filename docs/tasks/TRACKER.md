@@ -7,7 +7,7 @@
 | PSCAN-03 | Rejected and closed fail-closed; not accepted | `evidence/PSCAN-03/CLOSEOUT-REJECTED.md` |
 | PSCAN-04 | Completed and independently accepted locally | Exact activation `a21b030e1658f1f98ac4e4d001af12185d9ed311`; evidence-bearing closeout commit |
 | PSCAN-05 | Completed and independently accepted locally | Exact activation `50b4186`; corrected evidence-bearing closeout commit |
-| PSCAN-06 | Correction C2 iteration 003 private admission boundary and bounded process correction is owner-approved, unclaimed, unimplemented and unaccepted; PSCAN-06 remains open | `evidence/PSCAN-06/CORRECTION-C2-ITERATION-003-AUTHORITY.md` |
+| PSCAN-06 | Correction C2 iteration 003 is claimed and locally implemented by the author; independent acceptance and actual-Linux proof remain open; PSCAN-06 remains open | `evidence/PSCAN-06/CORRECTION-C2-ITERATION-003-IMPLEMENTATION.md` |
 | PSCAN-07 | Proposed; unselected; signing/publication gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-06 |
 | PSCAN-08 | Inactive; technically and legally gated | Material-gap evidence plus separate owner approval required |
 | PSCAN-09 | Completed and independently accepted locally | Activation `f486989`; accepted closeout commit |
@@ -97,10 +97,15 @@ production admission file and that the nominal Docker output/time limits are
 enforced only after unbounded stream capture and may enter an unbounded
 post-timeout wait. On 2026-09-05 the owner approved bounded Correction C2
 iteration 003 to establish a private production admission boundary and prove
-live byte, wall-clock, pipe and process-tree bounds. The iteration is unclaimed
-and unimplemented; it must begin in a fresh session from its committed authority
-bundle and an exact clean source-trust-compliant checkout. No correction Docker,
-network or remote action is approved.
+live byte, wall-clock, pipe and process-tree bounds. The iteration was claimed
+alone in fresh session `01a06e8c-6a86-74a2-819f-edcbc15fe6f8` from exact
+authority commit `5762d1ef6a7708629bad5f5bb33eba21ca1cdcd4` in a separate
+checkout with clean tracked, untracked and ignored state. Its bounded author
+implementation closes the workflow entrypoint, removes all three mutable
+production callbacks, and adds no-Docker native process fixtures for live
+stream, UTF-8, timeout, pipe and descendant cleanup behavior. Author validation
+is not independent acceptance. No correction Docker, network or remote action
+is approved.
 PSCAN-07 remains proposed and
 unselected. PSCAN-08 remains inactive,
 unselected and ineligible because

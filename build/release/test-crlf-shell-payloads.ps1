@@ -1,12 +1,24 @@
 param(
     [string]$WorkingDirectory,
     [string]$AcquisitionDirectory,
-    [string]$BuildOutputDirectory
+    [string]$BuildOutputDirectory,
+    [string]$SourceRepository,
+    [string]$SourceRevision
 )
 
 $ErrorActionPreference = 'Stop'
 $image = 'golang@sha256:ded31c68586d2e49e760acc2e65a884b23d032e9bbbed0ae0c55abd3fcaf4452'
-$sourceRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+if ([string]::IsNullOrWhiteSpace($SourceRepository)) {
+    if ([string]::IsNullOrWhiteSpace($env:PSCAN_VERIFIED_REPOSITORY_ROOT)) { throw 'CRLF regression requires an explicit verified source repository' }
+    $SourceRepository = $env:PSCAN_VERIFIED_REPOSITORY_ROOT
+}
+if ([string]::IsNullOrWhiteSpace($SourceRevision)) {
+    if ([string]::IsNullOrWhiteSpace($env:PSCAN_TRUSTED_LAUNCHER_REVISION)) { throw 'CRLF regression requires an exact source revision' }
+    $SourceRevision = $env:PSCAN_TRUSTED_LAUNCHER_REVISION
+}
+$sourceRoot = [IO.Path]::GetFullPath((Resolve-Path -LiteralPath $SourceRepository).Path)
+. (Join-Path $PSScriptRoot 'source-trust.ps1')
+$sourceTrust = Assert-ExactGitSourceTrust -Repository $sourceRoot -ExpectedRevision $SourceRevision
 
 if ([string]::IsNullOrWhiteSpace($WorkingDirectory)) {
     $WorkingDirectory = Join-Path ([IO.Path]::GetTempPath()) ("pscan-06-c1-crlf-" + [guid]::NewGuid().ToString('N'))
@@ -44,21 +56,14 @@ function Require-Empty([string]$Path) {
 }
 
 $fixtureRoot = Join-Path $testRoot 'checkout'
-$sourceStatus = & git -C $sourceRoot status --porcelain=v1
-if ($LASTEXITCODE -ne 0 -or $sourceStatus) { throw 'CRLF regression source repository must be exactly clean' }
-$sourceRevision = (& git -C $sourceRoot rev-parse HEAD).Trim()
-$sourceTree = (& git -C $sourceRoot rev-parse 'HEAD^{tree}').Trim()
 & git clone --no-hardlinks --no-checkout --quiet $sourceRoot $fixtureRoot
 if ($LASTEXITCODE -ne 0) { throw 'Local CRLF fixture clone failed' }
 & git -C $fixtureRoot config core.autocrlf true
-& git -C $fixtureRoot checkout --quiet --detach $sourceRevision
+& git -C $fixtureRoot checkout --quiet --detach $SourceRevision
 if ($LASTEXITCODE -ne 0) { throw 'Exact CRLF fixture checkout failed' }
-$fixtureRevision = (& git -C $fixtureRoot rev-parse HEAD).Trim()
-$fixtureTree = (& git -C $fixtureRoot rev-parse 'HEAD^{tree}').Trim()
-$fixtureStatus = & git -C $fixtureRoot status --porcelain=v1
-if ($LASTEXITCODE -ne 0 -or $fixtureStatus -or $fixtureRevision -ne $sourceRevision -or $fixtureTree -ne $sourceTree) {
-    throw 'CRLF fixture identity or cleanliness cannot be proven'
-}
+$fixtureTrust = Assert-ExactGitSourceTrust -Repository $fixtureRoot -ExpectedRevision $SourceRevision -AllowCanonicalEolProjection
+$fixtureRevision = $fixtureTrust.Commit
+$fixtureTree = $fixtureTrust.Tree
 $crlfIntegrityAsset = Join-Path $fixtureRoot 'rules\generic\gitleaks-ignore-empty-v1.txt'
 $crlfIntegrityBytes = [IO.File]::ReadAllBytes($crlfIntegrityAsset)
 $crlfIntegrityEol = (& git -C $fixtureRoot ls-files --eol -- 'rules/generic/gitleaks-ignore-empty-v1.txt') -join "`n"
@@ -67,7 +72,7 @@ if ($crlfIntegrityEol -notmatch 'w/crlf' -or $crlfIntegrityBytes -notcontains 13
 }
 
 $fixtureReleaseRoot = Join-Path $fixtureRoot 'build\release'
-. (Join-Path $fixtureReleaseRoot 'shell-payload.ps1')
+. (Join-Path $PSScriptRoot 'shell-payload.ps1')
 $payloadCases = @(
     [ordered]@{Name='cache-canary';Path=(Join-Path $fixtureReleaseRoot 'cache-canary.ps1');Marker='PSCAN-06-C1-CACHE-CANARY'},
     [ordered]@{Name='acquisition';Path=(Join-Path $fixtureReleaseRoot 'acquire.ps1');Marker='/work/runner/go/bin/go mod download'},
@@ -116,7 +121,7 @@ foreach ($entry in $normalizationCounts.GetEnumerator()) {
     }
 }
 
-. (Join-Path $fixtureReleaseRoot 'cache-canary.ps1')
+. (Join-Path $PSScriptRoot 'cache-canary.ps1')
 $positiveCache = Join-Path $testRoot 'positive-cache'
 $readOnlyCache = Join-Path $testRoot 'read-only-cache'
 New-Item -ItemType Directory -Path $positiveCache,$readOnlyCache | Out-Null
@@ -137,14 +142,14 @@ if ([string]::IsNullOrWhiteSpace($AcquisitionDirectory) -xor [string]::IsNullOrW
     throw 'AcquisitionDirectory and BuildOutputDirectory must be supplied together'
 }
 if (![string]::IsNullOrWhiteSpace($AcquisitionDirectory)) {
-    $buildScript = Join-Path $fixtureReleaseRoot 'build.ps1'
-    & pwsh -NoProfile -File $buildScript -AcquisitionDirectory $AcquisitionDirectory -OutputDirectory $BuildOutputDirectory
+    $buildLauncher = Join-Path $PSScriptRoot 'invoke-exact-build.ps1'
+    & pwsh -NoProfile -File $buildLauncher -RepositoryRoot $fixtureRoot -ExpectedToolingRevision $SourceRevision -AcquisitionDirectory $AcquisitionDirectory -OutputDirectory $BuildOutputDirectory -AllowCanonicalEolProjection
     if ($LASTEXITCODE -ne 0) { throw 'Complete offline release build from the CRLF checkout failed' }
     $dist = Join-Path ([IO.Path]::GetFullPath($BuildOutputDirectory)) 'dist'
     $testSummary = Get-Content -LiteralPath (Join-Path $dist 'TEST-SUMMARY.json') -Raw | ConvertFrom-Json
     $manifest = Get-Content -LiteralPath (Join-Path $dist 'release-manifest.json') -Raw | ConvertFrom-Json
     if ($testSummary.commands -notcontains "go test -p=1 -count=1 -run '^TestPinnedRuleAndCoverageIntegrityBindings$' ./tests/acceptance/gitleaks" -or
-        $manifest.releaseTooling.commit -ne $sourceRevision -or $manifest.releaseTooling.tree -ne $sourceTree) {
+        $manifest.releaseTooling.commit -ne $SourceRevision -or $manifest.releaseTooling.tree -ne $sourceTrust.Tree) {
         throw 'CRLF build did not prove the pinned integrity test and exact tooling identity'
     }
     $completeBuild = 'PASS'

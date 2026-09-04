@@ -67,9 +67,45 @@ jobs:
           test "$(git rev-parse 'v1.0.0^{commit}')" = 'a13c28fe7273bc8dc6545f97966a02889524eb4c'
           test "$(git rev-parse 'v1.0.0^{tree}')" = '217b711ddea51fd0ea7e808edd2e27fdecef8427'
 
+      - name: Materialize and verify exact committed release entrypoints
+        shell: bash
+        run: |
+          set -euo pipefail
+          exact="$RUNNER_TEMP/pscan-exact-tooling"
+          mkdir -p "$exact"
+          git -c core.autocrlf=false -c core.eol=lf -c tar.umask=0022 archive "$GITHUB_SHA" build/release | tar -xf - -C "$exact"
+          expected=0
+          while IFS=$'\t' read -r metadata path; do
+            mode="${metadata%% *}"
+            remainder="${metadata#* }"
+            type="${remainder%% *}"
+            object="${remainder##* }"
+            test "$type" = blob
+            case "$mode" in 100644|100755) ;; *) exit 1 ;; esac
+            test "$(git hash-object --no-filters "$exact/$path")" = "$object"
+            expected=$((expected + 1))
+          done < <(git ls-tree -r "$GITHUB_SHA" -- build/release)
+          actual="$(find "$exact/build/release" -type f -printf '%P\n' | wc -l)"
+          test "$actual" -eq "$expected"
+          echo "PSCAN_EXACT_TOOLING_ROOT=$exact" >> "$GITHUB_ENV"
+          echo "PSCAN_VERIFIED_REPOSITORY_ROOT=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+          echo "PSCAN_TRUSTED_LAUNCHER_REVISION=$GITHUB_SHA" >> "$GITHUB_ENV"
+
+      - name: Reject hostile Git index and checkout states before build output
+        shell: pwsh
+        run: >-
+          & "$env:PSCAN_EXACT_TOOLING_ROOT/build/release/test-source-trust.ps1"
+          -SourceRepository "$env:GITHUB_WORKSPACE"
+          -SourceRevision "$env:GITHUB_SHA"
+          -WorkingDirectory "$env:RUNNER_TEMP/pscan-source-trust"
+
       - name: Prove CRLF checkout cannot corrupt Docker shell payloads
         shell: pwsh
-        run: ./build/release/test-crlf-shell-payloads.ps1 -WorkingDirectory "$env:RUNNER_TEMP/pscan-crlf-regression"
+        run: >-
+          & "$env:PSCAN_EXACT_TOOLING_ROOT/build/release/test-crlf-shell-payloads.ps1"
+          -SourceRepository "$env:GITHUB_WORKSPACE"
+          -SourceRevision "$env:GITHUB_SHA"
+          -WorkingDirectory "$env:RUNNER_TEMP/pscan-crlf-regression"
 
       - name: Prove Linux cache ownership failures before acquisition
         shell: bash
@@ -78,26 +114,38 @@ jobs:
           install -d -m 0700 "$RUNNER_TEMP/cache-positive" "$RUNNER_TEMP/cache-wrong-owner" "$RUNNER_TEMP/cache-read-only"
           sudo chown root:root "$RUNNER_TEMP/cache-wrong-owner"
           sudo chmod 0755 "$RUNNER_TEMP/cache-wrong-owner"
-          pwsh ./build/release/test-cache-boundary.ps1 \
+          pwsh "$PSCAN_EXACT_TOOLING_ROOT/build/release/test-cache-boundary.ps1" \
             -PositiveCacheDirectory "$RUNNER_TEMP/cache-positive" \
             -WrongOwnerCacheDirectory "$RUNNER_TEMP/cache-wrong-owner" \
             -ReadOnlyCacheDirectory "$RUNNER_TEMP/cache-read-only"
 
       - name: Acquire pinned public inputs after cache canary
         shell: pwsh
-        run: ./build/release/acquire.ps1 -CacheDirectory "$env:RUNNER_TEMP/pscan-acquisition" -AllowImagePull
+        run: '& "$env:PSCAN_EXACT_TOOLING_ROOT/build/release/acquire.ps1" -CacheDirectory "$env:RUNNER_TEMP/pscan-acquisition" -AllowImagePull'
 
       - name: Build and validate from an actual CRLF checkout without network
         shell: pwsh
-        run: ./build/release/test-crlf-shell-payloads.ps1 -WorkingDirectory "$env:RUNNER_TEMP/pscan-crlf-build-a" -AcquisitionDirectory "$env:RUNNER_TEMP/pscan-acquisition" -BuildOutputDirectory "$env:RUNNER_TEMP/pscan-release-a"
+        run: >-
+          & "$env:PSCAN_EXACT_TOOLING_ROOT/build/release/test-crlf-shell-payloads.ps1"
+          -SourceRepository "$env:GITHUB_WORKSPACE"
+          -SourceRevision "$env:GITHUB_SHA"
+          -WorkingDirectory "$env:RUNNER_TEMP/pscan-crlf-build-a"
+          -AcquisitionDirectory "$env:RUNNER_TEMP/pscan-acquisition"
+          -BuildOutputDirectory "$env:RUNNER_TEMP/pscan-release-a"
 
       - name: Independently rebuild from a second actual CRLF checkout without network
         shell: pwsh
-        run: ./build/release/test-crlf-shell-payloads.ps1 -WorkingDirectory "$env:RUNNER_TEMP/pscan-crlf-build-b" -AcquisitionDirectory "$env:RUNNER_TEMP/pscan-acquisition" -BuildOutputDirectory "$env:RUNNER_TEMP/pscan-release-b"
+        run: >-
+          & "$env:PSCAN_EXACT_TOOLING_ROOT/build/release/test-crlf-shell-payloads.ps1"
+          -SourceRepository "$env:GITHUB_WORKSPACE"
+          -SourceRevision "$env:GITHUB_SHA"
+          -WorkingDirectory "$env:RUNNER_TEMP/pscan-crlf-build-b"
+          -AcquisitionDirectory "$env:RUNNER_TEMP/pscan-acquisition"
+          -BuildOutputDirectory "$env:RUNNER_TEMP/pscan-release-b"
 
       - name: Compare every reproduced byte
         shell: pwsh
-        run: ./build/release/compare-builds.ps1 -FirstOutputDirectory "$env:RUNNER_TEMP/pscan-release-a" -SecondOutputDirectory "$env:RUNNER_TEMP/pscan-release-b"
+        run: '& "$env:PSCAN_EXACT_TOOLING_ROOT/build/release/compare-builds.ps1" -FirstOutputDirectory "$env:RUNNER_TEMP/pscan-release-a" -SecondOutputDirectory "$env:RUNNER_TEMP/pscan-release-b"'
 
       - name: Transfer exact unsigned candidate
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

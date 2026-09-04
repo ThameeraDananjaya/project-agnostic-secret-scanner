@@ -1,28 +1,15 @@
 param(
+    [Parameter(Mandatory = $true)][string]$RepositoryRoot,
+    [Parameter(Mandatory = $true)][string]$ExpectedToolingRevision,
     [Parameter(Mandatory = $true)][string]$AcquisitionDirectory,
-    [Parameter(Mandatory = $true)][string]$OutputDirectory
+    [Parameter(Mandatory = $true)][string]$OutputDirectory,
+    [switch]$AllowCanonicalEolProjection
 )
 
 $ErrorActionPreference = 'Stop'
-
-. (Join-Path $PSScriptRoot 'shell-payload.ps1')
-
 $image = 'golang@sha256:ded31c68586d2e49e760acc2e65a884b23d032e9bbbed0ae0c55abd3fcaf4452'
-$root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-$acquisition = (Resolve-Path -LiteralPath $AcquisitionDirectory).Path
+$root = [IO.Path]::GetFullPath((Resolve-Path -LiteralPath $RepositoryRoot).Path)
 $output = [IO.Path]::GetFullPath($OutputDirectory)
-if (Test-Path -LiteralPath $output) {
-    if ((Get-ChildItem -LiteralPath $output -Force | Select-Object -First 1)) {
-        throw 'Release output must be a new empty directory'
-    }
-} else {
-    New-Item -ItemType Directory -Path $output | Out-Null
-}
-$raw = Join-Path $output '.raw'
-$linuxStage = Join-Path $output '.stage-linux'
-$windowsStage = Join-Path $output '.stage-windows'
-$dist = Join-Path $output 'dist'
-New-Item -ItemType Directory -Path $raw,$linuxStage,$windowsStage,$dist | Out-Null
 
 function Require-Digest([string]$Path, [string]$Expected) {
     if (!(Test-Path -LiteralPath $Path -PathType Leaf)) { throw "Required file missing: $Path" }
@@ -36,26 +23,13 @@ function Write-Utf8([string]$Path, [string]$Value) {
 
 function Get-GitBlobSha256([string]$Repository, [string]$ObjectID) {
     if ($ObjectID -notmatch '^[0-9a-f]{40}$') { throw "Unsupported Git blob identity: $ObjectID" }
-    $startInfo = [Diagnostics.ProcessStartInfo]::new()
-    $startInfo.FileName = 'git'
-    $startInfo.UseShellExecute = $false
-    $startInfo.RedirectStandardOutput = $true
-    $startInfo.RedirectStandardError = $true
-    foreach ($argument in @('-C',$Repository,'cat-file','blob',$ObjectID)) {
-        [void]$startInfo.ArgumentList.Add($argument)
-    }
-    $process = [Diagnostics.Process]::new()
-    $process.StartInfo = $startInfo
-    [void]$process.Start()
+    $bytes = (Invoke-SourceTrustGit -Repository $Repository -Arguments @('cat-file','blob',$ObjectID)).Bytes
     $sha256 = [Security.Cryptography.SHA256]::Create()
     try {
-        $digest = $sha256.ComputeHash($process.StandardOutput.BaseStream)
+        $digest = $sha256.ComputeHash($bytes)
     } finally {
         $sha256.Dispose()
     }
-    $errorText = $process.StandardError.ReadToEnd()
-    $process.WaitForExit()
-    if ($process.ExitCode -ne 0) { throw "Exact Git blob read failed for $ObjectID`: $errorText" }
     return ([BitConverter]::ToString($digest)).Replace('-','').ToLowerInvariant()
 }
 
@@ -66,29 +40,23 @@ function New-ExactGitTreeArchive(
     [string]$ArchivePath,
     [string]$Label
 ) {
-    $objectType = (& git -C $Repository cat-file -t $Revision).Trim()
-    $resolvedTree = (& git -C $Repository rev-parse "$Revision`^{tree}").Trim()
-    if ($LASTEXITCODE -ne 0 -or $objectType -ne 'commit' -or $resolvedTree -ne $ExpectedTree) {
+    $objectType = (Convert-StrictUtf8 -Bytes (Invoke-SourceTrustGit -Repository $Repository -Arguments @('cat-file','-t',$Revision)).Bytes -Label "$Label object type").Trim()
+    $resolvedTree = (Convert-StrictUtf8 -Bytes (Invoke-SourceTrustGit -Repository $Repository -Arguments @('rev-parse',"$Revision`^{tree}")).Bytes -Label "$Label tree").Trim()
+    if ($objectType -ne 'commit' -or $resolvedTree -ne $ExpectedTree) {
         throw "$Label commit/tree identity cannot be proven"
     }
 
-    $entries = @(& git -C $Repository ls-tree -r --full-tree $ExpectedTree)
-    if ($LASTEXITCODE -ne 0 -or $entries.Count -eq 0) { throw "$Label Git tree enumeration failed closed" }
+    $entries = @(Get-SourceTrustTreeEntries -Repository $Repository -Tree $ExpectedTree)
+    if ($entries.Count -eq 0) { throw "$Label Git tree enumeration failed closed" }
     $hashLines = [Collections.Generic.List[string]]::new()
     $pathLines = [Collections.Generic.List[string]]::new()
     $modeLines = [Collections.Generic.List[string]]::new()
     foreach ($entry in $entries) {
-        if ($entry -notmatch '^(?<mode>100644|100755) blob (?<object>[0-9a-f]{40})\t(?<path>[A-Za-z0-9._+@/-]+)$') {
-            throw "$Label Git tree contains an unsupported type, mode or path: $entry"
-        }
-        $path = $Matches.path
-        if ($path.StartsWith('/') -or $path.Contains('//') -or $path.Split('/') -contains '..') {
-            throw "$Label Git tree contains an unsafe path: $path"
-        }
-        $digest = Get-GitBlobSha256 -Repository $Repository -ObjectID $Matches.object
+        $path = $entry.Path
+        $digest = Get-GitBlobSha256 -Repository $Repository -ObjectID $entry.Object
         $hashLines.Add("$digest  $path")
         $pathLines.Add($path)
-        $modeLines.Add("$($Matches.mode)`t$path")
+        $modeLines.Add("$($entry.Mode)`t$path")
     }
     $paths = $pathLines.ToArray()
     [Array]::Sort($paths, [StringComparer]::Ordinal)
@@ -104,8 +72,8 @@ function New-ExactGitTreeArchive(
     Write-Utf8 $pathManifest ($paths -join "`n")
     Write-Utf8 $modeManifest ($modes -join "`n")
 
-    & git -C $Repository -c core.autocrlf=false -c core.eol=lf -c tar.umask=0022 archive --format=tar --output $ArchivePath $Revision
-    if ($LASTEXITCODE -ne 0 -or !(Test-Path -LiteralPath $ArchivePath -PathType Leaf) -or (Get-Item -LiteralPath $ArchivePath).Length -eq 0) {
+    [void](Invoke-SourceTrustGit -Repository $Repository -Arguments @('-c','tar.umask=0022','archive','--format=tar','--output',$ArchivePath,$Revision))
+    if (!(Test-Path -LiteralPath $ArchivePath -PathType Leaf) -or (Get-Item -LiteralPath $ArchivePath).Length -eq 0) {
         throw "$Label exact-tree archive materialization failed"
     }
     return [pscustomobject]@{
@@ -124,15 +92,16 @@ function Copy-ReleaseFile([string]$Source, [string]$Name) {
     return $destination
 }
 
-$status = & git -C $root status --porcelain=v1
-if ($LASTEXITCODE -ne 0 -or $status) { throw 'Release build requires an exact clean Git worktree' }
-$repositoryRoot = (& git -C $root rev-parse --show-toplevel).Trim()
-if ($LASTEXITCODE -ne 0 -or [IO.Path]::GetFullPath($repositoryRoot) -ne [IO.Path]::GetFullPath($root)) {
-    throw 'Release build repository root identity is ambiguous'
+if ($env:PSCAN_TRUSTED_LAUNCHER_REVISION -ne $ExpectedToolingRevision -or $env:PSCAN_TRUSTED_LAUNCHER_TREE -notmatch '^[0-9a-f]{40}$') {
+    throw 'Release build must enter through the exact committed launcher'
 }
-$toolingRevision = (& git -C $root rev-parse HEAD).Trim()
-$toolingTree = (& git -C $root rev-parse 'HEAD^{tree}').Trim()
-$created = ([DateTimeOffset]::Parse((& git -C $root show -s --format=%cI HEAD).Trim())).UtcDateTime.ToString('yyyy-MM-ddTHH:mm:ssZ')
+. (Join-Path $PSScriptRoot 'source-trust.ps1')
+$sourceTrust = Assert-ExactGitSourceTrust -Repository $root -ExpectedRevision $ExpectedToolingRevision -AllowCanonicalEolProjection:$AllowCanonicalEolProjection
+if ($sourceTrust.Tree -ne $env:PSCAN_TRUSTED_LAUNCHER_TREE) { throw 'Launcher and build source-tree identities conflict' }
+$toolingRevision = $sourceTrust.Commit
+$toolingTree = $sourceTrust.Tree
+$createdText = (Convert-StrictUtf8 -Bytes (Invoke-SourceTrustGit -Repository $root -Arguments @('show','-s','--format=%cI',$toolingRevision)).Bytes -Label 'Tooling commit timestamp').Trim()
+$created = ([DateTimeOffset]::Parse($createdText)).UtcDateTime.ToString('yyyy-MM-ddTHH:mm:ssZ')
 $epoch = [DateTimeOffset]::Parse($created).ToUnixTimeSeconds()
 $productTag = 'v1.0.0'
 $productRevision = 'a13c28fe7273bc8dc6545f97966a02889524eb4c'
@@ -140,12 +109,23 @@ $productTree = '217b711ddea51fd0ea7e808edd2e27fdecef8427'
 $toolingTag = 'release-tooling-v1.0.0-c1'
 $workflow = '.github/workflows/release-recovery-v1.0.0.yml'
 $workflowRef = 'refs/tags/release-tooling-v1.0.0-c1'
-if ($toolingRevision -notmatch '^[0-9a-f]{40}$' -or $toolingTree -notmatch '^[0-9a-f]{40}$') { throw 'Unsupported correction-tooling Git object identity' }
-$resolvedProductTag = (& git -C $root rev-parse 'v1.0.0^{commit}').Trim()
-$resolvedProductTree = (& git -C $root rev-parse 'v1.0.0^{tree}').Trim()
-if ($LASTEXITCODE -ne 0 -or $resolvedProductTag -ne $productRevision -or $resolvedProductTree -ne $productTree) {
+$resolvedProductTag = (Convert-StrictUtf8 -Bytes (Invoke-SourceTrustGit -Repository $root -Arguments @('rev-parse','v1.0.0^{commit}')).Bytes -Label 'Locked product commit').Trim()
+$resolvedProductTree = (Convert-StrictUtf8 -Bytes (Invoke-SourceTrustGit -Repository $root -Arguments @('rev-parse','v1.0.0^{tree}')).Bytes -Label 'Locked product tree').Trim()
+if ($resolvedProductTag -ne $productRevision -or $resolvedProductTree -ne $productTree) {
     throw 'Locked product tag, commit or tree identity does not match Correction C1 authority'
 }
+
+if (Test-Path -LiteralPath $output) {
+    if (Get-ChildItem -LiteralPath $output -Force | Select-Object -First 1) { throw 'Release output must be a new empty directory' }
+} else {
+    New-Item -ItemType Directory -Path $output | Out-Null
+}
+$raw = Join-Path $output '.raw'
+$linuxStage = Join-Path $output '.stage-linux'
+$windowsStage = Join-Path $output '.stage-windows'
+$dist = Join-Path $output 'dist'
+New-Item -ItemType Directory -Path $raw,$linuxStage,$windowsStage,$dist | Out-Null
+. (Join-Path $PSScriptRoot 'shell-payload.ps1')
 $productArchive = Join-Path $raw 'product-source.tar'
 $toolingArchive = Join-Path $raw 'release-tooling-source.tar'
 $productMaterialization = New-ExactGitTreeArchive -Repository $root -Revision $productRevision -ExpectedTree $productTree -ArchivePath $productArchive -Label 'Locked product source'
@@ -316,6 +296,7 @@ $provenance = [ordered]@{
     schemaVersion='2.0';createdAt=$created
     productSource=[ordered]@{tag=$productTag;commit=$productRevision;tree=$productTree}
     releaseTooling=[ordered]@{tag=$toolingTag;commit=$toolingRevision;tree=$toolingTree;workflow=$workflow;workflowRef=$workflowRef;workflowSha=$toolingRevision;trigger='workflow_dispatch'}
+    sourceTrust=[ordered]@{trackedFiles=$sourceTrust.FileCount;rawEqual=$sourceTrust.RawEqualCount;canonicalCrlfProjection=$sourceTrust.CanonicalEolProjectionCount;workingTreeInputsUsed=$false;buildDriver='exact-git-object-materialization'}
     buildImage=$image;runnerGo='go1.27.1';engineGo='go1.27.0'
     gitleaksSourceRevision='83d9cd684c87d95d656c1458ef04895a7f1cbd8e'
     network='disabled';moduleCache='read-only';cgo=$false;trimpath=$true;buildVCS=$false;buildId='empty'

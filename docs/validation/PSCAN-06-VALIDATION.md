@@ -60,8 +60,18 @@ The correction tooling must additionally prove from its exact clean candidate:
    path sets, modes and raw blob SHA-256 values; archive, tree, byte, cleanliness
    or extraction ambiguity must fail closed; no integrity asset normalization
    is permitted;
-   and
-8. the shipped runner, Gitleaks engines and rules retain the previously
+8. every release entrypoint used by the recovery workflow and CRLF harness is
+   first materialized from the exact correction-tooling commit and verified
+   against its Git blob identity; before output creation, the trusted launcher
+   must reject all untracked files (including ignored files), every assume-
+   unchanged or skip-worktree entry, filesystem-monitor/untracked-cache or
+   partial-clone shortcuts, index path/mode/object differences, missing or
+   unsupported paths/modes, and tracked raw-byte differences other than a
+   byte-proved canonical LF-to-CRLF checkout projection that is never executed
+   or consumed as a build input; exact Git-object materialization remains the
+   sole build input; isolated adversarial cases must prove every rejection
+   emits zero build files and executes no tampered driver action; and
+9. the shipped runner, Gitleaks engines and rules retain the previously
    accepted product-source digests.
 
 Local author validation remains non-acceptance. Independent skeptical review

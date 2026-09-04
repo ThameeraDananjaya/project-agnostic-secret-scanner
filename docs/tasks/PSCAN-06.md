@@ -79,6 +79,19 @@ bundle does not claim or implement the iteration. A fresh session must claim
 only iteration 002 from its exact committed authority. PSCAN-06 remains open
 and unaccepted; no remote or successor action is authorized.
 
+Correction C2 iteration-002 candidate
+`52f7ee22ab722d7590e2d2c8326e14a0e9670462` subsequently received local author
+validation only. Inspection then found that the production admission file
+retains mutable test callbacks capable of substituting Docker and host proof
+results, and that its declared Docker output and timeout limits are not enforced
+during the complete native-process lifecycle. On 2026-09-05 the owner approved
+the bounded private-admission and bounded-process correction as Correction C2
+iteration 003. Its authority is recorded in
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-003-AUTHORITY.md`. This authority
+bundle does not claim or implement the iteration. A fresh session must claim
+only iteration 003 from its exact committed authority. PSCAN-06 remains open
+and unaccepted; no Docker, network, remote or successor action is authorized.
+
 ## Objective
 
 After current read-only preflight and exact action-time owner approval, establish
@@ -428,3 +441,35 @@ candidate and its partial author evidence remain immutable history. Iteration
 author candidate. Author validation is not acceptance. Actual Linux execution,
 fresh-runner proof and independent skeptical review remain open; PSCAN-06 is
 unaccepted and no successor or remote action is authorized.
+
+## Correction C2 iteration 003 approved boundary
+
+The unaccepted iteration-002 candidate keeps mutable script-scope test
+callbacks inside the production admission file, so its production decision is
+not structurally private from synthetic Docker, cache-canary and CRLF proof
+substitution. Its native Docker runner also reads both redirected streams to
+completion before checking their declared size, then can wait without a bound
+after timeout. The recorded fake-result cases do not prove live byte limits,
+bounded process-tree termination or pipe closure.
+
+Iteration 003 must remove test substitution from the workflow-facing
+production boundary and enforce the existing stdout, stderr and per-command
+limits while the native process is running. Timeout, overflow, read/termination
+failure, incomplete stream closure or surviving descendants must reject with
+no pull or later action. Deterministic process fixtures must prove the native
+Windows and actual-Linux lifecycle, including concurrent floods, hangs and
+child/grandchild cleanup.
+
+The iteration is limited to the recovery workflow; the three existing image-
+admission scripts; the named release, validation and living-task documents;
+and `evidence/PSCAN-06/**`. It preserves the iteration-002 three-state
+admission model and every original C2 ordering, image, sandbox, identity,
+schema, signature, locked-tag, remote and successor gate. Exact scope,
+acceptance cases and exclusions are controlling in
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-003-AUTHORITY.md`.
+
+This approval supersedes candidate `52f7ee2` only as a readiness claim. The
+candidate and its author evidence remain immutable history. Iteration 003 is
+owner-approved, unclaimed, unimplemented and unaccepted. It begins only in a
+fresh session from the committed iteration-003 authority bundle and from an
+exact clean source-trust-compliant checkout.

@@ -7,7 +7,7 @@
 | PSCAN-03 | Rejected and closed fail-closed; not accepted | `evidence/PSCAN-03/CLOSEOUT-REJECTED.md` |
 | PSCAN-04 | Completed and independently accepted locally | Exact activation `a21b030e1658f1f98ac4e4d001af12185d9ed311`; evidence-bearing closeout commit |
 | PSCAN-05 | Completed and independently accepted locally | Exact activation `50b4186`; corrected evidence-bearing closeout commit |
-| PSCAN-06 | Correction C2 iteration 002 is claimed and locally implemented as an author candidate; author validation is non-acceptance and independent review remains open | `evidence/PSCAN-06/CORRECTION-C2-ITERATION-002-IMPLEMENTATION.md` |
+| PSCAN-06 | Correction C2 iteration 003 private admission boundary and bounded process correction is owner-approved, unclaimed, unimplemented and unaccepted; PSCAN-06 remains open | `evidence/PSCAN-06/CORRECTION-C2-ITERATION-003-AUTHORITY.md` |
 | PSCAN-07 | Proposed; unselected; signing/publication gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-06 |
 | PSCAN-08 | Inactive; technically and legally gated | Material-gap evidence plus separate owner approval required |
 | PSCAN-09 | Completed and independently accepted locally | Activation `f486989`; accepted closeout commit |
@@ -92,8 +92,15 @@ iteration was claimed alone in fresh session
 `01a06e1c-5c06-7763-958a-fdb623bae6aa` from exact clean authority commit
 `281bea031bb6bbaf1be3059977074df2a88ecdf4` and implemented as a bounded local
 author candidate. Its deterministic fake-engine validation is author evidence,
-not acceptance. Actual Linux execution and independent skeptical review remain
-open. No correction remote action is approved.
+not acceptance. Inspection then found that mutable test callbacks remain in the
+production admission file and that the nominal Docker output/time limits are
+enforced only after unbounded stream capture and may enter an unbounded
+post-timeout wait. On 2026-09-05 the owner approved bounded Correction C2
+iteration 003 to establish a private production admission boundary and prove
+live byte, wall-clock, pipe and process-tree bounds. The iteration is unclaimed
+and unimplemented; it must begin in a fresh session from its committed authority
+bundle and an exact clean source-trust-compliant checkout. No correction Docker,
+network or remote action is approved.
 PSCAN-07 remains proposed and
 unselected. PSCAN-08 remains inactive,
 unselected and ineligible because

@@ -70,6 +70,10 @@ fresh implementation session:
 65. `evidence/PSCAN-06/CORRECTION-C2-IMPLEMENTATION.md`
 66. `evidence/PSCAN-06/CORRECTION-C2-AUTHOR-VALIDATION.md`
 67. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-002-AUTHORITY.md`
+68. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-002-PREFLIGHT.md`
+69. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-002-IMPLEMENTATION.md`
+70. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-002-AUTHOR-VALIDATION.md`
+71. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-003-AUTHORITY.md`
 
 Then verify the exact activation commit, branch and clean Git status; the
 activated allowed and forbidden paths; the absence of another selected,
@@ -135,3 +139,16 @@ or ambiguous result must stop with zero pulls. The iteration-002 approval does
 not authorize Docker execution, network access, implementation in the approval
 session, a push, C2 tooling tag, settings change, workflow run, signing,
 attestation, draft release, publication or successor work.
+
+For Correction C2 iteration 003, begin from its exact committed authority
+bundle and claim only that iteration in a fresh session from an exact clean
+source-trust-compliant checkout. Treat candidate
+`52f7ee22ab722d7590e2d2c8326e14a0e9670462` and its author validation as
+immutable but superseded readiness evidence. Prove that the workflow-facing
+production admission path cannot consult mutable callbacks or caller-provided
+test doubles, and enforce stdout/stderr byte caps, wall-clock expiry, concurrent
+pipe draining and complete process-tree cleanup while the native Docker process
+is running. A fake-result case is not native process proof. The iteration-003
+approval does not authorize implementation in the approval session, Docker
+execution, network access, a push, C2 tooling tag, settings change, workflow
+run, signing, attestation, draft release, publication or successor work.

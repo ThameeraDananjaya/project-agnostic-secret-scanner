@@ -104,7 +104,7 @@ function New-ExactGitTreeArchive(
     Write-Utf8 $pathManifest ($paths -join "`n")
     Write-Utf8 $modeManifest ($modes -join "`n")
 
-    & git -C $Repository -c core.autocrlf=false -c core.eol=lf -c tar.umask=0022 archive --format=tar --output $ArchivePath $ExpectedTree
+    & git -C $Repository -c core.autocrlf=false -c core.eol=lf -c tar.umask=0022 archive --format=tar --output $ArchivePath $Revision
     if ($LASTEXITCODE -ne 0 -or !(Test-Path -LiteralPath $ArchivePath -PathType Leaf) -or (Get-Item -LiteralPath $ArchivePath).Length -eq 0) {
         throw "$Label exact-tree archive materialization failed"
     }
@@ -285,7 +285,7 @@ $testSummary = [ordered]@{
     schemaVersion = '2.0'; productSourceRevision = $productRevision; releaseToolingRevision = $toolingRevision; createdAt = $created
     authoritativeEnvironment = 'pinned-network-disabled-linux-container'
     goToolchain = 'go1.27.1'; engineToolchain = 'go1.27.0'
-    commands = @("go test -count=1 -run '^TestPinnedRuleAndCoverageIntegrityBindings$' ./tests/acceptance/gitleaks", 'go test -count=1 ./...', 'go vet ./...', 'GOOS=windows GOARCH=amd64 go test -exec /bin/true ./...')
+    commands = @("go test -p=1 -count=1 -run '^TestPinnedRuleAndCoverageIntegrityBindings$' ./tests/acceptance/gitleaks", 'go test -p=1 -count=1 ./...', 'go vet -p=1 ./...', 'GOOS=windows GOARCH=amd64 go test -p=1 -exec /bin/true ./...')
     linuxExecution = 'PASS'; windowsCompilation = 'PASS'; windowsNativeExecution = 'UNPROVEN_SMART_APP_CONTROL'
     signing = 'NOT_PERFORMED_OWNER_GATE'; remoteWorkflow = 'NOT_PERFORMED_OWNER_GATE'
 }

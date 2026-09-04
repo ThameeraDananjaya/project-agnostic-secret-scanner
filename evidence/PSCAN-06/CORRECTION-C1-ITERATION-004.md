@@ -61,6 +61,16 @@ blob. No build result from that attempt is accepted. The bounded correction
 pins archive `tar.umask=0022`; the exact-mode verifier remains mandatory and
 must prove `0644`/`0755` after extraction.
 
+The next clean candidate `dcde01d` passed two complete forced-CRLF builds and
+the 30-file distributable comparison. Before final evidence, inspection found
+that archives created from bare tree objects carried run-time metadata and the
+generated test summary omitted the actually executed `-p=1` flags. The final
+bounded refinement archives the already verified commit object, making archive
+metadata deterministic while the raw-blob/path/mode checks remain controlling,
+and records each executed Go command exactly. Results from `dcde01d` are not
+promoted to final candidate evidence; both builds must be repeated from the
+new exact commit.
+
 The commit containing this record supersedes `5ca7722` as the Correction C1
 tooling candidate. Two clean forced-CRLF builds and exact-candidate validation
 remain required after that commit exists. Actual general-purpose Linux UID/GID

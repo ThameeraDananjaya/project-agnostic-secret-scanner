@@ -143,7 +143,7 @@ if (![string]::IsNullOrWhiteSpace($AcquisitionDirectory)) {
     $dist = Join-Path ([IO.Path]::GetFullPath($BuildOutputDirectory)) 'dist'
     $testSummary = Get-Content -LiteralPath (Join-Path $dist 'TEST-SUMMARY.json') -Raw | ConvertFrom-Json
     $manifest = Get-Content -LiteralPath (Join-Path $dist 'release-manifest.json') -Raw | ConvertFrom-Json
-    if ($testSummary.commands -notcontains "go test -count=1 -run '^TestPinnedRuleAndCoverageIntegrityBindings$' ./tests/acceptance/gitleaks" -or
+    if ($testSummary.commands -notcontains "go test -p=1 -count=1 -run '^TestPinnedRuleAndCoverageIntegrityBindings$' ./tests/acceptance/gitleaks" -or
         $manifest.releaseTooling.commit -ne $sourceRevision -or $manifest.releaseTooling.tree -ne $sourceTree) {
         throw 'CRLF build did not prove the pinned integrity test and exact tooling identity'
     }

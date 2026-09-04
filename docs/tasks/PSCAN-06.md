@@ -61,6 +61,13 @@ created. Exact evidence is in
 PSCAN-06 remains open and unaccepted; any correction, new tooling identity or
 rerun requires a separate exact owner decision.
 
+On 2026-09-04 the owner approved Correction C2 pinned-image bootstrap recovery,
+recorded in `evidence/PSCAN-06/CORRECTION-C2-AUTHORITY.md`. The approval is a
+local authority bundle only: it does not claim or implement C2 and authorizes no
+push, tag, setting, workflow, signing, attestation, draft or publication action.
+Correction C2 must begin in a fresh session from the committed authority bundle.
+PSCAN-06 remains the sole open task and remains unaccepted.
+
 ## Objective
 
 After current read-only preflight and exact action-time owner approval, establish
@@ -220,6 +227,109 @@ correction.
   GitHub settings change or other remote mutation.
 - No selection, activation, claim or implementation of PSCAN-07, PSCAN-08 or
   any other successor.
+
+## Correction C2 approved boundary
+
+### Title
+
+Pinned-image bootstrap recovery.
+
+### Purpose
+
+Resolve the fresh-runner ordering contradiction proved by workflow run
+`33829598255`: the CRLF regression required the digest-pinned Docker image
+before the only authorized acquisition step could obtain it. Admit only the
+exact pinned image through a narrow bootstrap phase, prove its repository
+digest before execution, and preserve every later offline, cache-canary,
+sandbox, reproducibility and dual-identity boundary. An image-independent host
+cache canary and CRLF-normalization proof remain before the networked pull.
+
+### Correction implementation paths
+
+Correction C2 may change only:
+
+```text
+.github/workflows/release-recovery-v1.0.0.yml
+build/release/**
+contracts/release-manifest/schema-2.1.json
+internal/verify/**
+tests/integration/supply-chain/**
+tests/acceptance/supply-chain/**
+docs/decisions/DEC-003-DUAL-IDENTITY-RELEASE-RECOVERY.md
+docs/release/**
+docs/validation/**
+docs/tasks/PSCAN-06.md
+docs/tasks/PSCAN-06-READING-MAP.md
+docs/tasks/TRACKER.md
+evidence/PSCAN-06/**
+README.md
+```
+
+This list supersedes the Correction C1 path list for Correction C2 only. Every
+absent path is forbidden. Existing release-manifest schemas, including
+`schema-2.0.json`, remain immutable.
+
+### Correction obligations
+
+1. Bootstrap only
+   `docker.io/library/golang@sha256:ded31c68586d2e49e760acc2e65a884b23d032e9bbbed0ae0c55abd3fcaf4452`.
+   Reject every mutable, shortened, ambiguous or substituted reference.
+2. Before any networked pull, run an image-independent host-side cache canary
+   and prove raw CRLF payload rejection plus LF normalization without Docker.
+   Wrong-owner, read-only or failed host state stops before network access.
+3. If the exact image is absent, allow one explicit networked pull before any
+   image-dependent check, then independently prove the admitted repository
+   digest before execution. Pull or inspection failure stops without a ledger
+   or artifact.
+4. The image bootstrap acquires no Go, Gitleaks, module, Cosign or other input
+   and executes no image command. Every later Docker invocation uses the exact
+   digest with `--pull=never`.
+5. After image admission, run the container cache canary and normalized shell-
+   parser proof with `--pull=never --network none`. Keep all dependency
+   downloads after both canaries and keep both reproducibility builds network-
+   disabled with the completed cache mounted read-only.
+6. Preserve all accepted sandbox, UID/GID, hostile-source and exact-entrypoint
+   controls.
+7. Preserve locked product tag `v1.0.0` and locked C1 tooling tag
+   `release-tooling-v1.0.0-c1`. Changed tooling must use proposed immutable tag
+   `release-tooling-v1.0.0-c2` only after a later exact remote gate.
+8. Preserve manifest schema `2.0`; add schema `2.1` for the C2 tooling identity.
+   Product-source and release-tooling roles remain mandatory and
+   non-interchangeable; omission, mutation, masquerade and unknown versions
+   fail closed.
+9. Keep keyless signing bound to the exact repository, owner, workflow, C2 ref,
+   workflow SHA, trigger and issuer and behind a separate owner gate.
+
+### Correction acceptance
+
+- Positive host-side cache state passes before any pull; wrong-owner and read-
+  only host cases stop before network access. Image-absent and pre-existing-
+  image cases prove only the canonical digest;
+  mutable tag, short-name, wrong-digest, ambiguous, pull-failure and inspection-
+  mismatch cases reject before execution and emit no ledger or artifact.
+- Image-independent CRLF rejection and normalization precede the pull; offline
+  container parsing and cache-canary cases follow exact image admission and
+  retain their fail-closed outcomes.
+- Two network-disabled builds from the read-only completed cache reproduce all
+  output bytes.
+- Product-source and C2 tooling identity mutations and role swaps reject;
+  manifest `2.1` validates exactly without changing historical schemas.
+- Existing tests, hostile-source cases, `go vet`, Windows compilation, Linux
+  execution, licensing, SBOM and offline verification all pass.
+- Independent skeptical review proves the bounded fresh-runner behavior. Local
+  success authorizes only a proposal for a separate build-only Linux proof gate.
+
+### Correction exclusions
+
+- No change to controlling or historical contracts, TRACEABILITY, DEC-002,
+  existing manifest schemas or predecessor evidence.
+- No movement, deletion, recreation or reuse of either locked tag; no
+  replacement product version.
+- No scanner, policy, allowlist, receipt, revocation, consuming-project,
+  credential, paid capability or TruffleHog work.
+- No push, C2 tooling tag, setting, workflow run, signing, attestation, draft,
+  publication or other remote mutation.
+- No PSCAN-07, PSCAN-08 or successor selection, activation, claim or work.
 
 ## Forbidden scope
 

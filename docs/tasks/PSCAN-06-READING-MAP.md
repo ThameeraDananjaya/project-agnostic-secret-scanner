@@ -65,6 +65,8 @@ fresh implementation session:
 60. `evidence/PSCAN-06/ACTIVATION.md`
 61. `evidence/PSCAN-06/REMOTE-GATE-FAILURE-001.md`
 62. `evidence/PSCAN-06/CORRECTION-C1-AUTHORITY.md`
+63. `evidence/PSCAN-06/REMOTE-GATE-FAILURE-002.md`
+64. `evidence/PSCAN-06/CORRECTION-C2-AUTHORITY.md`
 
 Then verify the exact activation commit, branch and clean Git status; the
 activated allowed and forbidden paths; the absence of another selected,
@@ -107,3 +109,14 @@ roles, and verify that every implementation path is present in the narrower
 Correction C1 path list in `docs/tasks/PSCAN-06.md`. The Correction C1 approval
 does not authorize a push, tooling tag, settings change, workflow run, signing,
 attestation, draft release or publication.
+
+For Correction C2, begin from its exact committed authority bundle and treat
+run `33829598255` as immutable failed evidence. Preserve both locked tags and
+all existing manifest schemas. Admit only the exact canonical digest-pinned
+build image through the separately bounded bootstrap. Before any pull, prove
+host-cache semantics and CRLF rejection/normalization without Docker; after the
+pull, prove the exact repository digest and run the container canary and shell
+parser with `--pull=never --network none`. Preserve the later bounded dependency
+acquisition and network-disabled builds. The C2 approval does not authorize a
+push, C2 tooling tag, settings change, workflow run, signing, attestation,
+draft release or publication.

@@ -7,7 +7,7 @@
 | PSCAN-03 | Rejected and closed fail-closed; not accepted | `evidence/PSCAN-03/CLOSEOUT-REJECTED.md` |
 | PSCAN-04 | Completed and independently accepted locally | Exact activation `a21b030e1658f1f98ac4e4d001af12185d9ed311`; evidence-bearing closeout commit |
 | PSCAN-05 | Completed and independently accepted locally | Exact activation `50b4186`; corrected evidence-bearing closeout commit |
-| PSCAN-06 | Correction C1 build-only run `33829598255` failed closed before acquisition because the fresh Ubuntu runner lacked the pinned Docker image required by the earlier CRLF regression; both tags remain locked, signing was skipped, and a separately approved correction is required | `evidence/PSCAN-06/REMOTE-GATE-FAILURE-002.md` |
+| PSCAN-06 | Correction C2 pinned-image bootstrap recovery is owner-approved and authority-recorded; unclaimed, unimplemented, unaccepted and open | `evidence/PSCAN-06/CORRECTION-C2-AUTHORITY.md` |
 | PSCAN-07 | Proposed; unselected; signing/publication gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-06 |
 | PSCAN-08 | Inactive; technically and legally gated | Material-gap evidence plus separate owner approval required |
 | PSCAN-09 | Completed and independently accepted locally | Activation `f486989`; accepted closeout commit |
@@ -74,7 +74,16 @@ complete hostile-state index/path/mode/raw-byte verification. Twelve isolated
 adversarial cases reject before output or untrusted driver action, and two
 independent complete builds from separate actual CRLF checkouts reproduce all
 30 files byte-for-byte. The required actual-Linux host positive/wrong-owner
-proof and independent skeptical acceptance remain open. No correction remote
+proof was attempted under the exact build-only gate, but run `33829598255`
+failed closed before acquisition because the fresh Ubuntu runner lacked the
+pinned Docker image required by the earlier CRLF regression. Both locked tags
+remain unchanged; signing and all later steps were skipped. On 2026-09-04 the
+owner approved bounded Correction C2 pinned-image bootstrap recovery. Its
+authority preserves all historical evidence and existing schemas, permits only
+an image-independent host canary and CRLF-normalization proof before the exact
+canonical digest-pinned image bootstrap, and proposes a distinct immutable C2
+tooling identity. Correction C2 is unclaimed and unimplemented and must begin
+in a fresh session from its committed authority bundle. No correction remote
 action is approved. PSCAN-07 remains proposed and
 unselected. PSCAN-08 remains inactive,
 unselected and ineligible because

@@ -475,6 +475,8 @@ claimed alone in fresh session
 `5762d1ef6a7708629bad5f5bb33eba21ca1cdcd4` in an isolated checkout with clean
 tracked, untracked and ignored state. The bounded local implementation removes
 the production callback seams, closes the workflow entrypoint, and adds live
-byte, UTF-8, monotonic-time, pipe and process-tree tests. This is author work,
-not acceptance; actual-Linux execution and independent skeptical review remain
-open.
+byte, UTF-8, monotonic-time, pipe and process-tree tests. Exact-commit Windows
+author validation passed source trust, hostile-source rejection, the host-only
+CRLF proof and the native no-Docker process matrix. This remains author work,
+not acceptance; actual-Linux execution, genuine Docker proof and independent
+skeptical review remain open.

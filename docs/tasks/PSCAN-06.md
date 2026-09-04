@@ -31,12 +31,17 @@ payloads from a Windows CRLF checkout. Iteration 003 candidate
 `5ca77226ed3996a8267caf02da366d0beb915c8d` fixed shell transport but was
 independently rejected after a complete CRLF-checkout build consumed
 checkout-transformed integrity bytes and failed the pinned-rule binding test.
-Correction C1 iteration 004 repaired that defect as exact candidate
-`a22579fd5af14473e1d49b5027f21ab591bbb589`. Two complete builds from separate
-actual CRLF checkouts, exact Git-blob/path/mode verification, the focused
-integrity test, all existing checks and the complete 30-file comparison pass.
-Exact author evidence is in
-`evidence/PSCAN-06/CORRECTION-C1-AUTHOR-VALIDATION-004.md`. Actual-Linux host
+Correction C1 iteration 004 repaired that defect as candidate
+`a22579fd5af14473e1d49b5027f21ab591bbb589`, but independent review rejected
+its remaining status-only trust gate after assume-unchanged driver tampering
+produced an empty status while the modified driver executed. Iteration 005
+replaces that gate with complete hostile-state index/path/mode/raw-byte
+verification and exact committed workflow/harness/build entrypoints. Exact
+candidate `3fb7592889820fa2739a4a53588e073689621809` rejects all twelve isolated
+adversarial source states before output or untrusted driver action, passes two
+complete builds from separate actual CRLF checkouts, and reproduces all 30
+files byte-for-byte. Exact author evidence is in
+`evidence/PSCAN-06/CORRECTION-C1-AUTHOR-VALIDATION-005.md`. Actual-Linux host
 positive/wrong-owner proof and independent skeptical acceptance remain open.
 PSCAN-06 remains the sole open task and remains unaccepted.
 

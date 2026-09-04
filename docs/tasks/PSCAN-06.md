@@ -68,6 +68,17 @@ push, tag, setting, workflow, signing, attestation, draft or publication action.
 Correction C2 must begin in a fresh session from the committed authority bundle.
 PSCAN-06 remains the sole open task and remains unaccepted.
 
+Correction C2 candidate `e7faf0f81b3853e2090c75378bfbca568b52efad`
+subsequently received partial author validation only. A skeptical inspection
+then found that any nonzero Docker image-inspection result was classified as
+image absence and could authorize the networked pull. On 2026-09-04 the owner
+approved the bounded fail-closed image-admission correction as Correction C2
+iteration 002. Its authority is recorded in
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-002-AUTHORITY.md`. This authority
+bundle does not claim or implement the iteration. A fresh session must claim
+only iteration 002 from its exact committed authority. PSCAN-06 remains open
+and unaccepted; no remote or successor action is authorized.
+
 ## Objective
 
 After current read-only preflight and exact action-time owner approval, establish
@@ -389,3 +400,27 @@ policy without modifying schema `2.0` or either locked tag.
 This is author implementation only. Independent skeptical acceptance, actual
 fresh-runner execution and every pull/tag/push/workflow/signing/attestation/
 draft/publication gate remain open. PSCAN-07 and PSCAN-08 remain unselected.
+
+## Correction C2 iteration 002 approved boundary
+
+The unaccepted candidate collapses every nonzero `docker image inspect` result
+into image absence, so failures other than proved absence can reach the pull
+branch when pull authority is enabled. Iteration 002 must distinguish exact
+present, conclusively absent and untrusted/failed inspection states. Only
+conclusive absence on an otherwise responsive engine may permit one exact
+digest-pinned pull. Every daemon, permission, timeout, protocol, malformed,
+ambiguous or unclassified result must reject with no pull or later action.
+
+The iteration is limited to the recovery workflow; the three image-admission
+scripts; the named release, validation and living-task documents; and
+`evidence/PSCAN-06/**`. It must add deterministic command-boundary tests that
+prove exact Docker arguments, call order and zero pulls for every non-absence
+failure without requiring Docker or network access. It preserves all original
+C2 ordering, sandbox, identity, schema, signature, locked-tag, remote and
+successor gates. Exact scope, acceptance cases and exclusions are controlling
+in `evidence/PSCAN-06/CORRECTION-C2-ITERATION-002-AUTHORITY.md`.
+
+This approval supersedes candidate `e7faf0f` only as a readiness claim. The
+candidate and its partial author evidence remain immutable history. Iteration
+002 is owner-approved, unclaimed, unimplemented and unaccepted. It begins only
+in a fresh session from the committed iteration-002 authority bundle.

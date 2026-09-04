@@ -67,6 +67,9 @@ fresh implementation session:
 62. `evidence/PSCAN-06/CORRECTION-C1-AUTHORITY.md`
 63. `evidence/PSCAN-06/REMOTE-GATE-FAILURE-002.md`
 64. `evidence/PSCAN-06/CORRECTION-C2-AUTHORITY.md`
+65. `evidence/PSCAN-06/CORRECTION-C2-IMPLEMENTATION.md`
+66. `evidence/PSCAN-06/CORRECTION-C2-AUTHOR-VALIDATION.md`
+67. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-002-AUTHORITY.md`
 
 Then verify the exact activation commit, branch and clean Git status; the
 activated allowed and forbidden paths; the absence of another selected,
@@ -120,3 +123,15 @@ parser with `--pull=never --network none`. Preserve the later bounded dependency
 acquisition and network-disabled builds. The C2 approval does not authorize a
 push, C2 tooling tag, settings change, workflow run, signing, attestation,
 draft release or publication.
+
+For Correction C2 iteration 002, begin from its exact committed authority
+bundle and claim only that iteration in a fresh session. Treat candidate
+`e7faf0f81b3853e2090c75378bfbca568b52efad` and its partial author validation
+as immutable but superseded readiness evidence. Prove a three-way pre-pull
+state: exact present, conclusively absent, or untrusted/failed. Only conclusive
+absence on an otherwise responsive engine may reach the single exact pull.
+Every generic inspect failure, daemon or permission error, timeout, malformed
+or ambiguous result must stop with zero pulls. The iteration-002 approval does
+not authorize Docker execution, network access, implementation in the approval
+session, a push, C2 tooling tag, settings change, workflow run, signing,
+attestation, draft release, publication or successor work.

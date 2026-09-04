@@ -7,7 +7,7 @@
 | PSCAN-03 | Rejected and closed fail-closed; not accepted | `evidence/PSCAN-03/CLOSEOUT-REJECTED.md` |
 | PSCAN-04 | Completed and independently accepted locally | Exact activation `a21b030e1658f1f98ac4e4d001af12185d9ed311`; evidence-bearing closeout commit |
 | PSCAN-05 | Completed and independently accepted locally | Exact activation `50b4186`; corrected evidence-bearing closeout commit |
-| PSCAN-06 | Correction C2 pinned-image bootstrap recovery is claimed alone and locally implemented as candidate `e7faf0f`; partial author validation is non-acceptance and the task remains open | `evidence/PSCAN-06/CORRECTION-C2-AUTHOR-VALIDATION.md` |
+| PSCAN-06 | Correction C2 iteration 002 fail-closed image admission is owner-approved, unclaimed, unimplemented and unaccepted; PSCAN-06 remains open | `evidence/PSCAN-06/CORRECTION-C2-ITERATION-002-AUTHORITY.md` |
 | PSCAN-07 | Proposed; unselected; signing/publication gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-06 |
 | PSCAN-08 | Inactive; technically and legally gated | Material-gap evidence plus separate owner approval required |
 | PSCAN-09 | Completed and independently accepted locally | Activation `f486989`; accepted closeout commit |
@@ -84,8 +84,13 @@ an image-independent host canary and CRLF-normalization proof before the exact
 canonical digest-pinned image bootstrap, and proposes a distinct immutable C2
 tooling identity. Correction C2 was claimed alone in a fresh session from exact
 clean authority commit `d4eca19e04862d660ca6ac0e9b64eec4fb06b61c` and implemented as a bounded
-local candidate. Author validation is non-acceptance. No correction remote
-action is approved. PSCAN-07 remains proposed and
+local candidate. Author validation is non-acceptance. Skeptical inspection then
+found that generic Docker image-inspection failure was classified as image
+absence and could reach the networked pull branch. The owner approved bounded
+Correction C2 iteration 002 to make that admission state fail closed. The
+iteration is unclaimed and unimplemented; it must begin in a fresh session from
+its committed authority bundle. No correction remote action is approved.
+PSCAN-07 remains proposed and
 unselected. PSCAN-08 remains inactive,
 unselected and ineligible because
 accepted evidence did not establish a material required-class Gitleaks gap;

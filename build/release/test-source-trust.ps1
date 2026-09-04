@@ -38,7 +38,7 @@ function Add-SyntheticLine([string]$Path, [string]$Line) {
     [IO.File]::WriteAllText($Path, $value + "`n$Line`n", $utf8)
 }
 
-function Assert-Rejected([string]$Name, [scriptblock]$Mutate, [switch]$ExpectDriverMarker) {
+function Assert-Rejected([string]$Name, [scriptblock]$Mutate) {
     $fixture = New-Fixture -Name $Name
     $output = Join-Path $fixture 'release-output'
     $marker = Join-Path $testRoot "$Name-untrusted-driver-ran.txt"
@@ -77,6 +77,12 @@ Assert-Rejected 'untracked-file' {
     param($fixture,$marker)
     [IO.File]::WriteAllText((Join-Path $fixture 'synthetic-untracked.txt'), 'synthetic', $utf8)
 }
+Assert-Rejected 'ignored-untracked-file' {
+    param($fixture,$marker)
+    $ignored = Join-Path $fixture 'graphify-out'
+    New-Item -ItemType Directory -Path $ignored | Out-Null
+    [IO.File]::WriteAllText((Join-Path $ignored 'synthetic-ignored.txt'), 'synthetic', $utf8)
+}
 Assert-Rejected 'fsmonitor-config' {
     param($fixture,$marker)
     & git -C $fixture config core.fsmonitor true
@@ -110,4 +116,4 @@ Assert-Rejected 'blob-mismatch' {
 $positive = New-Fixture -Name 'positive-exact'
 & pwsh -NoProfile -File $launcher -RepositoryRoot $positive -ExpectedToolingRevision $SourceRevision -AcquisitionDirectory $testRoot -OutputDirectory (Join-Path $positive 'release-output') -PreflightOnly
 if ($LASTEXITCODE -ne 0) { throw 'Exact clean source-trust positive case failed' }
-Write-Output 'SOURCE-TRUST PASS adversarial_rejections=11 exact_positive=PASS zero_build_outputs=PASS untrusted_driver_action=ABSENT'
+Write-Output 'SOURCE-TRUST PASS adversarial_rejections=12 exact_positive=PASS zero_build_outputs=PASS untrusted_driver_action=ABSENT'

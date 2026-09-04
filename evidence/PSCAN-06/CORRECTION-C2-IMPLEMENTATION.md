@@ -4,6 +4,8 @@ Date: 2026-09-04
 
 Authority base: `d4eca19e04862d660ca6ac0e9b64eec4fb06b61c`
 
+Implementation candidate: `e7faf0f81b3853e2090c75378bfbca568b52efad`
+
 State: bounded local author candidate; not independently accepted
 
 ## Implemented boundary

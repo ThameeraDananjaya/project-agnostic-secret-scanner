@@ -379,7 +379,8 @@ Stop after PSCAN-06 closeout with PSCAN-07 unselected.
 ## Correction C2 implementation status
 
 Correction C2 was claimed alone in a fresh session from exact clean authority
-commit `d4eca19e04862d660ca6ac0e9b64eec4fb06b61c`. The bounded local candidate
+commit `d4eca19e04862d660ca6ac0e9b64eec4fb06b61c`. Bounded local implementation
+candidate `e7faf0f81b3853e2090c75378bfbca568b52efad`
 separates host-only pre-image proofs, exact canonical digest image admission,
 offline container proofs, networked dependency acquisition, and offline
 reproducible builds. It adds release-manifest schema `2.1` and C2 verifier

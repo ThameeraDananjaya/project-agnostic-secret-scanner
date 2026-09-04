@@ -7,7 +7,7 @@
 | PSCAN-03 | Rejected and closed fail-closed; not accepted | `evidence/PSCAN-03/CLOSEOUT-REJECTED.md` |
 | PSCAN-04 | Completed and independently accepted locally | Exact activation `a21b030e1658f1f98ac4e4d001af12185d9ed311`; evidence-bearing closeout commit |
 | PSCAN-05 | Completed and independently accepted locally | Exact activation `50b4186`; corrected evidence-bearing closeout commit |
-| PSCAN-06 | Correction C2 pinned-image bootstrap recovery is claimed alone and locally implemented as a bounded candidate; author validation is non-acceptance and the task remains open | `evidence/PSCAN-06/CORRECTION-C2-IMPLEMENTATION.md` |
+| PSCAN-06 | Correction C2 pinned-image bootstrap recovery is claimed alone and locally implemented as candidate `e7faf0f`; partial author validation is non-acceptance and the task remains open | `evidence/PSCAN-06/CORRECTION-C2-AUTHOR-VALIDATION.md` |
 | PSCAN-07 | Proposed; unselected; signing/publication gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-06 |
 | PSCAN-08 | Inactive; technically and legally gated | Material-gap evidence plus separate owner approval required |
 | PSCAN-09 | Completed and independently accepted locally | Activation `f486989`; accepted closeout commit |

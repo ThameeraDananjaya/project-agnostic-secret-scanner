@@ -31,9 +31,12 @@ payloads from a Windows CRLF checkout. Iteration 003 candidate
 `5ca77226ed3996a8267caf02da366d0beb915c8d` fixed shell transport but was
 independently rejected after a complete CRLF-checkout build consumed
 checkout-transformed integrity bytes and failed the pinned-rule binding test.
-Correction C1 iteration 004 is the bounded exact-Git-tree materialization
-repair recorded in `evidence/PSCAN-06/CORRECTION-C1-ITERATION-004.md`; its exact
-candidate and fresh validation evidence are pending. Actual-Linux host
+Correction C1 iteration 004 repaired that defect as exact candidate
+`a22579fd5af14473e1d49b5027f21ab591bbb589`. Two complete builds from separate
+actual CRLF checkouts, exact Git-blob/path/mode verification, the focused
+integrity test, all existing checks and the complete 30-file comparison pass.
+Exact author evidence is in
+`evidence/PSCAN-06/CORRECTION-C1-AUTHOR-VALIDATION-004.md`. Actual-Linux host
 positive/wrong-owner proof and independent skeptical acceptance remain open.
 PSCAN-06 remains the sole open task and remains unaccepted.
 

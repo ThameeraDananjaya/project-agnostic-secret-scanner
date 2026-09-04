@@ -7,7 +7,7 @@
 | PSCAN-03 | Rejected and closed fail-closed; not accepted | `evidence/PSCAN-03/CLOSEOUT-REJECTED.md` |
 | PSCAN-04 | Completed and independently accepted locally | Exact activation `a21b030e1658f1f98ac4e4d001af12185d9ed311`; evidence-bearing closeout commit |
 | PSCAN-05 | Completed and independently accepted locally | Exact activation `50b4186`; corrected evidence-bearing closeout commit |
-| PSCAN-06 | Correction C1 iteration 004 exact-tree repair implemented; rejected candidates 002/003 cannot support acceptance; fresh forced-CRLF builds, actual-Linux host proof and independent acceptance remain open | `evidence/PSCAN-06/CORRECTION-C1-ITERATION-004.md` |
+| PSCAN-06 | Correction C1 candidate 004 passes callable author checks from two actual CRLF checkouts; rejected candidates 002/003 cannot support acceptance; actual-Linux host proof and independent acceptance remain open | `evidence/PSCAN-06/CORRECTION-C1-AUTHOR-VALIDATION-004.md` |
 | PSCAN-07 | Proposed; unselected; signing/publication gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-06 |
 | PSCAN-08 | Inactive; technically and legally gated | Material-gap evidence plus separate owner approval required |
 | PSCAN-09 | Completed and independently accepted locally | Activation `f486989`; accepted closeout commit |
@@ -65,11 +65,13 @@ carriage-return corruption in its Docker POSIX shell payloads. Bounded
 iteration 003 candidate `5ca77226ed3996a8267caf02da366d0beb915c8d` added runtime LF
 normalization but was independently rejected when a complete CRLF-checkout
 build consumed transformed working-tree integrity bytes and failed the pinned-
-rule binding test. Bounded iteration 004 removes the checkout from build
+rule binding test. Bounded iteration 004 candidate
+`a22579fd5af14473e1d49b5027f21ab591bbb589` removes the checkout from build
 inputs and verifies exact product/tooling Git-tree path, mode and raw blob
-bytes before execution. Fresh exact-candidate forced-CRLF builds, the required
-actual-Linux host positive/wrong-owner proof and independent skeptical
-acceptance remain open. No correction remote action is approved. PSCAN-07 remains proposed and
+bytes before execution. Two independent complete builds from separate actual
+CRLF checkouts and the complete 30-file comparison pass. The required actual-
+Linux host positive/wrong-owner proof and independent skeptical acceptance
+remain open. No correction remote action is approved. PSCAN-07 remains proposed and
 unselected. PSCAN-08 remains inactive,
 unselected and ineligible because
 accepted evidence did not establish a material required-class Gitleaks gap;

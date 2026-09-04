@@ -45,6 +45,22 @@ files byte-for-byte. Exact author evidence is in
 positive/wrong-owner proof and independent skeptical acceptance remain open.
 PSCAN-06 remains the sole open task and remains unaccepted.
 
+On 2026-09-04 the owner approved the exact Correction C1 iteration-005
+build-only Linux proof gate. Remote `main` fast-forwarded to evidence commit
+`3523e4409ebc53cc1931e3dcaf7d1eea74bb15ab`; exact tooling tag
+`release-tooling-v1.0.0-c1` was created at candidate
+`3fb7592889820fa2739a4a53588e073689621809` and protected against deletion or
+update with no bypass. Workflow run `33829598255` passed immutable invocation,
+credential-free checkout, locked product identity, exact entrypoint and all
+twelve hostile-source checks, then failed closed before acquisition because
+the fresh Ubuntu runner lacked the pinned Docker image required by the earlier
+CRLF regression. The Linux cache proof and all later build steps were skipped;
+the signing job was skipped and no artifact, deployment or release was
+created. Exact evidence is in
+`evidence/PSCAN-06/REMOTE-GATE-FAILURE-002.md`. Both tags remain immutable.
+PSCAN-06 remains open and unaccepted; any correction, new tooling identity or
+rerun requires a separate exact owner decision.
+
 ## Objective
 
 After current read-only preflight and exact action-time owner approval, establish

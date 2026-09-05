@@ -63,11 +63,12 @@ remain empty and the private directory is boundedly removed.
 On Windows the executable is created suspended, assigned to a new job with
 kill-on-close semantics, recorded as a job member, and only then resumed. Job
 membership is queried from the kernel and must be empty after root exit and
-both streams close. On Linux the fixed root-owned `setsid` launcher establishes
-a private session before the held Docker inode executes; session members are
-recorded by PID plus `/proc` start time and known detached members remain in the
-identity ledger until dead. Terminal cleanup kills the session and every
-still-matching recorded member.
+both streams close. On Linux fixed root-owned `setsid` and `unshare` launchers
+establish a private outer session and a new user/PID namespace. The namespace
+init stops before Docker, the parent records its kernel namespace identity, and
+only then resumes the held Docker inode. PID-namespace init death kernel-
+terminates detached and nested descendants. Terminal cleanup kills the outer
+session and namespace and proves the namespace identity has been destroyed.
 
 Both paths retain independent 131072-byte stdout and stderr limits, strict
 UTF-8 after complete stream closure, a 15000 ms monotonic command budget and a

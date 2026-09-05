@@ -261,6 +261,11 @@ function Invoke-LinuxSessionBoundary([string]$ExecutableReference, [string[]]$Ar
     $setsid = '/usr/bin/setsid'
     $setsidItem = Get-Item -LiteralPath $setsid -Force
     if (!$setsidItem -or $setsidItem.LinkType -or ($setsidItem.UnixFileMode -band [IO.UnixFileMode]'GroupWrite,OtherWrite') -ne 0 -or (& /usr/bin/stat -c '%u' -- $setsid).Trim() -ne '0') { throw 'Fixed Linux session launcher is untrusted' }
+    $unshare = '/usr/bin/unshare'
+    $unshareItem = Get-Item -LiteralPath $unshare -Force
+    if (!$unshareItem -or $unshareItem.LinkType -or ($unshareItem.UnixFileMode -band [IO.UnixFileMode]'GroupWrite,OtherWrite') -ne 0 -or (& /usr/bin/stat -c '%u' -- $unshare).Trim() -ne '0') { throw 'Fixed Linux PID-namespace launcher is untrusted' }
+    $shell = (Resolve-Path -LiteralPath '/bin/sh').Path
+    if ((& /usr/bin/stat -Lc '%u:%a' -- $shell).Trim() -notmatch '^0:[1357][0145][0145]$') { throw 'Fixed Linux pre-execution gate shell is untrusted' }
     $start = [Diagnostics.ProcessStartInfo]::new()
     $start.FileName = $setsid
     $start.UseShellExecute = $false
@@ -270,38 +275,51 @@ function Invoke-LinuxSessionBoundary([string]$ExecutableReference, [string[]]$Ar
     $start.Environment.Clear()
     foreach ($pair in $Environment.GetEnumerator()) { $start.Environment.Add($pair.Key, $pair.Value) }
     $start.ArgumentList.Add('--wait')
+    $start.ArgumentList.Add($unshare)
+    foreach ($argument in @('--user','--map-current-user','--pid','--fork','--kill-child=SIGKILL','--')) { $start.ArgumentList.Add($argument) }
+    $start.ArgumentList.Add($shell)
+    $start.ArgumentList.Add('-c')
+    $start.ArgumentList.Add('kill -STOP $$; exec "$@"')
+    $start.ArgumentList.Add('pscan-docker')
     $start.ArgumentList.Add($ExecutableReference)
     foreach ($argument in $Arguments) { $start.ArgumentList.Add($argument) }
     $process = [Diagnostics.Process]::new(); $process.StartInfo = $start
     if (!$process.Start()) { throw 'Linux session process did not start' }
-    $session = $process.Id; $ledger = @{}; $ledger["$session:root"]=[pscustomobject]@{PID=$session;StartTime=0}
+    $session = $process.Id; $ledger = @{}; $ledger["$session:supervisor"]=[pscustomobject]@{PID=$session;StartTime=0}
     $stdoutTask = [PscanNativeBoundary]::Capture($process.StandardOutput.BaseStream, $dockerOutputLimit)
     $stderrTask = [PscanNativeBoundary]::Capture($process.StandardError.BaseStream, $dockerOutputLimit)
-    $watch = [Diagnostics.Stopwatch]::StartNew(); $terminal = $null
+    $watch = [Diagnostics.Stopwatch]::StartNew(); $terminal = $null; $namespaceIdentity=$null; $namespaceInit=$null; $resumed=$false
     while ($watch.ElapsedMilliseconds -lt $dockerBudgetMilliseconds) {
-        [void](Get-LinuxSessionMembers -Session $session -Ledger $ledger)
+        $sessionMembers=@(Get-LinuxSessionMembers -Session $session -Ledger $ledger)
+        if ($null -eq $namespaceIdentity) {
+            $childrenPath="/proc/$session/task/$session/children"
+            if (Test-Path -LiteralPath $childrenPath) {
+                $children=@(([IO.File]::ReadAllText($childrenPath).Trim() -split '\s+')|Where-Object{$_ -match '^\d+$'})
+                if ($children.Count -gt 1) { $terminal='ambiguous PID-namespace init membership'; break }
+                if ($children.Count -eq 1) { $namespaceInit=[int]$children[0];$namespacePath="/proc/$namespaceInit/ns/pid";if(Test-Path -LiteralPath $namespacePath){$namespaceIdentity=(Get-Item -LiteralPath $namespacePath -Force).Target;if($namespaceIdentity-notmatch '^pid:\[[0-9]+\]$'){$terminal='malformed PID-namespace identity';break};$stateText=[IO.File]::ReadAllText("/proc/$namespaceInit/stat");$close=$stateText.LastIndexOf(')');if($close-lt 1-or$stateText.Substring($close+2,1)-cne'T'){$terminal='PID-namespace init did not stop at the pre-execution gate';break};& /usr/bin/kill -CONT -- $namespaceInit;if($LASTEXITCODE-ne 0){$terminal='PID-namespace init resume failed';break};$resumed=$true} }
+            }
+        }
         if ($stdoutTask.IsFaulted -or $stderrTask.IsFaulted) { $terminal='stream overflow or read failure'; break }
-        $aliveLedger = @($ledger.Values | Where-Object { $_.StartTime -ne 0 -and (Test-LinuxMemberAlive $_) })
-        if ($process.HasExited -and $stdoutTask.IsCompleted -and $stderrTask.IsCompleted -and @(Get-LinuxSessionMembers -Session $session -Ledger $ledger).Count -eq 0 -and $aliveLedger.Count -eq 0) { break }
+        if ($process.HasExited -and $stdoutTask.IsCompleted -and $stderrTask.IsCompleted -and $sessionMembers.Count -eq 0 -and $resumed -and $null-ne$namespaceIdentity -and !(Test-Path -LiteralPath "/proc/$namespaceInit/ns/pid")) { break }
         Start-Sleep -Milliseconds 2
     }
-    $aliveLedger = @($ledger.Values | Where-Object { $_.StartTime -ne 0 -and (Test-LinuxMemberAlive $_) })
-    if (!$process.HasExited -or !$stdoutTask.IsCompleted -or !$stderrTask.IsCompleted -or @(Get-LinuxSessionMembers -Session $session -Ledger $ledger).Count -ne 0 -or $aliveLedger.Count -ne 0) { if (!$terminal) {$terminal='timeout or incomplete lifecycle'} }
+    if (!$process.HasExited -or !$stdoutTask.IsCompleted -or !$stderrTask.IsCompleted -or @(Get-LinuxSessionMembers -Session $session -Ledger $ledger).Count -ne 0 -or !$resumed -or $null-eq$namespaceIdentity -or (Test-Path -LiteralPath "/proc/$namespaceInit/ns/pid")) { if (!$terminal) {$terminal='timeout or incomplete lifecycle'} }
     if ($terminal) {
         & /usr/bin/kill -KILL -- "-$session" 2>$null
         foreach ($member in $ledger.Values) { if ($member.StartTime -ne 0 -and (Test-LinuxMemberAlive $member)) { & /usr/bin/kill -KILL -- "$($member.PID)" 2>$null } }
         $cleanup = [Diagnostics.Stopwatch]::StartNew()
         while ($cleanup.ElapsedMilliseconds -lt $cleanupGraceMilliseconds) {
             $alive=@($ledger.Values | Where-Object { $_.StartTime -ne 0 -and (Test-LinuxMemberAlive $_) }); $current=@(Get-LinuxSessionMembers -Session $session -Ledger $ledger)
-            if ($alive.Count -eq 0 -and $current.Count -eq 0 -and $stdoutTask.IsCompleted -and $stderrTask.IsCompleted) { break }
+            $namespaceGone=$null-ne$namespaceIdentity -and !(Test-Path -LiteralPath "/proc/$namespaceInit/ns/pid")
+            if ($alive.Count -eq 0 -and $current.Count -eq 0 -and $namespaceGone -and $stdoutTask.IsCompleted -and $stderrTask.IsCompleted) { break }
             Start-Sleep -Milliseconds 2
         }
         $remaining=@($ledger.Values | Where-Object { $_.StartTime -ne 0 -and (Test-LinuxMemberAlive $_) })
-        if ($remaining.Count -ne 0 -or @(Get-LinuxSessionMembers -Session $session -Ledger $ledger).Count -ne 0 -or !$stdoutTask.IsCompleted -or !$stderrTask.IsCompleted) { $terminal += '; cleanup uncertainty' }
+        if ($remaining.Count -ne 0 -or @(Get-LinuxSessionMembers -Session $session -Ledger $ledger).Count -ne 0 -or $null-eq$namespaceIdentity -or (Test-Path -LiteralPath "/proc/$namespaceInit/ns/pid") -or !$stdoutTask.IsCompleted -or !$stderrTask.IsCompleted) { $terminal += '; cleanup uncertainty' }
     }
     $stdout = if($stdoutTask.IsCompletedSuccessfully){$stdoutTask.Result}else{[byte[]]::new(0)}
     $stderr = if($stderrTask.IsCompletedSuccessfully){$stderrTask.Result}else{[byte[]]::new(0)}
-    [pscustomobject]@{ExitCode=$(if($process.HasExited){$process.ExitCode}else{199});StdOut=$stdout;StdErr=$stderr;Terminal=$terminal;ObservedMembers=@($ledger.Keys);ContainmentEmpty=(!$terminal)}
+    [pscustomobject]@{ExitCode=$(if($process.HasExited){$process.ExitCode}else{199});StdOut=$stdout;StdErr=$stderr;Terminal=$terminal;ObservedMembers=@($ledger.Keys)+@($namespaceIdentity);ContainmentEmpty=(!$terminal)}
 }
 
 function Invoke-BoundDocker([string[]]$Arguments) {

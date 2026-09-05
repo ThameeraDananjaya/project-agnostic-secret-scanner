@@ -49,9 +49,11 @@ held executable SHA-256 for every later operation; later phases may re-inspect
 but cannot pull again. Each invocation uses a new empty permission-restricted
 working, temporary and Docker-config directory, a cleared minimum environment
 and a fixed daemon endpoint. Windows starts suspended, assigns the process to a
-kill-on-close job, then resumes it. Linux executes the held inode through a
-private session and keeps a start-time-qualified member ledger. A command does
-not return trusted evidence until the root, both streams and containment are
+kill-on-close job, then resumes it. Linux stops a new PID-namespace init before
+Docker execution, records its namespace identity, then resumes the held inode
+inside that namespace and a private outer session. PID-namespace init death
+kernel-terminates detached and nested descendants. A command does not return
+trusted evidence until the root, both streams, namespace and containment are
 empty. The 131072-byte independent caps, 15000 ms complete budget and 2000 ms
 terminal cleanup ceiling remain unchanged.
 Compilation, tests, vet, Windows cross-compilation and two byte-for-byte builds

@@ -16,7 +16,7 @@ foreach ($forbidden in @('ScriptBlock','Callback','Invoker','ExecutablePath','Ar
 foreach ($required in @(
     "ValidateSet('EngineInspection','ExactImageInventory','ApprovedImagePull','RepositoryDigestInspection','ContainerCacheProof','ContainerCrlfParse','DependencyAcquisition','ReleaseBuild','ReleasePackage')",
     'CREATE_SUSPENDED','AssignProcessToJobObject','JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE',
-    '/usr/bin/setsid','Get-LinuxSessionMembers','Test-LinuxMemberAlive',
+    '/usr/bin/setsid','/usr/bin/unshare','--kill-child=SIGKILL','kill -STOP $$','Get-LinuxSessionMembers','Test-LinuxMemberAlive',
     '131072','15000','2000','Environment.Clear()','DOCKER_CONFIG','FileShare]::Read'
 )) { if (!$production.Contains($required)) { throw "Closed entrypoint omits required marker: $required" } }
 
@@ -53,7 +53,7 @@ switch($Mode){
 'split-utf8'{$out.WriteByte(0xE2);$out.WriteByte(0x82);$out.Flush();Start-Sleep -Milliseconds 25;$out.WriteByte(0xAC);$out.Flush()}
 'invalid-utf8'{$out.WriteByte(0xC3);$out.WriteByte(0x28);$out.Flush()}'incomplete-utf8'{$out.WriteByte(0xE2);$out.WriteByte(0x82);$out.Flush()}'immediate'{}'nonzero'{exit 7}'hang'{Start-Sleep -Seconds 30}
 'child'{$p=Start-Process -FilePath (Get-Process -Id $PID).Path -ArgumentList @('-NoProfile','-NonInteractive','-File',$PSCommandPath,'-Mode','hang') -PassThru -NoNewWindow;Set-Content $PidFile $p.Id}
-'detach'{$p=Start-Process -FilePath /usr/bin/setsid -ArgumentList @((Get-Process -Id $PID).Path,'-NoProfile','-NonInteractive','-File',$PSCommandPath,'-Mode','hang') -PassThru -NoNewWindow;Set-Content $PidFile $p.Id;Start-Sleep -Milliseconds 500}
+'detach'{$p=Start-Process -FilePath /usr/bin/setsid -ArgumentList @((Get-Process -Id $PID).Path,'-NoProfile','-NonInteractive','-File',$PSCommandPath,'-Mode','hang') -PassThru -NoNewWindow;Set-Content $PidFile $p.Id;Start-Sleep -Seconds 30}
 'grandchild'{$childFile=$PidFile+'.child';$p=Start-Process -FilePath (Get-Process -Id $PID).Path -ArgumentList @('-NoProfile','-NonInteractive','-File',$PSCommandPath,'-Mode','child','-PidFile',$childFile) -PassThru -NoNewWindow;Set-Content $PidFile $p.Id;Start-Sleep -Milliseconds 500}
 default{throw 'unknown fixture mode'}}
 '@
@@ -68,7 +68,7 @@ default{throw 'unknown fixture mode'}}
         foreach($mode in @('invalid-utf8','incomplete-utf8')){$r=RunLinux $mode;LinuxSuccess $r $mode;$failed=$false;try{[void]$utf8.GetString($r.StdOut)}catch{$failed=$true};if(!$failed){throw "$mode unexpectedly decoded"}}
         foreach($mode in @('child','detach','grandchild')){$pidFile=Join-Path $temporaryRoot "$mode.pid";$r=RunLinux $mode 0 $pidFile;LinuxTerminal $r $mode;foreach($path in @($pidFile,$pidFile+'.child')){if(Test-Path $path){$id=[int](Get-Content -Raw $path);if(Test-Path "/proc/$id"){throw "$mode left live member $id"}}}}
         $identity.Dispose()
-        Write-Output 'Docker execution iteration-004 PASS single-boundary=PASS private-session=PASS identity-ledger=PASS streams=PASS utf8=PASS process-tree=EMPTY'
+        Write-Output 'Docker execution iteration-004 PASS single-boundary=PASS pid-namespace-before-exec=PASS private-session=PASS identity-ledger=PASS streams=PASS utf8=PASS process-tree=EMPTY'
         return
     }
     if(!$IsWindows){throw 'Native containment fixtures require Windows or Linux'}

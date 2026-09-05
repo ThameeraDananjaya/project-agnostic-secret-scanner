@@ -169,8 +169,9 @@ Iteration 004 additionally requires:
    directories, a cleared minimum environment and rejection of replacement,
    PATH, alias, function, callback, arbitrary-argument and dot-source bypasses;
 4. Windows suspended start followed by kill-on-close job assignment before
-   resume, and actual-Linux private-session execution with identity-safe member
-   tracking before Docker bytes execute;
+   resume, and actual-Linux stopped PID-namespace init plus private-session
+   execution, namespace identity and member tracking before Docker bytes
+   execute;
 5. success only after root exit, both bounded streams close and containment is
    empty; timeout, overflow, invalid UTF-8, read, exit, termination, membership
    or cleanup uncertainty remains terminal under the exact 131072-byte,

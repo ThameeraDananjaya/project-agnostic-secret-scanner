@@ -234,7 +234,8 @@ SHA-256 recorded by admission. The Docker configuration and working directory
 must be new, empty and private, inherited environment state must be cleared,
 and no credential helper, plugin, alternate context or ambient daemon selector
 may be consulted. Windows job assignment must occur while the root is
-suspended; Linux must establish its private session before Docker executes and
-retain start-time-qualified membership. Normal and terminal returns require
-closed streams, root exit and empty containment. Root-only exit, post-hoc PID
-sampling or cleanup uncertainty is rejection, not a warning.
+suspended. Linux must stop a new PID-namespace init, record its namespace
+identity, and only then resume the held Docker inode inside that namespace and
+a private outer session. Normal and terminal returns require closed streams,
+root exit, destroyed namespace and empty containment. Root-only exit, post-hoc
+PID sampling or cleanup uncertainty is rejection, not a warning.

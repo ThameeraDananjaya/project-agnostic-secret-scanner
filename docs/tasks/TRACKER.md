@@ -7,7 +7,7 @@
 | PSCAN-03 | Rejected and closed fail-closed; not accepted | `evidence/PSCAN-03/CLOSEOUT-REJECTED.md` |
 | PSCAN-04 | Completed and independently accepted locally | Exact activation `a21b030e1658f1f98ac4e4d001af12185d9ed311`; evidence-bearing closeout commit |
 | PSCAN-05 | Completed and independently accepted locally | Exact activation `50b4186`; corrected evidence-bearing closeout commit |
-| PSCAN-06 | Correction C2 iteration 005 is claimed and locally implemented; independent acceptance and all reserved execution gates remain open | `evidence/PSCAN-06/CORRECTION-C2-ITERATION-005-AUTHORITY.md` |
+| PSCAN-06 | Correction C2 iteration 005 is claimed, locally implemented and author-validated; it is not independently accepted and all reserved execution gates remain open | `evidence/PSCAN-06/CORRECTION-C2-ITERATION-005-AUTHORITY.md` |
 | PSCAN-07 | Proposed; unselected; signing/publication gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-06 |
 | PSCAN-08 | Inactive; technically and legally gated | Material-gap evidence plus separate owner approval required |
 | PSCAN-09 | Completed and independently accepted locally | Activation `f486989`; accepted closeout commit |
@@ -135,9 +135,11 @@ no-network, source-trust-compliant isolated clone. The bounded implementation
 rejects any pre-existing native type before compilation or execution, verifies
 the exact new compiled type identities, and runs the clean, compatible-hostile
 and stale-hostile cases in separate non-profile processes. Local Windows author
-fixtures pass before the candidate commit. This is not independent acceptance.
-Actual Linux, genuine Docker, complete builds and independent acceptance remain
-open. No correction Docker, network or remote action was performed.
+fixtures and all iteration-004 local no-Docker regressions pass against exact
+candidate `050f5862841a1fcf764ffc75d98a742968ac301e`. This is author validation,
+not independent acceptance. Actual Linux, genuine Docker, complete builds and
+independent acceptance remain open. No correction Docker, network or remote
+action was performed.
 PSCAN-07 remains proposed and
 unselected. PSCAN-08 remains inactive,
 unselected and ineligible because

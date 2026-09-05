@@ -603,7 +603,8 @@ LF-preserving isolated clone after exact every-byte source trust passed. The
 bounded implementation rejects an existing native type before compilation or
 execution, validates the exact newly compiled type identities, and moves the
 clean, compatible-hostile and stale-hostile proofs into separate non-profile
-processes. Local Windows author fixtures pass before the candidate commit. This
-is implementation and author evidence only, not independent acceptance. All
-actual-Linux, Docker, build, remote, signing, publication and successor gates
-remain open.
+processes. Exact candidate
+`050f5862841a1fcf764ffc75d98a742968ac301e` passed every required local
+no-Docker author check on Windows. This is implementation and author evidence
+only, not independent acceptance. All actual-Linux, Docker, build, remote,
+signing, publication and successor gates remain open.

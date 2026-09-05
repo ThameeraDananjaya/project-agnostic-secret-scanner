@@ -116,7 +116,11 @@ operating-system-backed, empty-membership process containment. Fresh session
 authority commit `30d849c11a15a7ce35f182140d07dbe66350c135` and produced a
 bounded local implementation candidate
 `6f791646413bfde52a7f034f6219d92f6fb44c03`. Exact-commit Windows
-no-Docker author fixtures and hostile-source proof passed. They are not
+no-Docker author fixtures and hostile-source proof passed, but a later audit
+found a Linux between-sample detached-member race. Refined candidate
+`9583aa3d18310c2e9275c665f69eb7e5b4fb82a4` replaces sampling-only
+containment with a stopped, identity-recorded PID-namespace init before Docker
+execution. It passed exact-commit Windows author validation. This is not
 acceptance; actual Linux, genuine Docker, complete builds and independent
 acceptance remain open. No correction Docker, network or remote action was
 performed.

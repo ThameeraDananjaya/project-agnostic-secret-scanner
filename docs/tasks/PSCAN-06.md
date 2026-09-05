@@ -535,8 +535,13 @@ separate clean LF checkout. The bounded implementation routes every release
 Docker operation through one typed entrypoint, binds later operations to the
 admitted executable digest, and introduces OS-backed containment plus empty-
 membership proof. Candidate `6f791646413bfde52a7f034f6219d92f6fb44c03`
-passed exact-commit Windows author validation, the no-Docker admission matrix,
-host-only CRLF proof and all hostile-source cases. Actual Linux, genuine Docker,
-complete builds and independent review remain open. This is author evidence,
-not acceptance. No Docker, network, remote, signing, publication or successor
+passed Windows author validation but a post-integration audit found a Linux
+between-sample detached-member race. The append-only refinement record rejects
+that design as final readiness evidence. Refined candidate
+`9583aa3d18310c2e9275c665f69eb7e5b4fb82a4` uses a stopped, recorded PID-
+namespace init before Docker execution so detached descendants cannot leave the
+kernel containment boundary. Exact-commit Windows, host-only CRLF, admission
+and hostile-source author checks pass. Actual Linux, genuine Docker, complete
+builds and independent review remain open. This is author evidence, not
+acceptance. No Docker, network, remote, signing, publication or successor
 action occurred.

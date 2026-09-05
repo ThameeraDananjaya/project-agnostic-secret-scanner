@@ -1,61 +1,27 @@
-. (Join-Path $PSScriptRoot 'shell-payload.ps1')
-. (Join-Path $PSScriptRoot 'image-admission.ps1')
-
 function Invoke-ReleaseCacheCanary {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)][string]$Image,
         [Parameter(Mandatory = $true)][string]$ModuleCache,
+        [Parameter(Mandatory = $true)][ValidatePattern('^[0-9a-f]{64}$')][string]$ExpectedDockerSHA256,
         [Nullable[int]]$HostUID,
         [Nullable[int]]$HostGID,
         [switch]$ReadOnlyCache
     )
 
-    $Image = Assert-AdmittedReleaseImage -Image $Image
-    $resolvedCache = (Resolve-Path -LiteralPath $ModuleCache).Path
-    $tmpfs = '/work:rw,noexec,nosuid,nodev,size=16m,mode=0700'
-    $arguments = @(
-        'run', '--rm', '--pull=never', '--network', 'none', '--read-only',
-        '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
-        '--pids-limit', '32', '--memory', '128m', '--memory-swap', '128m', '--cpus', '1'
-    )
-    if ($HostUID.HasValue -or $HostGID.HasValue) {
-        if (!$HostUID.HasValue -or !$HostGID.HasValue -or $HostUID.Value -lt 0 -or $HostGID.Value -lt 0) {
-            throw 'Cache canary requires a complete non-negative numeric host UID/GID pair'
-        }
-        $arguments += @('--user', "$($HostUID.Value):$($HostGID.Value)")
-        $tmpfs += ",uid=$($HostUID.Value),gid=$($HostGID.Value)"
+    $exact = 'docker.io/library/golang@sha256:ded31c68586d2e49e760acc2e65a884b23d032e9bbbed0ae0c55abd3fcaf4452'
+    if ($Image -cne $exact) { throw 'Cache proof requires the exact admitted image identity' }
+    $parameters = @{
+        Operation='ContainerCacheProof'; ExpectedDockerSHA256=$ExpectedDockerSHA256
+        CacheDirectory=$ModuleCache; ReadOnlyCache=$ReadOnlyCache
     }
-    $arguments += @('--tmpfs', $tmpfs)
-    $cacheMount = "type=bind,src=$resolvedCache,dst=/gomodcache"
-    if ($ReadOnlyCache) { $cacheMount += ',readonly' }
-    $arguments += @(
-        '--mount', $cacheMount,
-        '--workdir', '/work',
-        $Image,
-        '/usr/bin/env', '-i', 'PATH=/usr/bin:/bin', 'HOME=/work',
-        '/bin/sh', '-ceu', @'
-umask 077
-canary=/gomodcache/.pscan-cache-canary-$$
-renamed=/gomodcache/.pscan-cache-canary-ready-$$
-cleanup() { rm -f "$canary" "$renamed"; }
-trap cleanup EXIT HUP INT TERM
-test ! -e "$canary"
-test ! -e "$renamed"
-printf '%s\n' 'PSCAN-06-C2-CONTAINER-CACHE-CANARY' > "$canary"
-mv "$canary" "$renamed"
-test "$(cat "$renamed")" = 'PSCAN-06-C2-CONTAINER-CACHE-CANARY'
-rm "$renamed"
-test ! -e "$canary"
-test ! -e "$renamed"
-trap - EXIT HUP INT TERM
-'@
-    )
-
-    $arguments[$arguments.Count - 1] = ConvertTo-LFPosixShellPayload -Payload $arguments[$arguments.Count - 1]
-    Assert-LFPosixShellPayload -Payload $arguments[$arguments.Count - 1]
-    & docker @arguments
-    if ($LASTEXITCODE -ne 0) {
-        throw 'Module-cache write, atomic rename, read and delete canary failed before dependency acquisition'
+    if ($HostUID.HasValue -or $HostGID.HasValue) {
+        if (!$HostUID.HasValue -or !$HostGID.HasValue) { throw 'Cache proof requires a complete UID/GID pair' }
+        $parameters.HostUID=$HostUID.Value; $parameters.HostGID=$HostGID.Value
+    }
+    $json = & (Join-Path $PSScriptRoot 'docker-execution.ps1') @parameters
+    $result = ($json -join "`n") | ConvertFrom-Json
+    if ($result.ExitCode -ne 0 -or ![string]::IsNullOrEmpty($result.StdErr) -or !$result.ContainmentEmpty -or $result.DockerSHA256 -cne $ExpectedDockerSHA256) {
+        throw 'Module-cache canary failed closed at the Docker boundary'
     }
 }

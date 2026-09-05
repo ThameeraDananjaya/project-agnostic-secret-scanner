@@ -42,7 +42,14 @@ if ($Phase -in @('Host','All')) {
     }
 }
 
-Invoke-ReleaseCacheCanary -Image $image -ModuleCache $PositiveCacheDirectory -HostUID $uid -HostGID $gid
+$engineJson = & (Join-Path $PSScriptRoot 'docker-execution.ps1') -Operation EngineInspection
+$engine = ($engineJson -join "`n") | ConvertFrom-Json
+if ($engine.ExitCode -ne 0 -or ![string]::IsNullOrEmpty($engine.StdErr) -or !$engine.ContainmentEmpty) { throw 'Docker engine boundary is untrusted' }
+. (Join-Path $PSScriptRoot 'image-admission.ps1')
+[void](Assert-ReleaseEngineEvidence -Json $engine.StdOut)
+$dockerSHA256 = $engine.DockerSHA256
+
+Invoke-ReleaseCacheCanary -Image $image -ModuleCache $PositiveCacheDirectory -ExpectedDockerSHA256 $dockerSHA256 -HostUID $uid -HostGID $gid
 Require-EmptyWithoutLedger $PositiveCacheDirectory
 
 foreach ($case in @(
@@ -51,7 +58,7 @@ foreach ($case in @(
 )) {
     $failedClosed = $false
     try {
-        Invoke-ReleaseCacheCanary -Image $image -ModuleCache $case.Path -HostUID $uid -HostGID $gid -ReadOnlyCache:$case.ReadOnly
+        Invoke-ReleaseCacheCanary -Image $image -ModuleCache $case.Path -ExpectedDockerSHA256 $dockerSHA256 -HostUID $uid -HostGID $gid -ReadOnlyCache:$case.ReadOnly
     } catch {
         $failedClosed = $true
     }

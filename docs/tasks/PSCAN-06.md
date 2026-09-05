@@ -528,8 +528,11 @@ gate. Exact scope, acceptance cases and exclusions are controlling in
 `evidence/PSCAN-06/CORRECTION-C2-ITERATION-004-AUTHORITY.md`.
 
 This approval supersedes candidate `dfbe897` only as a readiness claim. The
-candidate and its author evidence remain immutable history. Iteration 004 is
-owner-approved but unclaimed, unimplemented and unaccepted. It must begin in a
-genuinely fresh session from the exact committed authority bundle and an exact
-clean source-trust-compliant checkout. No Docker, network, remote, signing,
-publication or successor action is authorized.
+candidate and its author evidence remain immutable history. Iteration 004 was
+claimed alone in fresh session `01a07160-ef63-7e80-a441-b2ce360cc23d` from
+exact authority commit `30d849c11a15a7ce35f182140d07dbe66350c135` in a
+separate clean LF checkout. The bounded implementation routes every release
+Docker operation through one typed entrypoint, binds later operations to the
+admitted executable digest, and introduces OS-backed containment plus empty-
+membership proof. This is an implementation candidate, not acceptance. No
+Docker, network, remote, signing, publication or successor action occurred.

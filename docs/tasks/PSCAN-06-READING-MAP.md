@@ -78,6 +78,8 @@ fresh implementation session:
 73. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-003-IMPLEMENTATION.md`
 74. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-003-AUTHOR-VALIDATION.md`
 75. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-004-AUTHORITY.md`
+76. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-004-PREFLIGHT.md`
+77. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-004-IMPLEMENTATION.md`
 
 Then verify the exact activation commit, branch and clean Git status; the
 activated allowed and forbidden paths; the absence of another selected,

@@ -226,3 +226,15 @@ overflow or cleanup uncertainty into trusted evidence.
 Until C2 is independently accepted and each remote gate is separately approved,
 do not create the C2 tag, pull on a remote runner, run the workflow, sign,
 attest, draft, publish or treat these proposed instructions as release proof.
+
+For iteration 004, additionally prove that `docker-execution.ps1` is the only
+Docker process-creation boundary reachable from the recovery workflow. Every
+operation must match its closed internal argument table and the executable
+SHA-256 recorded by admission. The Docker configuration and working directory
+must be new, empty and private, inherited environment state must be cleared,
+and no credential helper, plugin, alternate context or ambient daemon selector
+may be consulted. Windows job assignment must occur while the root is
+suspended; Linux must establish its private session before Docker executes and
+retain start-time-qualified membership. Normal and terminal returns require
+closed streams, root exit and empty containment. Root-only exit, post-hoc PID
+sampling or cleanup uncertainty is rejection, not a warning.

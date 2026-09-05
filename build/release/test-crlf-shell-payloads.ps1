@@ -74,10 +74,11 @@ if ($crlfIntegrityEol -notmatch 'w/crlf' -or $crlfIntegrityBytes -notcontains 13
 
 $fixtureReleaseRoot = Join-Path $fixtureRoot 'build\release'
 . (Join-Path $PSScriptRoot 'shell-payload.ps1')
+$dockerExecutionFixture = Join-Path $fixtureReleaseRoot 'docker-execution.ps1'
 $payloadCases = @(
-    [ordered]@{Name='cache-canary';Path=(Join-Path $fixtureReleaseRoot 'cache-canary.ps1');Marker='PSCAN-06-C2-CONTAINER-CACHE-CANARY'},
-    [ordered]@{Name='acquisition';Path=(Join-Path $fixtureReleaseRoot 'acquire.ps1');Marker='/work/runner/go/bin/go mod download'},
-    [ordered]@{Name='build';Path=(Join-Path $fixtureReleaseRoot 'build.ps1');Marker='verifier_ldflags='}
+    [ordered]@{Name='cache-canary';Path=$dockerExecutionFixture;Marker='PSCAN-06-C2-CONTAINER-CACHE-CANARY'},
+    [ordered]@{Name='acquisition';Path=$dockerExecutionFixture;Marker='/work/runner/go/bin/go mod download'},
+    [ordered]@{Name='build';Path=$dockerExecutionFixture;Marker='verifier_ldflags='}
 )
 
 $normalizedCases = [Collections.Generic.List[object]]::new()
@@ -104,43 +105,32 @@ if ($Phase -eq 'HostOnly') {
     return
 }
 
+$engineJson = & (Join-Path $PSScriptRoot 'docker-execution.ps1') -Operation EngineInspection
+$engine = ($engineJson -join "`n") | ConvertFrom-Json
+if ($engine.ExitCode -ne 0 -or ![string]::IsNullOrEmpty($engine.StdErr) -or !$engine.ContainmentEmpty) { throw 'Docker engine boundary is untrusted' }
 . (Join-Path $PSScriptRoot 'image-admission.ps1')
-$image = Assert-AdmittedReleaseImage -Image $image
+[void](Assert-ReleaseEngineEvidence -Json $engine.StdOut)
+$dockerSHA256 = $engine.DockerSHA256
 foreach ($case in $normalizedCases) {
-    $dockerArguments = @(
-        'run','--rm','--pull=never','--network','none','--read-only',
-        '--cap-drop','ALL','--security-opt','no-new-privileges',
-        '--pids-limit','32','--memory','128m','--memory-swap','128m','--cpus','1',
-        '--tmpfs','/work:rw,noexec,nosuid,nodev,size=16m,mode=0700',
-        $image,'/bin/sh','-n','-c',$case.Payload
-    )
-    & docker @dockerArguments
-    if ($LASTEXITCODE -ne 0) { throw "$($case.Name) normalized payload failed pinned offline shell parsing" }
+    $kind = switch ($case.Name) { 'cache-canary' {'CacheCanary'} 'acquisition' {'Acquisition'} 'build' {'Build'} }
+    $parseJson = & (Join-Path $PSScriptRoot 'docker-execution.ps1') -Operation ContainerCrlfParse -PayloadKind $kind -ExpectedDockerSHA256 $dockerSHA256
+    $parse = ($parseJson -join "`n") | ConvertFrom-Json
+    if ($parse.ExitCode -ne 0 -or ![string]::IsNullOrEmpty($parse.StdErr) -or !$parse.ContainmentEmpty -or $parse.DockerSHA256 -cne $dockerSHA256) { throw "$($case.Name) normalized payload failed pinned offline shell parsing" }
 }
 
-$normalizationCounts = [ordered]@{
-    'cache-canary.ps1' = 1
-    'acquire.ps1' = 1
-    'build.ps1' = 2
-}
-foreach ($entry in $normalizationCounts.GetEnumerator()) {
-    $content = [IO.File]::ReadAllText((Join-Path $fixtureReleaseRoot $entry.Key))
-    $count = ([regex]::Matches($content, 'ConvertTo-LFPosixShellPayload\s+-Payload')).Count
-    if ($count -ne $entry.Value) {
-        throw "$($entry.Key) does not normalize every Docker POSIX shell payload immediately before invocation"
-    }
-}
+$boundaryContent = [IO.File]::ReadAllText($dockerExecutionFixture)
+if (([regex]::Matches($boundaryContent, 'function Get-(Cache|Acquisition|Build|Package)Payload')).Count -ne 4) { throw 'Closed Docker operation table does not own every POSIX payload' }
 
 . (Join-Path $PSScriptRoot 'cache-canary.ps1')
 $positiveCache = Join-Path $testRoot 'positive-cache'
 $readOnlyCache = Join-Path $testRoot 'read-only-cache'
 New-Item -ItemType Directory -Path $positiveCache,$readOnlyCache | Out-Null
-Invoke-ReleaseCacheCanary -Image $image -ModuleCache $positiveCache
+Invoke-ReleaseCacheCanary -Image $image -ModuleCache $positiveCache -ExpectedDockerSHA256 $dockerSHA256
 Require-Empty $positiveCache
 
 $readOnlyRejected = $false
 try {
-    Invoke-ReleaseCacheCanary -Image $image -ModuleCache $readOnlyCache -ReadOnlyCache
+    Invoke-ReleaseCacheCanary -Image $image -ModuleCache $readOnlyCache -ExpectedDockerSHA256 $dockerSHA256 -ReadOnlyCache
 } catch {
     $readOnlyRejected = $true
 }

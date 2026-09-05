@@ -111,9 +111,12 @@ scripts still invoke ambient `docker`, bypassing the closed admission runner,
 and that bounded root `WaitForExit` plus pipe closure does not prove the entire
 descendant set terminated. On 2026-09-05 the owner approved bounded Correction
 C2 iteration 004 to close every workflow-reachable Docker execution and require
-operating-system-backed, empty-membership process containment. It is unclaimed
-and unimplemented; actual-Linux, genuine Docker and independent acceptance
-remain open. No correction Docker, network or remote action is approved.
+operating-system-backed, empty-membership process containment. Fresh session
+`01a07160-ef63-7e80-a441-b2ce360cc23d` claimed only that iteration from exact
+authority commit `30d849c11a15a7ce35f182140d07dbe66350c135` and produced a
+bounded local implementation candidate. Windows no-Docker author fixtures are
+not acceptance; actual-Linux, genuine Docker and independent acceptance remain
+open. No correction Docker, network or remote action was performed.
 PSCAN-07 remains proposed and
 unselected. PSCAN-08 remains inactive,
 unselected and ineligible because

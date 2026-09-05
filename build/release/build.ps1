@@ -126,7 +126,6 @@ $linuxStage = Join-Path $output '.stage-linux'
 $windowsStage = Join-Path $output '.stage-windows'
 $dist = Join-Path $output 'dist'
 New-Item -ItemType Directory -Path $raw,$linuxStage,$windowsStage,$dist | Out-Null
-. (Join-Path $PSScriptRoot 'shell-payload.ps1')
 $productArchive = Join-Path $raw 'product-source.tar'
 $toolingArchive = Join-Path $raw 'release-tooling-source.tar'
 $productMaterialization = New-ExactGitTreeArchive -Repository $root -Revision $productRevision -ExpectedTree $productTree -ArchivePath $productArchive -Label 'Locked product source'
@@ -148,95 +147,29 @@ if ($ledgerValue.schemaVersion -ne '2.1' -or $ledgerValue.cacheCanary.semantics 
     $ledgerValue.cacheCanary.completedBeforeNetworkDependencyAcquisition -ne $true -or
     $ledgerValue.cacheCanary.completedBeforeImagePull -ne $true -or
     $ledgerValue.imageAdmission.canonicalReference -ne $image -or
+    $ledgerValue.imageAdmission.executionBoundary -cne 'closed-private-contained' -or
     $ledgerValue.imageAdmission.postAdmissionRepoDigestProved -ne $true) {
     throw 'Acquisition ledger does not prove the Correction C2 host, image and container admission sequence'
 }
 
+$receiptPath = Join-Path $acquisition 'docker-admission.json'
+if (!(Test-Path -LiteralPath $receiptPath -PathType Leaf)) { throw 'Release build requires the prior closed Docker admission receipt' }
+try { $imageAdmission = Get-Content -Raw -LiteralPath $receiptPath | ConvertFrom-Json } catch { throw 'Docker admission receipt is malformed' }
+if ($imageAdmission.schemaVersion -cne '1.0' -or $imageAdmission.sourceRevision -cne $toolingRevision -or $imageAdmission.image -cne $image -or
+    $imageAdmission.dockerExecutableSHA256 -notmatch '^[0-9a-f]{64}$' -or $imageAdmission.containment -cne 'empty-after-every-operation' -or
+    $imageAdmission.streamLimitBytes -ne 131072 -or $imageAdmission.commandBudgetMilliseconds -ne 15000 -or $imageAdmission.cleanupGraceMilliseconds -ne 2000) { throw 'Docker admission receipt does not bind this exact build' }
+$dockerSHA256 = $imageAdmission.dockerExecutableSHA256
+if ($ledgerValue.imageAdmission.dockerExecutableSHA256 -cne $dockerSHA256) { throw 'Acquisition ledger and Docker admission receipt identities conflict' }
 . (Join-Path $PSScriptRoot 'image-admission.ps1')
-$image = Assert-AdmittedReleaseImage -Image $image
+$inspectJson = & (Join-Path $PSScriptRoot 'docker-execution.ps1') -Operation RepositoryDigestInspection -ExpectedDockerSHA256 $dockerSHA256
+$inspect = ($inspectJson -join "`n") | ConvertFrom-Json
+if ($inspect.ExitCode -ne 0 -or ![string]::IsNullOrEmpty($inspect.StdErr) -or !$inspect.ContainmentEmpty) { throw 'Pre-build image inspection failed closed' }
+$repoDigests = Read-ReleaseRepoDigestsEvidence -Json $inspect.StdOut
+[void](Assert-ReleaseImageIdentityEvidence -Image $image -RepoDigests $repoDigests)
 
-$arguments = @(
-    'run', '--rm', '--pull=never', '--network', 'none', '--read-only',
-    '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
-    '--pids-limit', '512', '--memory', '8g', '--memory-swap', '8g', '--cpus', '2',
-    '--tmpfs', '/work:rw,exec,nosuid,nodev,size=4g',
-    '--mount', "type=bind,src=$productArchive,dst=/input/product-source.tar,readonly",
-    '--mount', "type=bind,src=$($productMaterialization.BlobManifest),dst=/input/product-source.blobs.sha256,readonly",
-    '--mount', "type=bind,src=$($productMaterialization.PathManifest),dst=/input/product-source.paths,readonly",
-    '--mount', "type=bind,src=$($productMaterialization.ModeManifest),dst=/input/product-source.modes,readonly",
-    '--mount', "type=bind,src=$toolingArchive,dst=/input/release-tooling-source.tar,readonly",
-    '--mount', "type=bind,src=$($toolingMaterialization.BlobManifest),dst=/input/release-tooling-source.blobs.sha256,readonly",
-    '--mount', "type=bind,src=$($toolingMaterialization.PathManifest),dst=/input/release-tooling-source.paths,readonly",
-    '--mount', "type=bind,src=$($toolingMaterialization.ModeManifest),dst=/input/release-tooling-source.modes,readonly",
-    '--mount', "type=bind,src=$runnerGo,dst=/input/runner-go.tar.gz,readonly",
-    '--mount', "type=bind,src=$engineGo,dst=/input/engine-go.tar.gz,readonly",
-    '--mount', "type=bind,src=$gitleaksSource,dst=/input/gitleaks.tar.gz,readonly",
-    '--mount', "type=bind,src=$moduleCache,dst=/gomodcache,readonly",
-    '--mount', "type=bind,src=$raw,dst=/out",
-    '--workdir', '/work/tooling',
-    $image,
-    '/usr/bin/env', '-i', 'PATH=/usr/bin:/bin', 'HOME=/work', "SOURCE_DATE_EPOCH=$epoch",
-    '/bin/sh', '-ceu', @'
-echo "63d339f0da5ab53635a56f2490a7984dfe12dfcff22ad749f63edaf590168445  /input/runner-go.tar.gz" | sha256sum -c -
-echo "675c26c449cbb18fc24b74650de1eabbae6e16f64326fd85a283fb3b58280685  /input/engine-go.tar.gz" | sha256sum -c -
-echo "6b2638a733b85619dc80bdf28e84e4fed7e526a761ab5c148fbf67695aea2115  /input/gitleaks.tar.gz" | sha256sum -c -
-test "$(sha256sum /input/product-source.tar | cut -d ' ' -f 1)" = "$PSCAN_PRODUCT_ARCHIVE_SHA256"
-test "$(sha256sum /input/release-tooling-source.tar | cut -d ' ' -f 1)" = "$PSCAN_TOOLING_ARCHIVE_SHA256"
-mkdir -p /work/runner /work/engine /work/gitleaks /work/product /work/tooling /work/cache /work/tmp /out/product /out/tooling-materialized/contracts/release-manifest /out/tooling-materialized/docs/release
-tar -xzf /input/runner-go.tar.gz -C /work/runner
-tar -xzf /input/engine-go.tar.gz -C /work/engine
-tar -xzf /input/gitleaks.tar.gz -C /work/gitleaks --strip-components=1
-tar -xf /input/product-source.tar -C /work/product
-tar -xf /input/release-tooling-source.tar -C /work/tooling
-(cd /work/product && sha256sum --quiet -c /input/product-source.blobs.sha256 && find . -type f -printf '%P\n' | LC_ALL=C sort > /work/product.paths && cmp /input/product-source.paths /work/product.paths)
-(cd /work/tooling && sha256sum --quiet -c /input/release-tooling-source.blobs.sha256 && find . -type f -printf '%P\n' | LC_ALL=C sort > /work/tooling.paths && cmp /input/release-tooling-source.paths /work/tooling.paths)
-while IFS="$(printf '\t')" read -r expected_mode path; do test "$(stat -c '%a' "/work/product/$path")" = "${expected_mode#100}"; done < /input/product-source.modes
-while IFS="$(printf '\t')" read -r expected_mode path; do test "$(stat -c '%a' "/work/tooling/$path")" = "${expected_mode#100}"; done < /input/release-tooling-source.modes
-test "$(wc -l < /input/product-source.paths)" -eq "$PSCAN_PRODUCT_FILE_COUNT"
-test "$(wc -l < /input/release-tooling-source.paths)" -eq "$PSCAN_TOOLING_FILE_COUNT"
-test "$(/work/runner/go/bin/go version)" = "go version go1.27.1 linux/amd64"
-test "$(/work/engine/go/bin/go version)" = "go version go1.27.0 linux/amd64"
-test "$(sha256sum /work/gitleaks/go.mod | cut -d ' ' -f 1)" = "607c140abf2a872e70423972d4dfc7fa658ebe10365d0ea995269ed292add7a3"
-test "$(sha256sum /work/gitleaks/config/gitleaks.toml | cut -d ' ' -f 1)" = "e163e53b9e7e8a8511e77271e2b323ed057759542a6d988258afe3a1fa329caf"
-test "$(sha256sum /work/gitleaks/LICENSE | cut -d ' ' -f 1)" = "e3884b252b3bfc045e55be43a34d1e80da070bc6f804ac95bf4660e97d62ebc6"
-test "$(sha256sum /work/gitleaks/.goreleaser.yml | cut -d ' ' -f 1)" = "1e6a76e13378b4ad215b423411ee6b1732f04c82224fbed4dcdb20b99eab9717"
-export GOTOOLCHAIN=local GOMODCACHE=/gomodcache GOPROXY=off GOSUMDB=off CGO_ENABLED=0
-export GOCACHE=/work/cache GOTMPDIR=/work/tmp TMPDIR=/work/tmp
-cd /work/gitleaks
-GOOS=linux GOARCH=amd64 /work/engine/go/bin/go build -mod=readonly -trimpath -buildvcs=false -ldflags '-s -w -buildid= -X=github.com/zricethezav/gitleaks/v8/version.Version=8.30.1' -o /out/gitleaks-linux-amd64 .
-GOOS=windows GOARCH=amd64 /work/engine/go/bin/go build -mod=readonly -trimpath -buildvcs=false -ldflags '-s -w -buildid= -X=github.com/zricethezav/gitleaks/v8/version.Version=8.30.1' -o /out/gitleaks-windows-amd64.exe .
-test "$(sha256sum /out/gitleaks-linux-amd64 | cut -d ' ' -f 1)" = "657ddddfb98e21052fb1a60d5d4e7d7534897347cb7df0031f13258a3f800586"
-test "$(sha256sum /out/gitleaks-windows-amd64.exe | cut -d ' ' -f 1)" = "b2094b3534ce0abf9c74a4b251153f5a23ebb4e74d5ae4f6d6ceeb428aaf0178"
-cd /work/product
-GOOS=linux GOARCH=amd64 /work/runner/go/bin/go build -mod=readonly -trimpath -buildvcs=false -ldflags '-s -w -buildid=' -o /out/scanner-runner-linux-amd64 ./cmd/scanner-runner
-GOOS=windows GOARCH=amd64 /work/runner/go/bin/go build -mod=readonly -trimpath -buildvcs=false -ldflags '-s -w -buildid=' -o /out/scanner-runner-windows-amd64.exe ./cmd/scanner-runner
-cp -R rules contracts licenses /out/product/
-cp LICENSE THIRD_PARTY_NOTICES.md /out/product/
-cd /work/tooling
-verifier_ldflags="-s -w -buildid= -X=main.releaseToolingCommit=$PSCAN_TOOLING_REVISION -X=main.releaseToolingTree=$PSCAN_TOOLING_TREE"
-GOOS=linux GOARCH=amd64 /work/runner/go/bin/go build -mod=readonly -trimpath -buildvcs=false -ldflags "$verifier_ldflags" -o /out/scanner-release-verifier-linux-amd64 ./build/release/cmd/release-verifier
-GOOS=windows GOARCH=amd64 /work/runner/go/bin/go build -mod=readonly -trimpath -buildvcs=false -ldflags "$verifier_ldflags" -o /out/scanner-release-verifier-windows-amd64.exe ./build/release/cmd/release-verifier
-GOOS=linux GOARCH=amd64 /work/runner/go/bin/go build -mod=readonly -trimpath -buildvcs=false -ldflags '-s -w -buildid=' -o /out/packager-linux-amd64 ./build/release/cmd/packager
-GOOS=linux GOARCH=amd64 /work/runner/go/bin/go build -mod=readonly -trimpath -buildvcs=false -ldflags '-s -w -buildid=' -o /out/sbom-linux-amd64 ./build/release/cmd/sbom
-/work/runner/go/bin/go list -mod=readonly -m -json all > /out/modules.json
-PSCAN_GITLEAKS_BINARY=/out/gitleaks-linux-amd64 PSCAN_GITLEAKS_CONFIG=/work/product/rules/generic/gitleaks-v8.30.1.toml PSCAN_GITLEAKS_IGNORE=/work/product/rules/generic/gitleaks-ignore-empty-v1.txt /work/runner/go/bin/go test -p=1 -count=1 -run '^TestPinnedRuleAndCoverageIntegrityBindings$' ./tests/acceptance/gitleaks
-PSCAN_GITLEAKS_BINARY=/out/gitleaks-linux-amd64 PSCAN_GITLEAKS_CONFIG=/work/product/rules/generic/gitleaks-v8.30.1.toml PSCAN_GITLEAKS_IGNORE=/work/product/rules/generic/gitleaks-ignore-empty-v1.txt /work/runner/go/bin/go test -p=1 -count=1 ./...
-/work/runner/go/bin/go vet -p=1 ./...
-GOOS=windows GOARCH=amd64 /work/runner/go/bin/go test -p=1 -exec /bin/true ./...
-/out/sbom-linux-amd64 -input /out/modules.json -output /out/sbom.spdx.json -revision "$PSCAN_PRODUCT_REVISION" -created "$PSCAN_CREATED"
-cp /work/tooling/contracts/release-manifest/schema-2.0.json /out/tooling-materialized/contracts/release-manifest/schema-2.0.json
-cp /work/tooling/contracts/release-manifest/schema-2.1.json /out/tooling-materialized/contracts/release-manifest/schema-2.1.json
-cp /work/tooling/docs/release/OFFLINE-VERIFICATION-RUNBOOK.md /out/tooling-materialized/docs/release/OFFLINE-VERIFICATION-RUNBOOK.md
-cp /work/tooling/docs/release/SCANNER-IO-REFERENCE.md /out/tooling-materialized/docs/release/SCANNER-IO-REFERENCE.md
-'@
-)
-$revisionIndex = $arguments.IndexOf('/usr/bin/env')
-$arguments = $arguments[0..($revisionIndex)] + @('-i','PATH=/usr/bin:/bin','HOME=/work',"SOURCE_DATE_EPOCH=$epoch","PSCAN_PRODUCT_REVISION=$productRevision","PSCAN_TOOLING_REVISION=$toolingRevision","PSCAN_TOOLING_TREE=$toolingTree","PSCAN_CREATED=$created","PSCAN_PRODUCT_ARCHIVE_SHA256=$($productMaterialization.ArchiveSHA256)","PSCAN_TOOLING_ARCHIVE_SHA256=$($toolingMaterialization.ArchiveSHA256)","PSCAN_PRODUCT_FILE_COUNT=$($productMaterialization.FileCount)","PSCAN_TOOLING_FILE_COUNT=$($toolingMaterialization.FileCount)") + $arguments[($revisionIndex + 5)..($arguments.Count - 1)]
-
-$arguments[$arguments.Count - 1] = ConvertTo-LFPosixShellPayload -Payload $arguments[$arguments.Count - 1]
-Assert-LFPosixShellPayload -Payload $arguments[$arguments.Count - 1]
-& docker @arguments
-if ($LASTEXITCODE -ne 0) { throw 'Offline release build or validation failed' }
+$buildBoundary = & (Join-Path $PSScriptRoot 'docker-execution.ps1') -Operation ReleaseBuild -ExpectedDockerSHA256 $dockerSHA256 -CacheDirectory $moduleCache -RunnerGoArchive $runnerGo -EngineGoArchive $engineGo -GitleaksArchive $gitleaksSource -ProductArchive $productArchive -ProductBlobManifest $productMaterialization.BlobManifest -ProductPathManifest $productMaterialization.PathManifest -ProductModeManifest $productMaterialization.ModeManifest -ToolingArchive $toolingArchive -ToolingBlobManifest $toolingMaterialization.BlobManifest -ToolingPathManifest $toolingMaterialization.PathManifest -ToolingModeManifest $toolingMaterialization.ModeManifest -RawOutputDirectory $raw -SourceDateEpoch ([string]$epoch) -ProductRevision $productRevision -ToolingRevision $toolingRevision -ToolingTree $toolingTree -ProductArchiveSHA256 $productMaterialization.ArchiveSHA256 -ToolingArchiveSHA256 $toolingMaterialization.ArchiveSHA256 -ProductFileCount $productMaterialization.FileCount -ToolingFileCount $toolingMaterialization.FileCount -Created $created
+$buildResult = ($buildBoundary -join "`n") | ConvertFrom-Json
+if ($buildResult.ExitCode -ne 0 -or ![string]::IsNullOrEmpty($buildResult.StdErr) -or !$buildResult.ContainmentEmpty -or $buildResult.DockerSHA256 -cne $dockerSHA256) { throw 'Offline release build or validation failed closed at the Docker boundary' }
 
 Require-Digest (Join-Path $raw 'gitleaks-linux-amd64') '657ddddfb98e21052fb1a60d5d4e7d7534897347cb7df0031f13258a3f800586'
 Require-Digest (Join-Path $raw 'gitleaks-windows-amd64.exe') 'b2094b3534ce0abf9c74a4b251153f5a23ebb4e74d5ae4f6d6ceeb428aaf0178'
@@ -324,20 +257,9 @@ Copy-Item -LiteralPath (Join-Path $dist 'scanner-runner-windows-amd64.exe') -Des
 Copy-Item -LiteralPath (Join-Path $dist 'scanner-release-verifier-windows-amd64.exe') -Destination (Join-Path $windowsStage 'bin\scanner-release-verifier.exe')
 Copy-Item -LiteralPath (Join-Path $dist 'gitleaks-windows-amd64.exe') -Destination (Join-Path $windowsStage 'bin\gitleaks.exe')
 
-$packageArguments = @(
-    'run','--rm','--pull=never','--network','none','--read-only','--cap-drop','ALL','--security-opt','no-new-privileges','--pids-limit','64','--memory','1g','--memory-swap','1g','--cpus','1',
-    '--tmpfs','/tmp:rw,exec,nosuid,nodev,size=64m',
-    '--mount',"type=bind,src=$raw,dst=/tools,readonly",
-    '--mount',"type=bind,src=$linuxStage,dst=/input/linux,readonly",
-    '--mount',"type=bind,src=$windowsStage,dst=/input/windows,readonly",
-    '--mount',"type=bind,src=$dist,dst=/dist",
-    $image,'/bin/sh','-ceu',
-    "cp /tools/packager-linux-amd64 /tmp/packager; chmod 0755 /tmp/packager; /tmp/packager -root /input/linux -output /dist/project-agnostic-secret-scanner_v1.0.0_linux_amd64.tar.gz -format tar.gz -epoch $epoch; /tmp/packager -root /input/windows -output /dist/project-agnostic-secret-scanner_v1.0.0_windows_amd64.zip -format zip -epoch $epoch"
-)
-$packageArguments[$packageArguments.Count - 1] = ConvertTo-LFPosixShellPayload -Payload $packageArguments[$packageArguments.Count - 1]
-Assert-LFPosixShellPayload -Payload $packageArguments[$packageArguments.Count - 1]
-& docker @packageArguments
-if ($LASTEXITCODE -ne 0) { throw 'Deterministic packaging failed' }
+$packageBoundary = & (Join-Path $PSScriptRoot 'docker-execution.ps1') -Operation ReleasePackage -ExpectedDockerSHA256 $dockerSHA256 -RawOutputDirectory $raw -LinuxStageDirectory $linuxStage -WindowsStageDirectory $windowsStage -DistributionDirectory $dist -SourceDateEpoch ([string]$epoch)
+$packageResult = ($packageBoundary -join "`n") | ConvertFrom-Json
+if ($packageResult.ExitCode -ne 0 -or ![string]::IsNullOrEmpty($packageResult.StdErr) -or !$packageResult.ContainmentEmpty -or $packageResult.DockerSHA256 -cne $dockerSHA256) { throw 'Deterministic packaging failed closed at the Docker boundary' }
 
 $checksumTargets = Get-ChildItem -LiteralPath $dist -File | Sort-Object Name
 $checksumLines = foreach ($file in $checksumTargets) {

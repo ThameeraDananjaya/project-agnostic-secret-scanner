@@ -156,3 +156,30 @@ Iteration 003 additionally requires:
 
 The native suite must run on Windows and actual Linux before independent
 acceptance. A local author run on only one platform is expressly incomplete.
+
+## Correction C2 iteration 004 validation addendum
+
+Iteration 004 additionally requires:
+
+1. exact static inventory showing one Docker process-creation boundary and no
+   ambient Docker call or duplicate runner in workflow-reachable scripts;
+2. a finite operation table whose complete arguments preserve the admission,
+   cache, CRLF, acquisition, network-disabled build and packaging boundaries;
+3. held-file executable identity, private empty configuration and work
+   directories, a cleared minimum environment and rejection of replacement,
+   PATH, alias, function, callback, arbitrary-argument and dot-source bypasses;
+4. Windows suspended start followed by kill-on-close job assignment before
+   resume, and actual-Linux private-session execution with identity-safe member
+   tracking before Docker bytes execute;
+5. success only after root exit, both bounded streams close and containment is
+   empty; timeout, overflow, invalid UTF-8, read, exit, termination, membership
+   or cleanup uncertainty remains terminal under the exact 131072-byte,
+   15000 ms and 2000 ms limits; and
+6. no-Docker native fixtures covering immediate/nonzero/start failure, exact
+   stream boundaries, simultaneous streams, split/invalid/incomplete UTF-8,
+   hang, child, detached child, grandchild, replacement race and terminal
+   cleanup without a live or uncertain member.
+
+Windows author proof alone remains incomplete. Actual Linux, genuine Docker
+operation, reproducibility and independent skeptical proof remain mandatory
+for acceptance and require their separately authorized execution boundaries.

@@ -1,7 +1,4 @@
-param(
-    [Parameter(Mandatory = $true)][string]$CacheDirectory,
-    [switch]$AllowImagePull
-)
+param([Parameter(Mandatory = $true)][string]$CacheDirectory)
 
 $ErrorActionPreference = 'Stop'
 
@@ -12,7 +9,7 @@ if (Test-Path -LiteralPath $cache) {
     if (Test-Path -LiteralPath (Join-Path $cache 'acquisition-ledger.json')) {
         throw 'Acquisition cache is already complete and is not mutable'
     }
-    $unexpected = Get-ChildItem -LiteralPath $cache -Force | Where-Object { $_.Name -notin @('downloads','gomodcache') }
+    $unexpected = Get-ChildItem -LiteralPath $cache -Force | Where-Object { $_.Name -notin @('downloads','gomodcache','docker-admission.json') }
     if ($unexpected) {
         throw 'Incomplete acquisition cache contains unexpected paths'
     }
@@ -44,14 +41,22 @@ if ($IsLinux) {
     }
     $platformMode = 'linux-host-numeric-uid-gid'
 }
+$sourceRevision = $env:PSCAN_TRUSTED_LAUNCHER_REVISION
+if ($sourceRevision -notmatch '^[0-9a-f]{40}$') { throw 'Acquisition requires the exact committed launcher revision' }
+$receiptPath = Join-Path $cache 'docker-admission.json'
+if (!(Test-Path -LiteralPath $receiptPath -PathType Leaf)) { throw 'Dependency acquisition requires the prior closed Docker admission receipt' }
+try { $imageAdmission = Get-Content -Raw -LiteralPath $receiptPath | ConvertFrom-Json } catch { throw 'Docker admission receipt is malformed' }
+if ($imageAdmission.schemaVersion -cne '1.0' -or $imageAdmission.sourceRevision -cne $sourceRevision -or $imageAdmission.image -cne $image -or
+    $imageAdmission.dockerExecutableSHA256 -notmatch '^[0-9a-f]{64}$' -or $imageAdmission.containment -cne 'empty-after-every-operation' -or
+    $imageAdmission.streamLimitBytes -ne 131072 -or $imageAdmission.commandBudgetMilliseconds -ne 15000 -or $imageAdmission.cleanupGraceMilliseconds -ne 2000 -or
+    $imageAdmission.hostIdentityMode -cne $platformMode -or $imageAdmission.hostUID -ne $hostUID -or $imageAdmission.hostGID -ne $hostGID) { throw 'Docker admission receipt does not bind this exact acquisition' }
+$dockerSHA256 = $imageAdmission.dockerExecutableSHA256
 . (Join-Path $PSScriptRoot 'image-admission.ps1')
-$imageAdmission = Invoke-ReleaseImageAdmission -CacheDirectory $cache -AllowImagePull:$AllowImagePull
-$image = $imageAdmission.Image
-$hostUID = $imageAdmission.HostUID
-$hostGID = $imageAdmission.HostGID
-$platformMode = $imageAdmission.HostIdentityMode
-. (Join-Path $PSScriptRoot 'cache-canary.ps1')
-Invoke-ReleaseCacheCanary -Image $image -ModuleCache $moduleCache -HostUID $hostUID -HostGID $hostGID
+$inspectJson = & (Join-Path $PSScriptRoot 'docker-execution.ps1') -Operation RepositoryDigestInspection -ExpectedDockerSHA256 $dockerSHA256
+$inspect = ($inspectJson -join "`n") | ConvertFrom-Json
+if ($inspect.ExitCode -ne 0 -or ![string]::IsNullOrEmpty($inspect.StdErr) -or !$inspect.ContainmentEmpty) { throw 'Pre-acquisition image inspection failed closed' }
+$repoDigests = Read-ReleaseRepoDigestsEvidence -Json $inspect.StdOut
+[void](Assert-ReleaseImageIdentityEvidence -Image $image -RepoDigests $repoDigests)
 
 $artifacts = @(
     [ordered]@{
@@ -91,48 +96,15 @@ $runnerGo = (Resolve-Path (Join-Path $downloads 'go1.27.1.linux-amd64.tar.gz')).
 $engineGo = (Resolve-Path (Join-Path $downloads 'go1.27.0.linux-amd64.tar.gz')).Path
 $gitleaks = (Resolve-Path (Join-Path $downloads 'gitleaks-83d9cd684c87d95d656c1458ef04895a7f1cbd8e.tar.gz')).Path
 
-$arguments = @(
-    'run', '--rm', '--pull=never', '--read-only',
-    '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
-    '--pids-limit', '256', '--memory', '4g', '--memory-swap', '4g', '--cpus', '2',
-    '--tmpfs', '/work:rw,exec,nosuid,nodev,size=1g',
-    '--mount', "type=bind,src=$root,dst=/src,readonly",
-    '--mount', "type=bind,src=$runnerGo,dst=/input/runner-go.tar.gz,readonly",
-    '--mount', "type=bind,src=$engineGo,dst=/input/engine-go.tar.gz,readonly",
-    '--mount', "type=bind,src=$gitleaks,dst=/input/gitleaks.tar.gz,readonly",
-    '--mount', "type=bind,src=$moduleCache,dst=/gomodcache",
-    '--workdir', '/src',
-    $image,
-    '/usr/bin/env', '-i', 'PATH=/usr/bin:/bin', 'HOME=/work',
-    '/bin/sh', '-ceu', @'
-echo "63d339f0da5ab53635a56f2490a7984dfe12dfcff22ad749f63edaf590168445  /input/runner-go.tar.gz" | sha256sum -c -
-echo "675c26c449cbb18fc24b74650de1eabbae6e16f64326fd85a283fb3b58280685  /input/engine-go.tar.gz" | sha256sum -c -
-echo "6b2638a733b85619dc80bdf28e84e4fed7e526a761ab5c148fbf67695aea2115  /input/gitleaks.tar.gz" | sha256sum -c -
-mkdir -p /work/runner /work/engine /work/gitleaks
-tar -xzf /input/runner-go.tar.gz -C /work/runner
-tar -xzf /input/engine-go.tar.gz -C /work/engine
-tar -xzf /input/gitleaks.tar.gz -C /work/gitleaks --strip-components=1
-test "$(/work/runner/go/bin/go version)" = "go version go1.27.1 linux/amd64"
-test "$(/work/engine/go/bin/go version)" = "go version go1.27.0 linux/amd64"
-cd /src
-env GOTOOLCHAIN=local GOFLAGS=-mod=readonly GOMODCACHE=/gomodcache GOCACHE=/work/runner-cache GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org /work/runner/go/bin/go mod download
-env GOTOOLCHAIN=local GOFLAGS=-mod=readonly GOMODCACHE=/gomodcache GOCACHE=/work/runner-cache GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org /work/runner/go/bin/go list -m all >/work/runner-modules.txt
-cd /work/gitleaks
-env GOTOOLCHAIN=local GOFLAGS=-mod=readonly GOMODCACHE=/gomodcache GOCACHE=/work/engine-cache GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org /work/engine/go/bin/go mod download all
-env GOTOOLCHAIN=local GOFLAGS=-mod=readonly GOMODCACHE=/gomodcache GOCACHE=/work/engine-cache GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org /work/engine/go/bin/go list -m all >/work/engine-modules.txt
-'@
-)
-
-if ($hostUID -ne $null) {
-    $runIndex = $arguments.IndexOf('--tmpfs')
-    $arguments = $arguments[0..($runIndex - 1)] + @('--user', "${hostUID}:${hostGID}") + $arguments[$runIndex..($arguments.Count - 1)]
-    $arguments[$arguments.IndexOf('/work:rw,exec,nosuid,nodev,size=1g')] = "/work:rw,exec,nosuid,nodev,size=1g,mode=0700,uid=$hostUID,gid=$hostGID"
+$boundaryParameters = @{
+    Operation='DependencyAcquisition'; ExpectedDockerSHA256=$dockerSHA256
+    SourceRoot=$root; RunnerGoArchive=$runnerGo; EngineGoArchive=$engineGo
+    GitleaksArchive=$gitleaks; CacheDirectory=$moduleCache
 }
-
-$arguments[$arguments.Count - 1] = ConvertTo-LFPosixShellPayload -Payload $arguments[$arguments.Count - 1]
-Assert-LFPosixShellPayload -Payload $arguments[$arguments.Count - 1]
-& docker @arguments
-if ($LASTEXITCODE -ne 0) { throw 'Pinned dependency acquisition failed' }
+if ($null -ne $hostUID) { $boundaryParameters.HostUID=[int]$hostUID; $boundaryParameters.HostGID=[int]$hostGID }
+$boundaryJson = & (Join-Path $PSScriptRoot 'docker-execution.ps1') @boundaryParameters
+$boundaryResult = ($boundaryJson -join "`n") | ConvertFrom-Json
+if ($boundaryResult.ExitCode -ne 0 -or ![string]::IsNullOrEmpty($boundaryResult.StdErr) -or !$boundaryResult.ContainmentEmpty -or $boundaryResult.DockerSHA256 -cne $dockerSHA256) { throw 'Pinned dependency acquisition failed closed at the Docker boundary' }
 
 $ledger = [ordered]@{
     schemaVersion = '2.1'
@@ -152,7 +124,9 @@ $ledger = [ordered]@{
         canonicalReference = $image
         repository = 'docker.io/library/golang'
         digest = 'sha256:ded31c68586d2e49e760acc2e65a884b23d032e9bbbed0ae0c55abd3fcaf4452'
-        pulledDuringThisInvocation = $imageAdmission.Pulled
+        dockerExecutableSHA256 = $dockerSHA256
+        executionBoundary = 'closed-private-contained'
+        pulledDuringAdmission = $imageAdmission.pulledDuringAdmission
         postAdmissionRepoDigestProved = $true
     }
     networkBoundary = 'Network enabled only in this acquisition phase; builds require --network none and read-only cache mounts.'

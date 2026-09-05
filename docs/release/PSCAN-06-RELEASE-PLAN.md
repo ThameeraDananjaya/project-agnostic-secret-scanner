@@ -38,6 +38,22 @@ UTF-8 after complete closure, and applies a 15000 ms monotonic budget plus a
 fixed 2000 ms cleanup grace. Timeout, overflow, invalid UTF-8, read, exit,
 process-tree termination or pipe-closure uncertainty is terminal and cannot be
 retried or reclassified as image absence.
+
+Correction C2 iteration 004 extends that boundary to every Docker operation in
+the recovery path. `docker-execution.ps1` is the sole Docker process-creation
+entrypoint and accepts only a fixed operation name plus operation-specific
+typed paths and identities. It constructs the complete engine, inventory,
+single-pull, digest-inspection, cache, CRLF, acquisition, build and packaging
+argument vectors internally. Admission writes a bounded receipt that fixes the
+held executable SHA-256 for every later operation; later phases may re-inspect
+but cannot pull again. Each invocation uses a new empty permission-restricted
+working, temporary and Docker-config directory, a cleared minimum environment
+and a fixed daemon endpoint. Windows starts suspended, assigns the process to a
+kill-on-close job, then resumes it. Linux executes the held inode through a
+private session and keeps a start-time-qualified member ledger. A command does
+not return trusted evidence until the root, both streams and containment are
+empty. The 131072-byte independent caps, 15000 ms complete budget and 2000 ms
+terminal cleanup ceiling remain unchanged.
 Compilation, tests, vet, Windows cross-compilation and two byte-for-byte builds
 then run with networking disabled and the module cache read-only. Workflow-
 transfer evidence is uncompressed and retained one day; it is not a release.

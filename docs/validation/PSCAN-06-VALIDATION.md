@@ -184,3 +184,29 @@ Iteration 004 additionally requires:
 Windows author proof alone remains incomplete. Actual Linux, genuine Docker
 operation, reproducibility and independent skeptical proof remain mandatory
 for acceptance and require their separately authorized execution boundaries.
+
+## Correction C2 iteration 005 validation addendum
+
+Iteration 005 additionally requires:
+
+1. static source ordering that rejects any pre-existing
+   `PscanNativeBoundary` before `Add-Type`, before a method on that type and
+   before the single Docker execution call;
+2. unconditional clean-process compilation of the exact embedded source and
+   exact post-compilation public type and assembly identity checks, with no
+   compatibility fallback or conditional reuse;
+3. separate new non-profile processes for the clean matrix, a compatible
+   fabricated-success preload and an older compatible stale preload;
+4. nonzero hostile-process results with the exact ambient-state rejection,
+   zero fake-boundary calls, zero Docker calls, no private Docker-boundary
+   directory, no trusted result and no accepted fabricated field;
+5. rejection of a second production invocation in a process containing the
+   already compiled exact type; and
+6. the complete iteration-004 Windows matrix, including exact stream limits,
+   simultaneous pipes, split and invalid UTF-8, start failure, timeout,
+   descendants, empty job membership and executable replacement rejection.
+
+Local Windows author validation is not independent acceptance. Actual Linux,
+genuine Docker/image/container execution, dependency acquisition, complete
+builds, byte comparison, remote proof and independent skeptical review remain
+open and separately gated.

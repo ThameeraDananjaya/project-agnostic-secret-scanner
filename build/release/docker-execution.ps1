@@ -190,8 +190,17 @@ public static class PscanNativeBoundary {
 }
 '@
 
-if (!('PscanNativeBoundary' -as [type])) {
-    Add-Type -TypeDefinition $nativeBoundarySource -Language CSharp
+if ($null -ne ('PscanNativeBoundary' -as [type])) {
+    throw 'Pre-existing PscanNativeBoundary type is terminal ambient state'
+}
+$compiledNativeBoundaryTypes = @(Add-Type -TypeDefinition $nativeBoundarySource -Language CSharp -PassThru)
+$compiledBoundary = @($compiledNativeBoundaryTypes | Where-Object { $_.IsPublic -and $_.FullName -ceq 'PscanNativeBoundary' })
+$compiledResult = @($compiledNativeBoundaryTypes | Where-Object { $_.IsPublic -and $_.FullName -ceq 'PscanBoundaryResult' })
+if ($compiledBoundary.Count -ne 1 -or $compiledResult.Count -ne 1 -or
+    ![object]::ReferenceEquals($compiledBoundary[0].Assembly, $compiledResult[0].Assembly) -or
+    ![object]::ReferenceEquals($compiledBoundary[0], ('PscanNativeBoundary' -as [type])) -or
+    ![object]::ReferenceEquals($compiledResult[0], ('PscanBoundaryResult' -as [type]))) {
+    throw 'Compiled native boundary type identity is unexpected'
 }
 
 function Require-Path([string]$Name, [string]$Value, [bool]$Container = $false) {

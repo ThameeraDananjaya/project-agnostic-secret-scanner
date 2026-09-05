@@ -595,3 +595,15 @@ history. Iteration 005 is owner-approved but unclaimed, unimplemented and
 unaccepted. It must begin in a genuinely fresh session from the exact committed
 authority bundle and an exact clean source-trust-compliant checkout. No Docker,
 network, remote, signing, publication or successor action is authorized.
+
+Fresh implementation session `01a071ef-5eeb-7a91-8d82-1feb22a9c2f6` claimed
+only iteration 005 from exact authority commit
+`13496a35eab71482f2e908bd0aac4b563941682d` in a new local, no-network,
+LF-preserving isolated clone after exact every-byte source trust passed. The
+bounded implementation rejects an existing native type before compilation or
+execution, validates the exact newly compiled type identities, and moves the
+clean, compatible-hostile and stale-hostile proofs into separate non-profile
+processes. Local Windows author fixtures pass before the candidate commit. This
+is implementation and author evidence only, not independent acceptance. All
+actual-Linux, Docker, build, remote, signing, publication and successor gates
+remain open.

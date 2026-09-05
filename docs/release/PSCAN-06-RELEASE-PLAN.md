@@ -56,6 +56,20 @@ kernel-terminates detached and nested descendants. A command does not return
 trusted evidence until the root, both streams, namespace and containment are
 empty. The 131072-byte independent caps, 15000 ms complete budget and 2000 ms
 terminal cleanup ceiling remain unchanged.
+
+Correction C2 iteration 005 makes the embedded native implementation exclusive
+to each production process. Any existing `PscanNativeBoundary` type is terminal
+ambient state and stops the entrypoint before compilation, native dispatch,
+private Docker-boundary setup or Docker execution. A clean process always
+compiles the one embedded source and verifies that the returned public boundary
+and result types are the exact runtime types from the same new assembly. There
+is no compatibility inspection, fallback or reuse path. The no-Docker harness
+runs its clean matrix, compatible hostile preload and older compatible stale
+preload in separate new non-profile PowerShell processes; both hostile processes
+must return nonzero with zero fake calls, zero Docker calls and no result.
+Iteration 005 changes no Docker operation, image, executable, environment,
+containment, stream, time, schema, identity, remote or publication rule.
+
 Compilation, tests, vet, Windows cross-compilation and two byte-for-byte builds
 then run with networking disabled and the module cache read-only. Workflow-
 transfer evidence is uncompressed and retained one day; it is not a release.

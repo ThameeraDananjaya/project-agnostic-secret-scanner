@@ -7,7 +7,7 @@
 | PSCAN-03 | Rejected and closed fail-closed; not accepted | `evidence/PSCAN-03/CLOSEOUT-REJECTED.md` |
 | PSCAN-04 | Completed and independently accepted locally | Exact activation `a21b030e1658f1f98ac4e4d001af12185d9ed311`; evidence-bearing closeout commit |
 | PSCAN-05 | Completed and independently accepted locally | Exact activation `50b4186`; corrected evidence-bearing closeout commit |
-| PSCAN-06 | Correction C2 iteration 005 is owner-approved but unclaimed and unimplemented after independent rejection of iteration 004; PSCAN-06 remains open | `evidence/PSCAN-06/CORRECTION-C2-ITERATION-005-AUTHORITY.md` |
+| PSCAN-06 | Correction C2 iteration 005 is claimed and locally implemented; independent acceptance and all reserved execution gates remain open | `evidence/PSCAN-06/CORRECTION-C2-ITERATION-005-AUTHORITY.md` |
 | PSCAN-07 | Proposed; unselected; signing/publication gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-06 |
 | PSCAN-08 | Inactive; technically and legally gated | Material-gap evidence plus separate owner approval required |
 | PSCAN-09 | Completed and independently accepted locally | Activation `f486989`; accepted closeout commit |
@@ -128,10 +128,16 @@ and this authority bundle corrects the former tracker-summary contradiction
 that described iteration 004 as unclaimed and unimplemented. On 2026-09-05 the
 owner approved bounded Correction C2 iteration 005 to isolate the exact
 committed native type from ambient process state and add hostile
-compatible/stale-type regressions. The iteration is owner-approved but
-unclaimed, unimplemented and unaccepted. Actual Linux, genuine Docker, complete
-builds and independent acceptance remain open. No correction Docker, network
-or remote action was performed.
+compatible/stale-type regressions. Fresh session
+`01a071ef-5eeb-7a91-8d82-1feb22a9c2f6` claimed only iteration 005 from exact
+authority commit `13496a35eab71482f2e908bd0aac4b563941682d` in a new local,
+no-network, source-trust-compliant isolated clone. The bounded implementation
+rejects any pre-existing native type before compilation or execution, verifies
+the exact new compiled type identities, and runs the clean, compatible-hostile
+and stale-hostile cases in separate non-profile processes. Local Windows author
+fixtures pass before the candidate commit. This is not independent acceptance.
+Actual Linux, genuine Docker, complete builds and independent acceptance remain
+open. No correction Docker, network or remote action was performed.
 PSCAN-07 remains proposed and
 unselected. PSCAN-08 remains inactive,
 unselected and ineligible because

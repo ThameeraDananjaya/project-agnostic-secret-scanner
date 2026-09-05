@@ -229,3 +229,14 @@ authority commit. Recovery R1 changes no proof, cost, signing, artifact,
 publication or successor boundary. It permits at most one workflow dispatch,
 and the failed detached session consumed zero dispatches. Exact scope is in
 `evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R1-AUTHORITY.md`.
+
+Recovery R1 then failed closed at mandatory preflight item 1 because two
+tracked working-tree files had noncanonical mixed line endings. Read the
+append-only failure and subsequent local-only projection repair records in
+order:
+
+1. `evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R1-FAILURE-001.md`
+2. `evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-SOURCE-TRUST-REPAIR-001.md`
+
+The repair changes no committed source and grants no retry, remote, Docker,
+signing, publication or successor authority.

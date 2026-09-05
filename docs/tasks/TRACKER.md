@@ -7,7 +7,7 @@
 | PSCAN-03 | Rejected and closed fail-closed; not accepted | `evidence/PSCAN-03/CLOSEOUT-REJECTED.md` |
 | PSCAN-04 | Completed and independently accepted locally | Exact activation `a21b030e1658f1f98ac4e4d001af12185d9ed311`; evidence-bearing closeout commit |
 | PSCAN-05 | Completed and independently accepted locally | Exact activation `50b4186`; corrected evidence-bearing closeout commit |
-| PSCAN-06 | Correction C2 iteration 005 is independently accepted locally; the first build-only proof-gate execution failed closed before remote preflight; main-branch Recovery R1 is owner-approved but unexecuted; PSCAN-06 remains open and unaccepted overall | Failure: `evidence/PSCAN-06/CORRECTION-C2-BUILD-ONLY-LINUX-DOCKER-PROOF-GATE-FAILURE-001.md`; recovery authority: `evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R1-AUTHORITY.md` |
+| PSCAN-06 | Correction C2 iteration 005 is independently accepted locally; the first build-only proof-gate execution and Recovery R1 both failed closed before remote preflight; the Recovery R1 source-trust obstruction is repaired locally but no retry is authorized; PSCAN-06 remains open and unaccepted overall | Failures: `evidence/PSCAN-06/CORRECTION-C2-BUILD-ONLY-LINUX-DOCKER-PROOF-GATE-FAILURE-001.md`, `evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R1-FAILURE-001.md`; repair: `evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-SOURCE-TRUST-REPAIR-001.md` |
 | PSCAN-07 | Proposed; unselected; signing/publication gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-06 |
 | PSCAN-08 | Inactive; technically and legally gated | Material-gap evidence plus separate owner approval required |
 | PSCAN-09 | Completed and independently accepted locally | Activation `f486989`; accepted closeout commit |
@@ -184,3 +184,14 @@ It preserves every original preflight and permits at most one workflow
 dispatch because the failed attempt consumed zero. The recovery is
 owner-approved but unexecuted. Signing, attestation, draft creation,
 publication, spend above USD 0 and successor work remain forbidden.
+
+Recovery R1 was then attempted from the exact required saved-project `main`
+checkout and failed closed at mandatory preflight item 1 because two tracked
+PowerShell files had noncanonical mixed line endings. It stopped before any
+remote request, workflow dispatch, Docker, artifact, signing or publication
+action. The failure remains terminal and immutable. Later owner-directed local
+maintenance restored only those two working-tree projections from exact
+committed Git objects; they now satisfy the canonical LF-to-CRLF projection and
+produce no tracked Git diff. This repair grants no retry or remote authority.
+PSCAN-06 remains open and unaccepted overall, with PSCAN-07 unselected and
+PSCAN-08 inactive and ineligible.

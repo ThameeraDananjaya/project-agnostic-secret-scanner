@@ -676,3 +676,20 @@ This approval session imports evidence and records authority only. It performs
 no remote preflight or mutation and does not execute the recovered gate.
 PSCAN-06 remains open and unaccepted overall; PSCAN-07 remains proposed and
 unselected; PSCAN-08 remains inactive and ineligible.
+
+Recovery R1 was subsequently attempted in genuinely fresh saved-project
+session `01a07376-04a7-7aa1-8421-7d4e82a13465`. It reached the exact required
+root, branch, authority commit and tree but failed closed at mandatory preflight
+item 1 because `build/gitleaks/build.ps1` and
+`build/gitleaks/collect-licenses.ps1` contained noncanonical mixed line endings.
+It stopped before any remote request, workflow dispatch, Docker, artifact,
+signing or publication action. The append-only failure is recorded in
+`evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R1-FAILURE-001.md`.
+
+Under later owner direction, those two working-tree projections were restored
+from their exact committed Git objects and now satisfy the canonical
+LF-to-CRLF projection with zero bare LF or CR bytes. No committed source or
+index identity changed. Exact local repair evidence is recorded in
+`evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-SOURCE-TRUST-REPAIR-001.md`.
+This repair does not convert Recovery R1 into a pass and grants no retry or
+remote authority. PSCAN-06 remains open and unaccepted overall.

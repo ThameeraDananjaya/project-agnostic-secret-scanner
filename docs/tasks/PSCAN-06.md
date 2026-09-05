@@ -628,3 +628,20 @@ Linux, genuine Docker/image/container execution, dependency acquisition,
 complete builds, byte comparison and remote proof remain open and separately
 owner-gated. This result does not authorize the remote proof gate. PSCAN-07
 remains proposed and unselected; PSCAN-08 remains inactive and ineligible.
+
+On 2026-09-05 the owner approved the exact Correction C2 build-only actual-
+Linux and genuine-Docker proof gate for independently accepted tooling
+candidate `faef8435322c9096df09b56969662411f17356ea`, tree
+`3cc6c6234d9cd318792c64ea9e6aa666f146ffb6`, from evidence HEAD
+`b6d341284cf63baa0502fcba319ea8cca3c7eb3a`. Exact authority is recorded in
+`evidence/PSCAN-06/CORRECTION-C2-BUILD-ONLY-LINUX-DOCKER-PROOF-GATE-AUTHORITY.md`.
+The gate is owner-approved but unexecuted. This approval session performs no
+live remote preflight, push, C2 tooling tag, setting change, workflow run,
+Linux/Docker execution, network acquisition or artifact action. A genuinely
+fresh session must fail closed through the complete current preflight before
+the exact fast-forward evidence push, immutable C2 tooling tag and single
+build-only workflow dispatch. Maximum spend is USD 0; the sole permitted remote
+output is one uncompressed unsigned workflow artifact retained for one day.
+The C2 signing variable must remain absent, the signing job must remain skipped,
+and signing, attestation, draft creation, publication, rerun and successor work
+are forbidden. PSCAN-06 remains open and unaccepted overall.

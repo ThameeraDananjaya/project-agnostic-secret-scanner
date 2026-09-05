@@ -7,7 +7,7 @@
 | PSCAN-03 | Rejected and closed fail-closed; not accepted | `evidence/PSCAN-03/CLOSEOUT-REJECTED.md` |
 | PSCAN-04 | Completed and independently accepted locally | Exact activation `a21b030e1658f1f98ac4e4d001af12185d9ed311`; evidence-bearing closeout commit |
 | PSCAN-05 | Completed and independently accepted locally | Exact activation `50b4186`; corrected evidence-bearing closeout commit |
-| PSCAN-06 | Correction C2 iteration 005 is independently accepted locally; PSCAN-06 remains open and unaccepted overall, with all reserved execution gates open | Authority: `evidence/PSCAN-06/CORRECTION-C2-ITERATION-005-AUTHORITY.md`; local acceptance: `evidence/PSCAN-06/CORRECTION-C2-ITERATION-005-ACCEPTANCE.md` |
+| PSCAN-06 | Correction C2 iteration 005 is independently accepted locally; its exact build-only Linux/Docker proof gate is owner-approved but unexecuted; PSCAN-06 remains open and unaccepted overall | Local acceptance: `evidence/PSCAN-06/CORRECTION-C2-ITERATION-005-ACCEPTANCE.md`; gate authority: `evidence/PSCAN-06/CORRECTION-C2-BUILD-ONLY-LINUX-DOCKER-PROOF-GATE-AUTHORITY.md` |
 | PSCAN-07 | Proposed; unselected; signing/publication gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-06 |
 | PSCAN-08 | Inactive; technically and legally gated | Material-gap evidence plus separate owner approval required |
 | PSCAN-09 | Completed and independently accepted locally | Activation `f486989`; accepted closeout commit |
@@ -151,7 +151,18 @@ review cleanup was blocked before execution by the host guard; no alternate
 destructive method was used, and the three retained literal paths are recorded
 in `evidence/PSCAN-06/CORRECTION-C2-ITERATION-005-ACCEPTANCE.md`. No correction
 Docker, network or remote action was performed, and the local result does not
-authorize the remote proof gate.
+authorize the remote proof gate by itself. The owner then approved the exact
+Correction C2 build-only actual-Linux and genuine-Docker proof gate for
+accepted candidate `faef8435322c9096df09b56969662411f17356ea` from evidence
+HEAD `b6d341284cf63baa0502fcba319ea8cca3c7eb3a`, with maximum spend USD 0 and
+exactly one uncompressed unsigned workflow artifact retained for one day as
+the only permitted remote output. The gate is owner-approved but unexecuted.
+Its approval session performed no live remote preflight, push, tag, setting,
+workflow, Linux/Docker, network or artifact action. A fresh execution session
+must satisfy the complete fail-closed preflight before the exact fast-forward
+evidence push, immutable C2 tooling tag and one build-only workflow dispatch.
+The C2 signing variable must remain absent; signing, attestation, draft
+creation, publication, rerun and successor work remain forbidden.
 PSCAN-07 remains proposed and
 unselected. PSCAN-08 remains inactive,
 unselected and ineligible because

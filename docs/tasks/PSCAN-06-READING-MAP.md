@@ -85,6 +85,7 @@ fresh implementation session:
 80. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-004-AUTHOR-VALIDATION-002.md`
 81. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-005-AUTHORITY.md`
 82. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-005-ACCEPTANCE.md`
+83. `evidence/PSCAN-06/CORRECTION-C2-BUILD-ONLY-LINUX-DOCKER-PROOF-GATE-AUTHORITY.md`
 
 Then verify the exact activation commit, branch and clean Git status; the
 activated allowed and forbidden paths; the absence of another selected,
@@ -202,3 +203,17 @@ candidate `faef8435322c9096df09b56969662411f17356ea`, tree
 unaccepted overall pending actual Linux, genuine Docker/image/container,
 dependency acquisition, complete builds, byte comparison and remote proof.
 The local result authorizes none of those gates or any successor work.
+
+The owner subsequently approved the exact Correction C2 build-only actual-
+Linux and genuine-Docker proof gate for accepted tooling candidate
+`faef8435322c9096df09b56969662411f17356ea` from evidence HEAD
+`b6d341284cf63baa0502fcba319ea8cca3c7eb3a`. The bounded gate authority is
+recorded in
+`evidence/PSCAN-06/CORRECTION-C2-BUILD-ONLY-LINUX-DOCKER-PROOF-GATE-AUTHORITY.md`.
+This approval session records authority only. A genuinely fresh execution
+session must pass the complete current read-only preflight before the exact
+fast-forward evidence push, immutable C2 tooling tag and single build-only
+workflow dispatch. The C2 signing variable must be absent; signing,
+attestation, draft creation, publication, any second run and successor work are
+forbidden. The only permitted remote output is one uncompressed unsigned
+workflow artifact retained for one day, at maximum cost USD 0.

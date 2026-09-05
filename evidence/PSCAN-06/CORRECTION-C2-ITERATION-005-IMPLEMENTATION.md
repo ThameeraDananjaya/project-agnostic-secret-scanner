@@ -1,7 +1,7 @@
 # PSCAN-06 Correction C2 iteration 005 implementation
 
-Date: 2026-09-05  
-Implementation session: `01a071ef-5eeb-7a91-8d82-1feb22a9c2f6`  
+Date: 2026-09-05
+Implementation session: `01a071ef-5eeb-7a91-8d82-1feb22a9c2f6`
 Authority commit: `13496a35eab71482f2e908bd0aac4b563941682d`
 
 ## Bounded change

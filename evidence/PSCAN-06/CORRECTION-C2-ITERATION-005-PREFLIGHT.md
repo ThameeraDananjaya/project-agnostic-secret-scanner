@@ -1,8 +1,8 @@
 # PSCAN-06 Correction C2 iteration 005 preflight and claim
 
-Date: 2026-09-05  
-Implementation session: `01a071ef-5eeb-7a91-8d82-1feb22a9c2f6`  
-Delegating session: `01a053a9-298b-75e1-9d49-7d2261bbb951`  
+Date: 2026-09-05
+Implementation session: `01a071ef-5eeb-7a91-8d82-1feb22a9c2f6`
+Delegating session: `01a053a9-298b-75e1-9d49-7d2261bbb951`
 Authority approval session: `01a071da-6084-7d82-948c-00a2f2029cfd`
 
 ## Claim

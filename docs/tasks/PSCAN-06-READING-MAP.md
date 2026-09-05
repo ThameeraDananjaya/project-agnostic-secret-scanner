@@ -86,6 +86,8 @@ fresh implementation session:
 81. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-005-AUTHORITY.md`
 82. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-005-ACCEPTANCE.md`
 83. `evidence/PSCAN-06/CORRECTION-C2-BUILD-ONLY-LINUX-DOCKER-PROOF-GATE-AUTHORITY.md`
+84. `evidence/PSCAN-06/CORRECTION-C2-BUILD-ONLY-LINUX-DOCKER-PROOF-GATE-FAILURE-001.md`
+85. `evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R1-AUTHORITY.md`
 
 Then verify the exact activation commit, branch and clean Git status; the
 activated allowed and forbidden paths; the absence of another selected,
@@ -217,3 +219,13 @@ workflow dispatch. The C2 signing variable must be absent; signing,
 attestation, draft creation, publication, any second run and successor work are
 forbidden. The only permitted remote output is one uncompressed unsigned
 workflow artifact retained for one day, at maximum cost USD 0.
+
+The first proof-gate execution session failed closed before remote preflight
+because its Codex worktree was detached rather than on branch `main`. Preserve
+the exact failure record and its SHA-256 as immutable evidence. The owner then
+approved Recovery R1 solely to permit a genuinely fresh Daybreak Blue `xhigh`
+task to run directly in the saved project at the exact `main`-branch recovery
+authority commit. Recovery R1 changes no proof, cost, signing, artifact,
+publication or successor boundary. It permits at most one workflow dispatch,
+and the failed detached session consumed zero dispatches. Exact scope is in
+`evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R1-AUTHORITY.md`.

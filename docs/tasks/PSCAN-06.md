@@ -645,3 +645,34 @@ output is one uncompressed unsigned workflow artifact retained for one day.
 The C2 signing variable must remain absent, the signing job must remain skipped,
 and signing, attestation, draft creation, publication, rerun and successor work
 are forbidden. PSCAN-06 remains open and unaccepted overall.
+
+## Correction C2 build-only proof-gate pre-dispatch failure and Recovery R1
+
+Fresh Daybreak Blue `xhigh` execution session
+`01a072e4-50f8-7842-8c7d-28bb034a773f` began from exact gate-authority commit
+`268e8f339318a141d059115c9da0d19a01448aaa` and tree
+`e1667892d0c05d9a8db8bac65e580fff54a876ea`, but the Codex worktree checkout
+was detached rather than on branch `main`. Mandatory preflight item 1 therefore
+failed as a whole. The session stopped before remote preflight, network access,
+push, tag, ruleset, setting change, workflow dispatch, Docker or artifact work.
+Its immutable record is
+`evidence/PSCAN-06/CORRECTION-C2-BUILD-ONLY-LINUX-DOCKER-PROOF-GATE-FAILURE-001.md`,
+SHA-256
+`7EB1CB03E85A933C1BCFEB435FA85556170AE21F1112CFFA55041C2A733E6A5D`.
+
+On 2026-09-06 the owner approved bounded main-branch execution Recovery R1.
+The recovery changes only the launch context: a genuinely fresh task must use
+Daybreak Blue `gpt-daybreak-blue-latest` at `xhigh` and run directly in the
+saved project on exact branch `main` at the committed Recovery R1 authority
+bundle. Detached worktrees, branch repair and execution from another root are
+forbidden. Every original identity, preflight, zero-spend, one-day unsigned
+artifact, no-signing, no-attestation, no-draft, no-publication and no-successor
+condition remains mandatory. Because the failed session made no remote request
+and no workflow dispatch, Recovery R1 permits at most one first dispatch after
+all current preflight facts pass. Exact authority is recorded in
+`evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R1-AUTHORITY.md`.
+
+This approval session imports evidence and records authority only. It performs
+no remote preflight or mutation and does not execute the recovered gate.
+PSCAN-06 remains open and unaccepted overall; PSCAN-07 remains proposed and
+unselected; PSCAN-08 remains inactive and ineligible.

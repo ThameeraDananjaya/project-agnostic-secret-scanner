@@ -7,7 +7,7 @@
 | PSCAN-03 | Rejected and closed fail-closed; not accepted | `evidence/PSCAN-03/CLOSEOUT-REJECTED.md` |
 | PSCAN-04 | Completed and independently accepted locally | Exact activation `a21b030e1658f1f98ac4e4d001af12185d9ed311`; evidence-bearing closeout commit |
 | PSCAN-05 | Completed and independently accepted locally | Exact activation `50b4186`; corrected evidence-bearing closeout commit |
-| PSCAN-06 | Correction C2 iteration 005 is independently accepted locally; its exact build-only Linux/Docker proof gate is owner-approved but unexecuted; PSCAN-06 remains open and unaccepted overall | Local acceptance: `evidence/PSCAN-06/CORRECTION-C2-ITERATION-005-ACCEPTANCE.md`; gate authority: `evidence/PSCAN-06/CORRECTION-C2-BUILD-ONLY-LINUX-DOCKER-PROOF-GATE-AUTHORITY.md` |
+| PSCAN-06 | Correction C2 iteration 005 is independently accepted locally; the first build-only proof-gate execution failed closed before remote preflight; main-branch Recovery R1 is owner-approved but unexecuted; PSCAN-06 remains open and unaccepted overall | Failure: `evidence/PSCAN-06/CORRECTION-C2-BUILD-ONLY-LINUX-DOCKER-PROOF-GATE-FAILURE-001.md`; recovery authority: `evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R1-AUTHORITY.md` |
 | PSCAN-07 | Proposed; unselected; signing/publication gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-06 |
 | PSCAN-08 | Inactive; technically and legally gated | Material-gap evidence plus separate owner approval required |
 | PSCAN-09 | Completed and independently accepted locally | Activation `f486989`; accepted closeout commit |
@@ -169,3 +169,18 @@ unselected and ineligible because
 accepted evidence did not establish a material required-class Gitleaks gap;
 separate technical and AGPL owner approval would also be required. No
 successor to PSCAN-06 is selected or activated.
+
+Fresh Daybreak Blue `xhigh` execution session
+`01a072e4-50f8-7842-8c7d-28bb034a773f` then attempted only the approved
+build-only proof gate from exact authority commit `268e8f3`, but failed closed
+at mandatory preflight item 1 because its Codex worktree was detached rather
+than on branch `main`. It stopped before remote preflight or any remote,
+network, workflow, Docker or artifact action. The immutable failure record has
+SHA-256 `7EB1CB03E85A933C1BCFEB435FA85556170AE21F1112CFFA55041C2A733E6A5D`.
+The owner approved main-branch execution Recovery R1 on 2026-09-06. Recovery
+R1 requires a genuinely fresh Daybreak Blue `xhigh` task running directly in
+the saved project on exact branch `main` at the committed recovery authority.
+It preserves every original preflight and permits at most one workflow
+dispatch because the failed attempt consumed zero. The recovery is
+owner-approved but unexecuted. Signing, attestation, draft creation,
+publication, spend above USD 0 and successor work remain forbidden.

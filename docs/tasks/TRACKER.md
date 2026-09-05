@@ -114,9 +114,12 @@ C2 iteration 004 to close every workflow-reachable Docker execution and require
 operating-system-backed, empty-membership process containment. Fresh session
 `01a07160-ef63-7e80-a441-b2ce360cc23d` claimed only that iteration from exact
 authority commit `30d849c11a15a7ce35f182140d07dbe66350c135` and produced a
-bounded local implementation candidate. Windows no-Docker author fixtures are
-not acceptance; actual-Linux, genuine Docker and independent acceptance remain
-open. No correction Docker, network or remote action was performed.
+bounded local implementation candidate
+`6f791646413bfde52a7f034f6219d92f6fb44c03`. Exact-commit Windows
+no-Docker author fixtures and hostile-source proof passed. They are not
+acceptance; actual Linux, genuine Docker, complete builds and independent
+acceptance remain open. No correction Docker, network or remote action was
+performed.
 PSCAN-07 remains proposed and
 unselected. PSCAN-08 remains inactive,
 unselected and ineligible because

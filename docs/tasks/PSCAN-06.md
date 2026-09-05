@@ -534,5 +534,9 @@ exact authority commit `30d849c11a15a7ce35f182140d07dbe66350c135` in a
 separate clean LF checkout. The bounded implementation routes every release
 Docker operation through one typed entrypoint, binds later operations to the
 admitted executable digest, and introduces OS-backed containment plus empty-
-membership proof. This is an implementation candidate, not acceptance. No
-Docker, network, remote, signing, publication or successor action occurred.
+membership proof. Candidate `6f791646413bfde52a7f034f6219d92f6fb44c03`
+passed exact-commit Windows author validation, the no-Docker admission matrix,
+host-only CRLF proof and all hostile-source cases. Actual Linux, genuine Docker,
+complete builds and independent review remain open. This is author evidence,
+not acceptance. No Docker, network, remote, signing, publication or successor
+action occurred.

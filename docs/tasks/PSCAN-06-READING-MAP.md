@@ -237,6 +237,9 @@ order:
 
 1. `evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R1-FAILURE-001.md`
 2. `evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-SOURCE-TRUST-REPAIR-001.md`
+3. `evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-LOCAL-POST-REPAIR-VALIDATION-001.md`
 
 The repair changes no committed source and grants no retry, remote, Docker,
-signing, publication or successor authority.
+signing, publication or successor authority. The post-repair record proves the
+current local source-trust and no-Docker regressions only; it is not remote,
+actual-Linux, genuine-Docker or overall PSCAN-06 acceptance evidence.

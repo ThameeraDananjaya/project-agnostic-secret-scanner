@@ -693,3 +693,12 @@ index identity changed. Exact local repair evidence is recorded in
 `evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-SOURCE-TRUST-REPAIR-001.md`.
 This repair does not convert Recovery R1 into a pass and grants no retry or
 remote authority. PSCAN-06 remains open and unaccepted overall.
+
+Current post-repair local validation against exact evidence candidate
+`a0ac587f97557b89beb3b61553fe621e80f26611` independently rechecked the complete
+351-file saved-project tree, all 12 hostile source-trust states and the Windows
+no-Docker image-admission/process-boundary matrix. All local checks passed and
+the hostile boundary recorded zero Docker calls. Exact results are in
+`evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-LOCAL-POST-REPAIR-VALIDATION-001.md`.
+This result does not supply actual-Linux, genuine-Docker, dependency,
+reproducibility, workflow or artifact proof and grants no retry authority.

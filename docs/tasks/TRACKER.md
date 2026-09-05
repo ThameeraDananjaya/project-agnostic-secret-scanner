@@ -193,5 +193,10 @@ action. The failure remains terminal and immutable. Later owner-directed local
 maintenance restored only those two working-tree projections from exact
 committed Git objects; they now satisfy the canonical LF-to-CRLF projection and
 produce no tracked Git diff. This repair grants no retry or remote authority.
+Current local post-repair validation passed complete tracked-byte inspection,
+all 12 hostile source-trust cases and the Windows no-Docker
+admission/process-boundary matrix with zero Docker calls. It does not supply
+actual-Linux, genuine-Docker, dependency, reproducibility, workflow or artifact
+proof and does not authorize another proof-gate execution.
 PSCAN-06 remains open and unaccepted overall, with PSCAN-07 unselected and
 PSCAN-08 inactive and ineligible.

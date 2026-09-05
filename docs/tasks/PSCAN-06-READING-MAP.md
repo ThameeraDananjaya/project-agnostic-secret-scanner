@@ -83,6 +83,7 @@ fresh implementation session:
 78. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-004-AUTHOR-VALIDATION.md`
 79. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-004-REFINEMENT.md`
 80. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-004-AUTHOR-VALIDATION-002.md`
+81. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-005-AUTHORITY.md`
 
 Then verify the exact activation commit, branch and clean Git status; the
 activated allowed and forbidden paths; the absence of another selected,
@@ -176,3 +177,18 @@ closure or post-hoc PID sampling alone is insufficient. The iteration-004
 approval does not authorize implementation in the approval session, Docker
 execution, network access, a push, C2 tooling tag, settings change, workflow
 run, signing, attestation, draft release, publication or successor work.
+
+For Correction C2 iteration 005, begin from its exact committed authority
+bundle and claim only that iteration in a genuinely fresh session from an exact
+clean source-trust-compliant checkout. Treat refined iteration-004 candidate
+`9583aa3d18310c2e9275c665f69eb7e5b4fb82a4`, governance HEAD `fad4c3e` and
+their author evidence as immutable but independently rejected readiness
+history. Prove that a preloaded or stale `PscanNativeBoundary` type is terminal
+ambient state and cannot replace the exact committed native implementation,
+execute, or fabricate trusted process evidence. Run clean and hostile cases in
+separate non-profile processes, preserve every iteration-004 containment and
+Docker-operation boundary, and reconcile the tracker to the factual claimed,
+implemented/refined, independently rejected state. The iteration-005 approval
+does not authorize implementation in the approval session, Docker execution,
+network access, a push, C2 tooling tag, settings change, workflow run, signing,
+attestation, draft release, publication or successor work.

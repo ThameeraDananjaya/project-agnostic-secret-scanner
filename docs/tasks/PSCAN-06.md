@@ -106,6 +106,23 @@ must claim only iteration 004 from its exact committed authority. PSCAN-06
 remains open and unaccepted; no Docker, network, remote or successor action is
 authorized.
 
+Correction C2 iteration-004 was claimed alone in a fresh session and locally
+implemented/refined through candidate
+`9583aa3d18310c2e9275c665f69eb7e5b4fb82a4`; governance and author-evidence
+HEAD `fad4c3e12c655944cf8dfc3c46d622666e777fb7` retained only partial author
+validation. Independent review then found that a preloaded or stale CLR type
+named `PscanNativeBoundary` can replace the exact committed Windows process
+boundary and fabricate accepted lifecycle evidence. It also found the tracker
+summary incorrectly describing iteration 004 as unclaimed and unimplemented.
+On 2026-09-05 the owner approved the bounded ambient-type-isolation and
+tracker-reconciliation correction as Correction C2 iteration 005. Its authority
+is recorded in
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-005-AUTHORITY.md`. This authority
+bundle does not claim or implement the iteration. A genuinely fresh session
+must claim only iteration 005 from its exact committed authority. PSCAN-06
+remains open and unaccepted; no Docker, network, remote or successor action is
+authorized.
+
 ## Objective
 
 After current read-only preflight and exact action-time owner approval, establish
@@ -545,3 +562,36 @@ and hostile-source author checks pass. Actual Linux, genuine Docker, complete
 builds and independent review remain open. This is author evidence, not
 acceptance. No Docker, network, remote, signing, publication or successor
 action occurred.
+
+## Correction C2 iteration 005 approved boundary
+
+The refined iteration-004 candidate closes literal ambient Docker command
+resolution and adds OS-backed process containment, but its Windows native
+boundary is compiled only when the PowerShell process does not already contain
+a type named `PscanNativeBoundary`. Production then invokes and trusts that
+type. A compatible hostile preload or stale type from an earlier script version
+can therefore replace the committed implementation and fabricate successful
+exit, stream and containment evidence. The current harness repeats the same
+conditional reuse, so green tests do not close this substitution path.
+
+Iteration 005 must treat any pre-existing expected native type as terminal
+ambient state and fail before invoking it or Docker. Clean and hostile cases
+must run in separate non-profile processes; a compatible fake and a stale-type
+case must prove zero fake calls, zero Docker calls and no accepted evidence.
+The exact committed source must be the only implementation behind a successful
+clean result. The iteration must preserve the complete iteration-004 Windows
+job-object and Linux PID-namespace designs, the nine typed Docker operations,
+all executable/image/environment/stream/time limits and every earlier C2 gate.
+
+The iteration also reconciles the living tracker: iteration 004 was claimed and
+locally implemented/refined, but independent review rejected its readiness;
+actual Linux, genuine Docker, complete builds and independent acceptance remain
+open. Exact scope, checks and exclusions are controlling in
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-005-AUTHORITY.md`.
+
+This approval supersedes candidate `9583aa3` and governance/evidence HEAD
+`fad4c3e` only as readiness claims. Their commits and evidence remain immutable
+history. Iteration 005 is owner-approved but unclaimed, unimplemented and
+unaccepted. It must begin in a genuinely fresh session from the exact committed
+authority bundle and an exact clean source-trust-compliant checkout. No Docker,
+network, remote, signing, publication or successor action is authorized.

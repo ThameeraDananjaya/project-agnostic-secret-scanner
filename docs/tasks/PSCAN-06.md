@@ -92,6 +92,20 @@ bundle does not claim or implement the iteration. A fresh session must claim
 only iteration 003 from its exact committed authority. PSCAN-06 remains open
 and unaccepted; no Docker, network, remote or successor action is authorized.
 
+Correction C2 iteration-003 candidate
+`dfbe897e9e47632ee5ca9437650bd62eafbaf341` subsequently received exact-commit
+Windows author validation only. Inspection then found that workflow-reachable
+acquisition, cache, CRLF and build scripts still use ambient `docker` execution
+outside the closed admission runner, and that root `WaitForExit` plus redirected
+pipe closure does not prove complete descendant termination. On 2026-09-05 the
+owner approved the bounded closed-Docker-execution and process-tree correction
+as Correction C2 iteration 004. Its authority is recorded in
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-004-AUTHORITY.md`. This authority
+bundle does not claim or implement the iteration. A genuinely fresh session
+must claim only iteration 004 from its exact committed authority. PSCAN-06
+remains open and unaccepted; no Docker, network, remote or successor action is
+authorized.
+
 ## Objective
 
 After current read-only preflight and exact action-time owner approval, establish
@@ -480,3 +494,42 @@ author validation passed source trust, hostile-source rejection, the host-only
 CRLF proof and the native no-Docker process matrix. This remains author work,
 not acceptance; actual-Linux execution, genuine Docker proof and independent
 skeptical review remain open.
+
+## Correction C2 iteration 004 approved boundary
+
+The unaccepted iteration-003 candidate closes the bootstrap admission
+entrypoint but does not close all later Docker execution. `acquire.ps1`,
+`cache-canary.ps1`, `test-crlf-shell-payloads.ps1` and `build.ps1` still use
+ambient PowerShell `docker` command resolution, and `image-admission.ps1`
+retains a duplicated native runner. Those paths can bypass the fixed executable
+identity, environment, stream and lifecycle boundary proved for admission.
+
+The iteration-003 cleanup also treats bounded root exit and pipe closure as
+process-tree completion. It retains no operating-system containment object or
+complete membership proof. Child or grandchild creation can race with a tree
+snapshot or root exit; post-hoc fixture PID checks do not prove complete
+production containment.
+
+Iteration 004 must route every workflow-reachable Docker operation through one
+committed closed operation boundary with stable executable binding, internally
+constructed operation-specific arguments, a cleared/private environment and
+the existing output and monotonic-time limits. It must establish native process
+containment before child execution and prove empty membership after normal exit
+or bounded termination. Any identity, containment, termination or membership
+uncertainty is terminal and permits no pull or later action.
+
+The iteration is limited to the recovery workflow; the named admission,
+acquisition, cache, CRLF, build and validation scripts; at most one new closed
+Docker entrypoint and one no-Docker adversarial harness; the named release,
+validation and living-task documents; and `evidence/PSCAN-06/**`. It preserves
+the iteration-002 three-state admission model and every original C2 ordering,
+image, sandbox, identity, schema, signature, locked-tag, remote and successor
+gate. Exact scope, acceptance cases and exclusions are controlling in
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-004-AUTHORITY.md`.
+
+This approval supersedes candidate `dfbe897` only as a readiness claim. The
+candidate and its author evidence remain immutable history. Iteration 004 is
+owner-approved but unclaimed, unimplemented and unaccepted. It must begin in a
+genuinely fresh session from the exact committed authority bundle and an exact
+clean source-trust-compliant checkout. No Docker, network, remote, signing,
+publication or successor action is authorized.

@@ -74,6 +74,10 @@ fresh implementation session:
 69. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-002-IMPLEMENTATION.md`
 70. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-002-AUTHOR-VALIDATION.md`
 71. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-003-AUTHORITY.md`
+72. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-003-PREFLIGHT.md`
+73. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-003-IMPLEMENTATION.md`
+74. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-003-AUTHOR-VALIDATION.md`
+75. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-004-AUTHORITY.md`
 
 Then verify the exact activation commit, branch and clean Git status; the
 activated allowed and forbidden paths; the absence of another selected,
@@ -149,6 +153,21 @@ production admission path cannot consult mutable callbacks or caller-provided
 test doubles, and enforce stdout/stderr byte caps, wall-clock expiry, concurrent
 pipe draining and complete process-tree cleanup while the native Docker process
 is running. A fake-result case is not native process proof. The iteration-003
+approval does not authorize implementation in the approval session, Docker
+execution, network access, a push, C2 tooling tag, settings change, workflow
+run, signing, attestation, draft release, publication or successor work.
+
+For Correction C2 iteration 004, begin from its exact committed authority
+bundle and claim only that iteration in a genuinely fresh session from an exact
+clean source-trust-compliant checkout. Treat candidate
+`dfbe897e9e47632ee5ca9437650bd62eafbaf341` and its author validation as
+immutable but superseded readiness evidence. Prove that every Docker start
+reachable from admission, cache proof, CRLF proof, acquisition and both builds
+uses one exact closed operation boundary; ambient `docker`, duplicated runners
+and arbitrary argument execution are forbidden. Prove operating-system-backed
+containment established before child execution, bounded full-member
+termination and empty membership on success and failure. Root exit, pipe
+closure or post-hoc PID sampling alone is insufficient. The iteration-004
 approval does not authorize implementation in the approval session, Docker
 execution, network access, a push, C2 tooling tag, settings change, workflow
 run, signing, attestation, draft release, publication or successor work.

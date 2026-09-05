@@ -7,7 +7,7 @@
 | PSCAN-03 | Rejected and closed fail-closed; not accepted | `evidence/PSCAN-03/CLOSEOUT-REJECTED.md` |
 | PSCAN-04 | Completed and independently accepted locally | Exact activation `a21b030e1658f1f98ac4e4d001af12185d9ed311`; evidence-bearing closeout commit |
 | PSCAN-05 | Completed and independently accepted locally | Exact activation `50b4186`; corrected evidence-bearing closeout commit |
-| PSCAN-06 | Correction C2 iteration 003 has local author validation only; independent acceptance and actual-Linux proof remain open; PSCAN-06 remains open | `evidence/PSCAN-06/CORRECTION-C2-ITERATION-003-AUTHOR-VALIDATION.md` |
+| PSCAN-06 | Correction C2 iteration 004 is owner-approved but unclaimed and unimplemented; PSCAN-06 remains open | `evidence/PSCAN-06/CORRECTION-C2-ITERATION-004-AUTHORITY.md` |
 | PSCAN-07 | Proposed; unselected; signing/publication gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-06 |
 | PSCAN-08 | Inactive; technically and legally gated | Material-gap evidence plus separate owner approval required |
 | PSCAN-09 | Completed and independently accepted locally | Activation `f486989`; accepted closeout commit |
@@ -106,8 +106,14 @@ production callbacks, and adds no-Docker native process fixtures for live
 stream, UTF-8, timeout, pipe and descendant cleanup behavior. Exact-commit
 Windows author validation passed source trust, 12 hostile source cases, the
 host-only CRLF proof and the native process matrix. It is not independent
-acceptance; actual-Linux and genuine Docker proof remain open. No correction
-Docker, network or remote action is approved.
+acceptance. Inspection then found that later acquisition, cache, CRLF and build
+scripts still invoke ambient `docker`, bypassing the closed admission runner,
+and that bounded root `WaitForExit` plus pipe closure does not prove the entire
+descendant set terminated. On 2026-09-05 the owner approved bounded Correction
+C2 iteration 004 to close every workflow-reachable Docker execution and require
+operating-system-backed, empty-membership process containment. It is unclaimed
+and unimplemented; actual-Linux, genuine Docker and independent acceptance
+remain open. No correction Docker, network or remote action is approved.
 PSCAN-07 remains proposed and
 unselected. PSCAN-08 remains inactive,
 unselected and ineligible because

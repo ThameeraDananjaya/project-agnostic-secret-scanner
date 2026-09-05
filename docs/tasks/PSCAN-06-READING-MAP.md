@@ -84,6 +84,7 @@ fresh implementation session:
 79. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-004-REFINEMENT.md`
 80. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-004-AUTHOR-VALIDATION-002.md`
 81. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-005-AUTHORITY.md`
+82. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-005-ACCEPTANCE.md`
 
 Then verify the exact activation commit, branch and clean Git status; the
 activated allowed and forbidden paths; the absence of another selected,
@@ -192,3 +193,12 @@ implemented/refined, independently rejected state. The iteration-005 approval
 does not authorize implementation in the approval session, Docker execution,
 network access, a push, C2 tooling tag, settings change, workflow run, signing,
 attestation, draft release, publication or successor work.
+
+The bounded iteration-005 local independent result is recorded in
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-005-ACCEPTANCE.md`. It accepts only
+the local ambient-type isolation and tracker-reconciliation objective at exact
+candidate `faef8435322c9096df09b56969662411f17356ea`, tree
+`3cc6c6234d9cd318792c64ea9e6aa666f146ffb6`. PSCAN-06 remains open and
+unaccepted overall pending actual Linux, genuine Docker/image/container,
+dependency acquisition, complete builds, byte comparison and remote proof.
+The local result authorizes none of those gates or any successor work.

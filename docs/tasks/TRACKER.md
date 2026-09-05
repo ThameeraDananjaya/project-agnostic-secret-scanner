@@ -7,7 +7,7 @@
 | PSCAN-03 | Rejected and closed fail-closed; not accepted | `evidence/PSCAN-03/CLOSEOUT-REJECTED.md` |
 | PSCAN-04 | Completed and independently accepted locally | Exact activation `a21b030e1658f1f98ac4e4d001af12185d9ed311`; evidence-bearing closeout commit |
 | PSCAN-05 | Completed and independently accepted locally | Exact activation `50b4186`; corrected evidence-bearing closeout commit |
-| PSCAN-06 | Correction C2 iteration 005 is claimed, locally implemented and author-validated; it is not independently accepted and all reserved execution gates remain open | `evidence/PSCAN-06/CORRECTION-C2-ITERATION-005-AUTHORITY.md` |
+| PSCAN-06 | Correction C2 iteration 005 is independently accepted locally; PSCAN-06 remains open and unaccepted overall, with all reserved execution gates open | Authority: `evidence/PSCAN-06/CORRECTION-C2-ITERATION-005-AUTHORITY.md`; local acceptance: `evidence/PSCAN-06/CORRECTION-C2-ITERATION-005-ACCEPTANCE.md` |
 | PSCAN-07 | Proposed; unselected; signing/publication gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-06 |
 | PSCAN-08 | Inactive; technically and legally gated | Material-gap evidence plus separate owner approval required |
 | PSCAN-09 | Completed and independently accepted locally | Activation `f486989`; accepted closeout commit |
@@ -137,9 +137,21 @@ the exact new compiled type identities, and runs the clean, compatible-hostile
 and stale-hostile cases in separate non-profile processes. Local Windows author
 fixtures and all iteration-004 local no-Docker regressions pass against exact
 candidate `050f5862841a1fcf764ffc75d98a742968ac301e`. This is author validation,
-not independent acceptance. Actual Linux, genuine Docker, complete builds and
-independent acceptance remain open. No correction Docker, network or remote
-action was performed.
+not independent acceptance by itself. Separate reviewer task
+`01a07210-d00a-7e21-8816-483c53027c21`, completed turn
+`01a07210-d2af-7ca1-b40f-0a9ce6bde7fa`, found no blocking findings against
+exact evidence-bearing candidate
+`faef8435322c9096df09b56969662411f17356ea`, tree
+`3cc6c6234d9cd318792c64ea9e6aa666f146ffb6`, and returned
+`LOCAL_ACCEPTANCE_PASS_REMOTE_PROOF_OPEN`. Iteration 005 is independently
+accepted locally for its bounded correction objective. PSCAN-06 remains open
+and unaccepted overall pending actual Linux, genuine Docker/image/container,
+dependency acquisition, complete builds, byte comparison and remote proof. The
+review cleanup was blocked before execution by the host guard; no alternate
+destructive method was used, and the three retained literal paths are recorded
+in `evidence/PSCAN-06/CORRECTION-C2-ITERATION-005-ACCEPTANCE.md`. No correction
+Docker, network or remote action was performed, and the local result does not
+authorize the remote proof gate.
 PSCAN-07 remains proposed and
 unselected. PSCAN-08 remains inactive,
 unselected and ineligible because

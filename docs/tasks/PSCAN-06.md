@@ -608,3 +608,23 @@ processes. Exact candidate
 no-Docker author check on Windows. This is implementation and author evidence
 only, not independent acceptance. All actual-Linux, Docker, build, remote,
 signing, publication and successor gates remain open.
+
+Independent reviewer task `01a07210-d00a-7e21-8816-483c53027c21`, completed
+turn `01a07210-d2af-7ca1-b40f-0a9ce6bde7fa`, then reviewed exact evidence-
+bearing candidate `faef8435322c9096df09b56969662411f17356ea`, tree
+`3cc6c6234d9cd318792c64ea9e6aa666f146ffb6`, in a separate local no-network
+clone. It reported no blocking findings and terminal verdict
+`LOCAL_ACCEPTANCE_PASS_REMOTE_PROOF_OPEN`. The complete local parse, exact-
+source, 12-case hostile-source, actual-CRLF host-only, ambient/stale preload,
+Windows native-boundary, nine-operation inventory, image-admission and process-
+cleanup evidence passed. The review's cleanup was blocked before execution by
+the host guard, no alternate destructive method was used, and the three literal
+remaining paths are recorded in
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-005-ACCEPTANCE.md`.
+
+Iteration 005 is therefore independently accepted locally for its bounded
+correction objective. PSCAN-06 remains open and unaccepted overall: actual
+Linux, genuine Docker/image/container execution, dependency acquisition,
+complete builds, byte comparison and remote proof remain open and separately
+owner-gated. This result does not authorize the remote proof gate. PSCAN-07
+remains proposed and unselected; PSCAN-08 remains inactive and ineligible.

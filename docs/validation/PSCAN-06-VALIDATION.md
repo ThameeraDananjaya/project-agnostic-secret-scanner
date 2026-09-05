@@ -206,7 +206,35 @@ Iteration 005 additionally requires:
    simultaneous pipes, split and invalid UTF-8, start failure, timeout,
    descendants, empty job membership and executable replacement rejection.
 
-Local Windows author validation is not independent acceptance. Actual Linux,
+Local Windows author validation alone is not independent acceptance. The
+separate local independent result is recorded below. Actual Linux, genuine
+Docker/image/container execution, dependency acquisition, complete builds,
+byte comparison and remote proof remain open and separately gated.
+
+## Correction C2 iteration 005 local independent result
+
+Independent reviewer task `01a07210-d00a-7e21-8816-483c53027c21`, completed
+turn `01a07210-d2af-7ca1-b40f-0a9ce6bde7fa`, reviewed exact candidate
+`faef8435322c9096df09b56969662411f17356ea`, tree
+`3cc6c6234d9cd318792c64ea9e6aa666f146ffb6`, and reported no blocking
+findings with terminal verdict `LOCAL_ACCEPTANCE_PASS_REMOTE_PROOF_OPEN`.
+
+The independent local evidence passed PowerShell/JSON parsing, exact source
+trust across 345 files, all 12 hostile source states, actual-CRLF host-only proof
+with `docker=NOT_INVOKED`, static exact-source ordering, compatible and stale
+preload rejection, ambient-harness and result-type collision rejection, the
+complete Windows stream/UTF-8/time/job/descendant/replacement/cleanup matrix,
+the finite nine-operation/single-entrypoint inventory, the image-admission state
+matrix and zero-surviving-marked-process check. The complete authority-to-
+candidate diff contained nine allowlisted paths and passed `git diff --check`.
+
+Cleanup was blocked before execution by the host destructive-operation guard;
+no alternate destructive method was used. The three literal remaining paths
+and the preserved ignored `graphify-out/**` hostile fixture are disclosed in
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-005-ACCEPTANCE.md`.
+
+Iteration 005 is independently accepted locally for its bounded correction
+objective. This does not satisfy the broader requirement above: actual Linux,
 genuine Docker/image/container execution, dependency acquisition, complete
-builds, byte comparison, remote proof and independent skeptical review remain
-open and separately gated.
+builds, byte comparison and remote proof remain open. PSCAN-06 remains open and
+unaccepted overall, and the remote proof gate remains unauthorized.

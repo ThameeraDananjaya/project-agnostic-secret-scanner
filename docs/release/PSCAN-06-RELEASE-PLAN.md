@@ -70,6 +70,16 @@ must return nonzero with zero fake calls, zero Docker calls and no result.
 Iteration 005 changes no Docker operation, image, executable, environment,
 containment, stream, time, schema, identity, remote or publication rule.
 
+Independent local review of exact evidence-bearing candidate
+`faef8435322c9096df09b56969662411f17356ea`, tree
+`3cc6c6234d9cd318792c64ea9e6aa666f146ffb6`, reported no blocking findings and
+`LOCAL_ACCEPTANCE_PASS_REMOTE_PROOF_OPEN`. This accepts only iteration 005's
+bounded local correction objective. It does not establish actual Linux,
+genuine Docker/image/container, dependency-acquisition, complete-build, byte-
+comparison or remote proof, and it does not authorize the C2 tooling tag,
+workflow run, signing/draft gate, publication or any successor action. PSCAN-06
+therefore remains open and unaccepted overall.
+
 Compilation, tests, vet, Windows cross-compilation and two byte-for-byte builds
 then run with networking disabled and the module cache read-only. Workflow-
 transfer evidence is uncompressed and retained one day; it is not a release.

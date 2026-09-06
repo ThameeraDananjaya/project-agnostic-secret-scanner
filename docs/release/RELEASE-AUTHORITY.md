@@ -21,6 +21,25 @@ tag/commit/tree. Neither identity may stand in for the other. Creating that tag,
 enabling its gate or running the recovery workflow requires a later exact owner
 decision.
 
+## Current local authority status
+
+The Correction C1 paragraph above records its original planning boundary. A
+2026-09-06 local-only ref inspection found the locked product tag `v1.0.0` at
+`a13c28fe7273bc8dc6545f97966a02889524eb4c` and the locked C1 tooling tag
+`release-tooling-v1.0.0-c1` at
+`3fb7592889820fa2739a4a53588e073689621809`. The proposed C2 tooling tag was
+absent locally. No remote ref, repository setting, workflow, run, artifact,
+environment, variable, ruleset, release or billing fact was queried, and no
+local observation may be promoted to a remote fact.
+
+The original Correction C2 build-only proof gate and Recovery R1 were each
+separately authorized, but both terminated before remote preflight. The local
+source-trust obstruction found by Recovery R1 has been repaired and revalidated
+without Docker or network access. Neither terminal attempt authorizes a retry.
+Any further actual-Linux, genuine-Docker or workflow/artifact proof requires a
+new exact authority and a genuinely fresh execution session. Signing,
+attestation, draft creation and publication remain separately owner-gated.
+
 ## Separation of authorities
 
 | Authority | May do | May not do |

@@ -239,3 +239,17 @@ identity, and only then resume the held Docker inode inside that namespace and
 a private outer session. Normal and terminal returns require closed streams,
 root exit, destroyed namespace and empty containment. Root-only exit, post-hoc
 PID sampling or cleanup uncertainty is rejection, not a warning.
+
+## Current C2 operator status
+
+As of 2026-09-06, this C2 addendum remains a verification design, not usable
+release proof. The original build-only proof-gate attempt and Recovery R1 each
+failed closed before remote preflight and before any Docker action. The local
+working-tree source-trust obstruction found by Recovery R1 was repaired and the
+no-network, no-Docker regression matrices passed, but no retry is authorized.
+
+Do not acquire or accept a C2 release set until a newly authorized fresh
+session proves actual Linux, genuine Docker/image/container behavior,
+dependency acquisition, two complete byte-identical builds, and workflow and
+artifact read-back, followed by the separately required independent acceptance
+and release gates.

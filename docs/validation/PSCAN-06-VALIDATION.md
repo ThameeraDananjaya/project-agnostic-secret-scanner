@@ -237,4 +237,34 @@ Iteration 005 is independently accepted locally for its bounded correction
 objective. This does not satisfy the broader requirement above: actual Linux,
 genuine Docker/image/container execution, dependency acquisition, complete
 builds, byte comparison and remote proof remain open. PSCAN-06 remains open and
-unaccepted overall, and the remote proof gate remains unauthorized.
+unaccepted overall.
+
+## Correction C2 post-repair local validation status
+
+The original build-only proof gate was separately authorized and failed closed
+before remote preflight because its fresh worktree was detached rather than the
+required `main` checkout. Recovery R1 was then separately authorized and failed
+closed before remote preflight because two tracked PowerShell working-tree
+files were neither raw-equal to their Git blobs nor canonical LF-to-CRLF
+projections. Neither attempt made a remote request or invoked Docker.
+
+The two working-tree projections were later restored from their exact committed
+Git objects without changing the committed source or index. Local post-repair
+validation against candidate
+`a0ac587f97557b89beb3b61553fe621e80f26611`, tree
+`c62698df4d9b10bb549171a34ad4369ab1a7f707`, then established:
+
+1. complete inspection of 351 tracked files with 333 raw-equal files, 18
+   canonical CRLF projections and zero mismatches;
+2. rejection of all 12 hostile source-trust states with zero build outputs and
+   no untrusted driver action; and
+3. passing synthetic image-admission and Windows native-boundary matrices with
+   zero Docker calls, zero trusted hostile results and no surviving process.
+
+This result is local regression evidence only. It does not rehabilitate either
+terminal proof-gate attempt, is not overall PSCAN-06 acceptance, and grants no
+retry. Actual Linux, genuine Docker/image/container execution, dependency
+acquisition, two complete builds, byte comparison, workflow identity and
+artifact read-back remain unproved and require a new exact authority in a
+genuinely fresh execution session. Signing, attestation, draft creation and
+publication remain separate later gates.

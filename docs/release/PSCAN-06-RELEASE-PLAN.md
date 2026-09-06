@@ -80,6 +80,30 @@ comparison or remote proof, and it does not authorize the C2 tooling tag,
 workflow run, signing/draft gate, publication or any successor action. PSCAN-06
 therefore remains open and unaccepted overall.
 
+## Current governed execution state
+
+As of 2026-09-06, two separately authorized build-only proof-gate attempts have
+terminated before remote preflight. The first stopped because its fresh
+worktree was detached instead of being the required `main` checkout. Recovery
+R1 then used the correct saved-project `main` checkout but stopped because two
+tracked PowerShell files had mixed working-tree line endings that failed exact
+source trust. Neither attempt made a GitHub request, invoked Docker, dispatched
+the workflow, transferred an artifact, signed, attested, drafted or published.
+
+The two working-tree projections were subsequently restored from their exact
+committed Git objects. Local post-repair validation passed complete tracked-byte
+inspection, all 12 hostile source-trust cases, the synthetic image-admission
+matrix and the Windows no-Docker native-boundary matrix with zero Docker calls.
+That local validation did not rehabilitate either terminal attempt and grants
+no retry authority.
+
+The remaining acceptance work is actual-Linux execution, genuine Docker engine,
+image and container evidence, dependency acquisition, two complete builds,
+every-byte reproducibility comparison, and workflow/artifact read-back. It
+requires a new exact recorded authority and a genuinely fresh execution
+session. Signing, attestation, draft creation and publication remain separate
+later gates.
+
 Compilation, tests, vet, Windows cross-compilation and two byte-for-byte builds
 then run with networking disabled and the module cache read-only. Workflow-
 transfer evidence is uncompressed and retained one day; it is not a release.

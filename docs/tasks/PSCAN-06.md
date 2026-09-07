@@ -702,3 +702,29 @@ the hostile boundary recorded zero Docker calls. Exact results are in
 `evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-LOCAL-POST-REPAIR-VALIDATION-001.md`.
 This result does not supply actual-Linux, genuine-Docker, dependency,
 reproducibility, workflow or artifact proof and grants no retry authority.
+
+## Correction C2 main-branch execution Recovery R2
+
+On 2026-09-08 the owner authorized one bounded Recovery R2 attempt and allowed
+GitHub-hosted Docker when the required proof cannot be completed by the Docker
+installation on the owner's PC. Local Docker cannot establish the required
+GitHub workflow/ref, standard Linux-runner, run/job/step, one-day artifact and
+remote read-back identities. Recovery R2 therefore authorizes only the exact
+committed GitHub Actions build job for the remaining actual-Linux and genuine-
+Docker proof; it does not authorize starting, stopping or reconfiguring local
+Docker.
+
+The approval session checked only `gh auth status --hostname github.com` as
+requested. The GitHub CLI is installed and the intended account is active, but
+the stored token is invalid. No repository query or remote mutation was
+attempted. The owner must re-authenticate before the genuinely fresh Recovery
+R2 execution task begins, and that task must repeat the complete current
+preflight rather than reuse this failed check.
+
+Exact bounded authority is recorded in
+`evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R2-AUTHORITY.md`.
+This authority-recording session performs no login, push, tag, ruleset, setting,
+workflow, Docker, dependency, build or artifact action. Recovery R2 permits at
+most one USD 0 workflow dispatch after every preflight fact passes. Signing,
+attestation, draft creation, publication, rerun and successor work remain
+forbidden. PSCAN-06 remains open and unaccepted overall.

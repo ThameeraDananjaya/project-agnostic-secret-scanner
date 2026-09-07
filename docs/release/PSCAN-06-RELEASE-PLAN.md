@@ -100,9 +100,15 @@ no retry authority.
 The remaining acceptance work is actual-Linux execution, genuine Docker engine,
 image and container evidence, dependency acquisition, two complete builds,
 every-byte reproducibility comparison, and workflow/artifact read-back. It
-requires a new exact recorded authority and a genuinely fresh execution
-session. Signing, attestation, draft creation and publication remain separate
-later gates.
+now has one exact recorded authority: Recovery R2, approved on 2026-09-08 but
+not claimed or executed. The required GitHub workflow/ref, Linux-runner,
+run/job/step, retention and artifact identities cannot be supplied by local
+Docker, so R2 permits only the committed GitHub Actions build job. It is limited
+to one dispatch, one unsigned uncompressed one-day artifact and USD 0. The
+approval-session authentication check found the configured GitHub token
+invalid; re-authentication and a genuinely fresh saved-project `main` session
+are required before the complete current preflight. Local Docker, signing,
+attestation, draft creation and publication remain outside this authority.
 
 Compilation, tests, vet, Windows cross-compilation and two byte-for-byte builds
 then run with networking disabled and the module cache read-only. Workflow-

@@ -7,7 +7,7 @@
 | PSCAN-03 | Rejected and closed fail-closed; not accepted | `evidence/PSCAN-03/CLOSEOUT-REJECTED.md` |
 | PSCAN-04 | Completed and independently accepted locally | Exact activation `a21b030e1658f1f98ac4e4d001af12185d9ed311`; evidence-bearing closeout commit |
 | PSCAN-05 | Completed and independently accepted locally | Exact activation `50b4186`; corrected evidence-bearing closeout commit |
-| PSCAN-06 | Correction C2 iteration 005 is independently accepted locally; the first build-only proof-gate execution and Recovery R1 both failed closed before remote preflight; the Recovery R1 source-trust obstruction is repaired locally but no retry is authorized; PSCAN-06 remains open and unaccepted overall | Failures: `evidence/PSCAN-06/CORRECTION-C2-BUILD-ONLY-LINUX-DOCKER-PROOF-GATE-FAILURE-001.md`, `evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R1-FAILURE-001.md`; repair: `evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-SOURCE-TRUST-REPAIR-001.md` |
+| PSCAN-06 | Correction C2 iteration 005 is independently accepted locally; the first proof-gate execution and Recovery R1 failed closed before remote preflight; the source-trust obstruction is repaired; Recovery R2 is owner-approved but unclaimed and unexecuted; GitHub authentication is currently invalid; PSCAN-06 remains open and unaccepted overall | Recovery R2: `evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R2-AUTHORITY.md` |
 | PSCAN-07 | Proposed; unselected; signing/publication gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-06 |
 | PSCAN-08 | Inactive; technically and legally gated | Material-gap evidence plus separate owner approval required |
 | PSCAN-09 | Completed and independently accepted locally | Activation `f486989`; accepted closeout commit |
@@ -200,3 +200,21 @@ actual-Linux, genuine-Docker, dependency, reproducibility, workflow or artifact
 proof and does not authorize another proof-gate execution.
 PSCAN-06 remains open and unaccepted overall, with PSCAN-07 unselected and
 PSCAN-08 inactive and ineligible.
+
+On 2026-09-08 the owner authorized one bounded Recovery R2 attempt and allowed
+GitHub-hosted Docker when the remaining proof cannot be completed by local
+Docker. The remaining gate requires GitHub workflow/ref, actual-Linux runner,
+run/job/step and one-day artifact identities, so local Docker cannot substitute
+for it. Recovery R2 authorizes only the exact committed GitHub Actions build
+job, at most one dispatch and maximum spend USD 0. It does not authorize local
+Docker, signing, attestation, drafting, publication, rerun or successor work.
+
+The authority session's requested read-only `gh auth status` check found the
+intended active account but an invalid stored token. It made no repository API
+query or remote mutation. Recovery R2 is owner-approved, not claimed and not
+executed. A genuinely fresh saved-project `main` task may proceed only after
+the owner re-authenticates and every current local and remote preflight fact
+passes. Exact authority is in
+`evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R2-AUTHORITY.md`.
+PSCAN-06 remains open and unaccepted overall; PSCAN-07 remains proposed and
+unselected; PSCAN-08 remains inactive and ineligible.

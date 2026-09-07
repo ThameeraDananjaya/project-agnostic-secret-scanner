@@ -243,3 +243,16 @@ The repair changes no committed source and grants no retry, remote, Docker,
 signing, publication or successor authority. The post-repair record proves the
 current local source-trust and no-Docker regressions only; it is not remote,
 actual-Linux, genuine-Docker or overall PSCAN-06 acceptance evidence.
+
+The owner subsequently authorized one bounded Recovery R2 attempt. Read
+`evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R2-AUTHORITY.md`
+before any claim or action. It preserves the original proof-gate identities and
+all zero-spend, one-dispatch, unsigned-artifact, no-signing, no-publication and
+no-successor limits. The required proof cannot be replaced by local Docker
+because GitHub workflow, runner and artifact identities are part of the
+acceptance boundary; Recovery R2 therefore permits only the exact committed
+GitHub Actions build job. The approval-session GitHub authentication check
+failed because the stored token is invalid. Re-authentication must happen
+before a genuinely fresh saved-project `main` execution task performs its own
+complete current preflight. This approval session records authority only and
+does not execute Recovery R2.

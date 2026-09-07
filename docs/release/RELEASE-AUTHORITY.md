@@ -35,10 +35,15 @@ local observation may be promoted to a remote fact.
 The original Correction C2 build-only proof gate and Recovery R1 were each
 separately authorized, but both terminated before remote preflight. The local
 source-trust obstruction found by Recovery R1 has been repaired and revalidated
-without Docker or network access. Neither terminal attempt authorizes a retry.
-Any further actual-Linux, genuine-Docker or workflow/artifact proof requires a
-new exact authority and a genuinely fresh execution session. Signing,
-attestation, draft creation and publication remain separately owner-gated.
+without Docker or network access. On 2026-09-08 the owner separately authorized
+one bounded Recovery R2 attempt. Local Docker cannot prove the required GitHub
+workflow, Linux-runner and artifact identities, so Recovery R2 permits only the
+exact GitHub-hosted build job, at most one dispatch and maximum spend USD 0.
+The approval-session authentication check found an invalid stored GitHub token;
+no repository query or mutation followed. A genuinely fresh execution session
+may proceed only after re-authentication and a complete current preflight.
+Signing, attestation, draft creation and publication remain separately owner-
+gated.
 
 ## Separation of authorities
 

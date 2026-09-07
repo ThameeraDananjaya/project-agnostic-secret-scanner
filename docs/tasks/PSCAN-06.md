@@ -728,3 +728,22 @@ workflow, Docker, dependency, build or artifact action. Recovery R2 permits at
 most one USD 0 workflow dispatch after every preflight fact passes. Signing,
 attestation, draft creation, publication, rerun and successor work remain
 forbidden. PSCAN-06 remains open and unaccepted overall.
+
+Recovery R2 was subsequently attempted in genuinely fresh saved-project
+`main` session `01a07dbf-b19b-71d1-b40c-617f396b1c64` using Daybreak Blue at
+`xhigh`. The exact local execution context and complete current authority chain
+passed. The first current GitHub authentication command then returned exit code
+`1` because the intended active account's stored token was invalid. Required
+execution-context item 6 and mandatory preflight item 4 therefore failed. The
+task stopped before any GitHub repository query, remote mutation, workflow
+dispatch, Docker, build or artifact action.
+
+Recovery R2 is terminally failed, consumed zero workflow dispatches and
+authorizes no retry. Exact append-only evidence is recorded in
+`evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R2-FAILURE-001.md`.
+Its SHA-256 is
+`CACDEE7FA590FEA4714A921ECC000AF6F008F4E00515DEDE91C1BEE3E37BAC91`.
+Valid authentication and a new exact owner decision are required before any
+further proof-gate attempt. PSCAN-06 remains open and unaccepted overall;
+PSCAN-07 remains proposed and unselected; PSCAN-08 remains inactive and
+ineligible.

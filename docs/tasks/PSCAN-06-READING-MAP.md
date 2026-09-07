@@ -256,3 +256,19 @@ failed because the stored token is invalid. Re-authentication must happen
 before a genuinely fresh saved-project `main` execution task performs its own
 complete current preflight. This approval session records authority only and
 does not execute Recovery R2.
+
+Recovery R2 then failed closed in fresh saved-project `main` session
+`01a07dbf-b19b-71d1-b40c-617f396b1c64` at the first current GitHub
+authentication command. Read the append-only terminal record before any new
+PSCAN-06 claim or action:
+
+`evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R2-FAILURE-001.md`
+
+The failure record SHA-256 is
+`CACDEE7FA590FEA4714A921ECC000AF6F008F4E00515DEDE91C1BEE3E37BAC91`.
+
+The failed attempt made no GitHub repository query or remote mutation,
+consumed zero workflow dispatches and performed no Docker, build or artifact
+action. Recovery R2 authorizes no retry. A further proof-gate attempt requires
+restored authentication and a new exact owner decision. PSCAN-06 remains open
+and unaccepted overall.

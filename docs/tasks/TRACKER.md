@@ -7,7 +7,7 @@
 | PSCAN-03 | Rejected and closed fail-closed; not accepted | `evidence/PSCAN-03/CLOSEOUT-REJECTED.md` |
 | PSCAN-04 | Completed and independently accepted locally | Exact activation `a21b030e1658f1f98ac4e4d001af12185d9ed311`; evidence-bearing closeout commit |
 | PSCAN-05 | Completed and independently accepted locally | Exact activation `50b4186`; corrected evidence-bearing closeout commit |
-| PSCAN-06 | Correction C2 iteration 005 is independently accepted locally; the first proof-gate execution and Recovery R1 failed closed before remote preflight; the source-trust obstruction is repaired; Recovery R2 is owner-approved but unclaimed and unexecuted; GitHub authentication is currently invalid; PSCAN-06 remains open and unaccepted overall | Recovery R2: `evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R2-AUTHORITY.md` |
+| PSCAN-06 | Correction C2 iteration 005 is independently accepted locally; the first proof-gate execution, Recovery R1 and Recovery R2 failed closed before remote preflight; the source-trust obstruction is repaired; Recovery R2 stopped at current GitHub authentication with zero repository queries, mutations or workflow dispatches; PSCAN-06 remains open and unaccepted overall | Recovery R2 failure: `evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R2-FAILURE-001.md` |
 | PSCAN-07 | Proposed; unselected; signing/publication gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-06 |
 | PSCAN-08 | Inactive; technically and legally gated | Material-gap evidence plus separate owner approval required |
 | PSCAN-09 | Completed and independently accepted locally | Activation `f486989`; accepted closeout commit |
@@ -218,3 +218,19 @@ passes. Exact authority is in
 `evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R2-AUTHORITY.md`.
 PSCAN-06 remains open and unaccepted overall; PSCAN-07 remains proposed and
 unselected; PSCAN-08 remains inactive and ineligible.
+
+Recovery R2 was then attempted in genuinely fresh saved-project `main` session
+`01a07dbf-b19b-71d1-b40c-617f396b1c64` using Daybreak Blue at `xhigh`. The
+exact local execution context and authority chain passed, but the first current
+GitHub authentication command returned exit code `1` because the active
+intended account's stored token was invalid. Required execution-context item 6
+and mandatory preflight item 4 failed. The task stopped before any GitHub
+repository query, remote mutation, workflow dispatch, Docker, build or
+artifact action. Recovery R2 is terminally failed, consumed zero workflow
+dispatches and authorizes no retry. Exact evidence is in
+`evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R2-FAILURE-001.md`.
+Its SHA-256 is
+`CACDEE7FA590FEA4714A921ECC000AF6F008F4E00515DEDE91C1BEE3E37BAC91`.
+A further attempt requires restored authentication and a new exact owner
+decision. PSCAN-06 remains open and unaccepted overall; PSCAN-07 remains
+proposed and unselected; PSCAN-08 remains inactive and ineligible.

@@ -747,3 +747,33 @@ Valid authentication and a new exact owner decision are required before any
 further proof-gate attempt. PSCAN-06 remains open and unaccepted overall;
 PSCAN-07 remains proposed and unselected; PSCAN-08 remains inactive and
 ineligible.
+
+## Correction C2 main-branch execution Recovery R3
+
+On 2026-09-09 the owner authorized one bounded Recovery R3 attempt from exact
+Recovery R2 failure record SHA-256
+`CACDEE7FA590FEA4714A921ECC000AF6F008F4E00515DEDE91C1BEE3E37BAC91` at
+evidence commit `a4f5b85a3ac63ea31b4bb911be3445f2223b6db1`. The authority
+preserved maximum spend USD 0, at most one workflow dispatch, one-day unsigned
+workflow artifact only, and the prohibitions on local Docker, signing,
+attestation, drafting, publication, rerun and successor work.
+
+Recovery R3 ran in genuinely fresh saved-project `main` session
+`01a08461-59eb-7721-b1f3-f11721e36bfd`. Exact local source trust, authority,
+workflow bytes and host-level GitHub authentication passed. The current
+authenticated credential could not read the required user billing, usage and
+stop-usage state: every applicable endpoint returned HTTP `404` and reported
+that the missing `user` scope was required. Public standard-runner minutes did
+not prove artifact-storage allowance, overage and stop-usage state. Mandatory
+preflight item 4 therefore failed.
+
+The task stopped before remote mutation, workflow dispatch, Docker, build or
+artifact action. Recovery R3 is terminally failed, consumed zero workflow
+dispatches and authorizes no retry. Exact append-only evidence is recorded in
+`evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R3-FAILURE-001.md`.
+Its SHA-256 is
+`339E5D66B655B5753D239D5347F1BBAFF0E5858C4CCC289368196D014AE07C12`.
+Any further attempt requires trusted current billing, artifact-storage
+allowance and stop-usage evidence plus a new exact owner decision. PSCAN-06
+remains open and unaccepted overall; PSCAN-07 remains proposed and unselected;
+PSCAN-08 remains inactive and ineligible.

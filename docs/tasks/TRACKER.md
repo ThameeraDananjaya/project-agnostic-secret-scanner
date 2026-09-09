@@ -7,7 +7,7 @@
 | PSCAN-03 | Rejected and closed fail-closed; not accepted | `evidence/PSCAN-03/CLOSEOUT-REJECTED.md` |
 | PSCAN-04 | Completed and independently accepted locally | Exact activation `a21b030e1658f1f98ac4e4d001af12185d9ed311`; evidence-bearing closeout commit |
 | PSCAN-05 | Completed and independently accepted locally | Exact activation `50b4186`; corrected evidence-bearing closeout commit |
-| PSCAN-06 | Correction C2 iteration 005 is independently accepted locally; the first proof-gate execution, Recovery R1 and Recovery R2 failed closed before remote preflight; the source-trust obstruction is repaired; Recovery R2 stopped at current GitHub authentication with zero repository queries, mutations or workflow dispatches; PSCAN-06 remains open and unaccepted overall | Recovery R2 failure: `evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R2-FAILURE-001.md` |
+| PSCAN-06 | Correction C2 iteration 005 is independently accepted locally; the first proof-gate execution and Recoveries R1-R3 failed closed before remote mutation; Recovery R3 passed authentication but stopped on permission-denied billing and stop-usage evidence with zero mutations or workflow dispatches; PSCAN-06 remains open and unaccepted overall | Recovery R3 failure: `evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R3-FAILURE-001.md` |
 | PSCAN-07 | Proposed; unselected; signing/publication gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-06 |
 | PSCAN-08 | Inactive; technically and legally gated | Material-gap evidence plus separate owner approval required |
 | PSCAN-09 | Completed and independently accepted locally | Activation `f486989`; accepted closeout commit |
@@ -234,3 +234,22 @@ Its SHA-256 is
 A further attempt requires restored authentication and a new exact owner
 decision. PSCAN-06 remains open and unaccepted overall; PSCAN-07 remains
 proposed and unselected; PSCAN-08 remains inactive and ineligible.
+
+On 2026-09-09 the owner authorized one bounded Recovery R3 attempt from exact
+Recovery R2 failure record SHA-256
+`CACDEE7FA590FEA4714A921ECC000AF6F008F4E00515DEDE91C1BEE3E37BAC91` at
+evidence commit `a4f5b85a3ac63ea31b4bb911be3445f2223b6db1`. The fresh
+saved-project `main` task passed exact local source trust, authority,
+workflow-byte and host-level GitHub authentication checks. Current user
+billing, usage and stop-usage read-back was permission-denied because the
+authenticated token lacked the required `user` scope. Mandatory preflight item
+4 therefore failed. The task stopped before remote mutation, workflow
+dispatch, Docker, build or artifact action. Recovery R3 is terminally failed,
+consumed zero workflow dispatches and authorizes no retry. Exact evidence is in
+`evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R3-FAILURE-001.md`.
+Its SHA-256 is
+`339E5D66B655B5753D239D5347F1BBAFF0E5858C4CCC289368196D014AE07C12`.
+A further attempt requires trusted current billing, artifact-storage allowance
+and stop-usage evidence plus a new exact owner decision. PSCAN-06 remains open
+and unaccepted overall; PSCAN-07 remains proposed and unselected; PSCAN-08
+remains inactive and ineligible.

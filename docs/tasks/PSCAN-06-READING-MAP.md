@@ -272,3 +272,23 @@ consumed zero workflow dispatches and performed no Docker, build or artifact
 action. Recovery R2 authorizes no retry. A further proof-gate attempt requires
 restored authentication and a new exact owner decision. PSCAN-06 remains open
 and unaccepted overall.
+
+The owner then authorized one bounded Recovery R3 attempt from the exact
+Recovery R2 failure record and evidence commit. Recovery R3 passed exact local
+source trust, authority, workflow-byte and current host-level GitHub
+authentication checks, but failed closed when all applicable user billing and
+usage endpoints were permission-denied and reported that the authenticated
+credential lacked the required `user` scope. Read the append-only terminal
+record before any new PSCAN-06 claim or action:
+
+`evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R3-FAILURE-001.md`
+
+The failure record SHA-256 is
+`339E5D66B655B5753D239D5347F1BBAFF0E5858C4CCC289368196D014AE07C12`.
+
+The failed attempt made read-only authenticated GitHub preflight queries but
+no remote mutation, consumed zero workflow dispatches and performed no Docker,
+build or artifact action. Recovery R3 authorizes no retry or credential-scope
+change. A further proof-gate attempt requires trusted current billing,
+artifact-storage allowance and stop-usage evidence plus a new exact owner
+decision. PSCAN-06 remains open and unaccepted overall.

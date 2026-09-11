@@ -97,9 +97,12 @@ the generic verifier preserves 2.0/C1 and 2.1/C2 and rejects cross-version
 mixtures. The Docker materialization payload only adds schema 2.2; its process
 boundary and operation table do not change.
 
-This is a local candidate design. The proposed tag is not created, the new
-workflow is not run, and Recovery R6 remains unauthorized until independent
-local acceptance and a separate exact R6 authority.
+This is a local candidate design. Exact candidate `230e176` was independently
+rejected because its mandatory workflow-preservation regression globally
+rewrites `2.2` and therefore changes an unchanged `v4.2.2` action comment,
+making the test fail. The proposed tag is not created, the new workflow is not
+run, and Recovery R6 remains unauthorized until a conforming candidate receives
+independent local acceptance and a separate exact R6 authority.
 
 ## Current governed execution state
 
@@ -110,13 +113,13 @@ builds or artifact transfer. No retry, second dispatch or tag change is
 authorized.
 
 Iteration 006 is independently accepted locally for the exact PID correction.
-Iteration 007 is claimed and locally implemented only to provide a new
-append-only identity generation. The remaining acceptance work still includes
-independent iteration-007 review, a separately authorized Recovery R6, actual
-Linux and genuine Docker evidence, dependency acquisition, two complete
-builds, every-byte reproducibility comparison and workflow/artifact read-back.
-Local Docker, signing, attestation, draft creation and publication remain
-outside this authority.
+Iteration 007 candidate `230e176` is independently rejected for the committed
+preservation-test defect above; the reviewer made no repair. The remaining work
+still includes a conforming bounded iteration-007 candidate and fresh review,
+a separately authorized Recovery R6, actual Linux and genuine Docker evidence,
+dependency acquisition, two complete builds, every-byte reproducibility
+comparison and workflow/artifact read-back. Local Docker, signing, attestation,
+draft creation and publication remain outside this authority.
 
 Compilation, tests, vet, Windows cross-compilation and two byte-for-byte builds
 then run with networking disabled and the module cache read-only. Workflow-

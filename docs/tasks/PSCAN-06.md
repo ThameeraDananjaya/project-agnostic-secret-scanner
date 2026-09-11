@@ -1079,3 +1079,28 @@ iteration 007 is independently accepted and a later exact R6 authority
 re-proves all live zero-spend remote gates. PSCAN-06 remains open and
 unaccepted overall; PSCAN-07 remains proposed and unselected; PSCAN-08 remains
 inactive and ineligible.
+
+Fresh independent review session `01a0916e-95e6-7db0-9391-08232b2fc505`
+inspected exact candidate `230e1761f7c45d9629cecf360e7498b33d64ab6f`,
+tree `5d74628d76f95e150c0ea1de51b4892af2350a7d`, from direct authority parent
+`b7a0fb211e4631f915e368174ae58022d1519182`. The new workflow and schema
+match the selected append-only identity design, old workflow/schema bytes are
+preserved, active identity sources agree, and the Docker file changes only by
+the schema-2.2 materialization line. Exact source trust, path confinement,
+PowerShell/JSON parsing and every available-host no-Docker regression passed.
+
+Local acceptance was rejected because the committed integration test's final
+workflow normalization globally replaces `2.2` with `2.1`. That also changes
+the unchanged `actions/attest` comment `# v4.2.2` to `# v4.2.1` in only the
+normalized new workflow, so the required preservation test deterministically
+fails. Exact evidence is in
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-007-REVIEW-REJECTED.md`. The
+reviewer did not repair the candidate.
+
+Recovery R5 remains terminally failed and consumed. Recovery R6 remains
+unauthorized. No remote read or mutation, Docker, dependency acquisition, tag
+change, workflow dispatch or rerun, signing, publication, spending or
+successor action is authorized by this review. Actual-Linux, genuine-Docker,
+dependency, build, reproducibility and artifact-integrity proof remains open.
+PSCAN-06 remains open and unaccepted overall; PSCAN-07 remains proposed and
+unselected; PSCAN-08 remains inactive and ineligible.

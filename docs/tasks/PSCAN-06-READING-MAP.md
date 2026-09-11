@@ -105,6 +105,7 @@ fresh implementation session:
 100. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-007-AUTHORITY.md`
 101. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-007-PREFLIGHT.md`
 102. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-007-IMPLEMENTATION.md`
+103. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-007-REVIEW-REJECTED.md`
 
 Then verify the exact activation commit, branch and clean Git status; the
 activated allowed and forbidden paths; the absence of another selected,
@@ -523,3 +524,17 @@ materialization changes, preservation/cross-version tests, living documents
 and append-only evidence. Author implementation is not acceptance; a fresh
 independent task must review the exact committed candidate and rerun
 proportionate offline no-Docker checks before any acceptance record.
+
+Fresh independent review rejected exact candidate
+`230e1761f7c45d9629cecf360e7498b33d64ab6f`, tree
+`5d74628d76f95e150c0ea1de51b4892af2350a7d`. Its committed workflow-
+preservation test globally rewrites `2.2` to `2.1`, which also changes the
+unchanged action-version comment `# v4.2.2` and deterministically fails the
+test's exact workflow comparison. Read the rejection before any readiness,
+refinement or acceptance claim:
+
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-007-REVIEW-REJECTED.md`
+
+The reviewer did not repair the candidate. Recovery R5 remains terminal and
+consumed; Recovery R6 remains unauthorized. All Docker, dependency, build,
+artifact, remote, signing, publication and successor gates remain closed.

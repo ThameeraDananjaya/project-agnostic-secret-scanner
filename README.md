@@ -9,10 +9,11 @@ locally for its bounded PID-collision correction, but PSCAN-06 remains open and
 unaccepted overall. Recovery R5 is terminal after its sole protected C2-tag
 push and workflow dispatch failed before Docker or artifact creation. A direct
 Recovery R6 is invalid because the immutable C2 tag, workflow and schema bind
-the pre-fix tooling commit. Correction C2 iteration 007 is claimed and locally
-implemented as an append-only schema-2.2/R6 identity candidate pending exact
-author validation and fresh independent review; R6 itself remains unauthorized.
-PSCAN-07 is unselected and PSCAN-08 remains inactive.**
+the pre-fix tooling commit. Correction C2 iteration 007 candidate `230e176` is
+independently rejected because its mandatory workflow-preservation regression
+globally rewrites `2.2` and falsely changes an unchanged `v4.2.2` action
+comment. No repair or R6 execution is authorized. PSCAN-07 is unselected and
+PSCAN-08 remains inactive.**
 
 The public repository and locked product tag `v1.0.0` exist, but the authorized
 release workflow failed closed before building and no signed release exists.

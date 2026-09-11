@@ -12,6 +12,103 @@ import (
 	"github.com/ThameeraDananjaya/project-agnostic-secret-scanner/internal/verify"
 )
 
+func TestMain(m *testing.M) {
+	os.Exit(testMainExitCode(os.Args[1:], os.Getenv, m.Run))
+}
+
+func testMainExitCode(arguments []string, getenv func(string) string, run func() int) int {
+	argumentsPath, admitted := cosignHelperArgumentsPath(arguments, getenv)
+	if !admitted {
+		return run()
+	}
+	file, err := os.OpenFile(argumentsPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	if err != nil {
+		return 1
+	}
+	_, writeErr := file.WriteString(strings.Join(arguments, "\n") + "\n")
+	closeErr := file.Close()
+	if writeErr != nil || closeErr != nil {
+		return 1
+	}
+	return 0
+}
+
+func cosignHelperArgumentsPath(arguments []string, getenv func(string) string) (string, bool) {
+	if len(arguments) != 18 || getenv("COSIGN_YES") != "false" {
+		return "", false
+	}
+	want := map[int]string{
+		0: "verify-blob", 1: "--bundle", 3: "--trusted-root",
+		5: "--certificate-identity", 7: "--certificate-oidc-issuer",
+		9: "--certificate-github-workflow-repository", 11: "--certificate-github-workflow-ref",
+		13: "--certificate-github-workflow-sha", 15: "--certificate-github-workflow-trigger",
+	}
+	for position, value := range want {
+		if arguments[position] != value {
+			return "", false
+		}
+	}
+	for _, position := range []int{2, 4, 6, 8, 10, 12, 14, 16, 17} {
+		if arguments[position] == "" {
+			return "", false
+		}
+	}
+
+	root := filepath.Clean(filepath.Dir(arguments[4]))
+	if !plainDirectory(root) {
+		return "", false
+	}
+	for _, position := range []int{2, 4, 17} {
+		if !containedRegularFile(root, arguments[position]) {
+			return "", false
+		}
+	}
+	argumentsPath := filepath.Join(root, "arguments.txt")
+	if _, err := os.Lstat(argumentsPath); err == nil || !os.IsNotExist(err) {
+		return "", false
+	}
+	return argumentsPath, true
+}
+
+func plainDirectory(path string) bool {
+	info, err := os.Lstat(path)
+	return err == nil && info.IsDir() && info.Mode()&os.ModeSymlink == 0
+}
+
+func containedRegularFile(root, path string) bool {
+	if !containedPath(root, path) {
+		return false
+	}
+	info, err := os.Lstat(filepath.Clean(path))
+	if err != nil || !plainRegularMode(info.Mode()) {
+		return false
+	}
+	evaluatedRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return false
+	}
+	evaluatedPath, err := filepath.EvalSymlinks(path)
+	return err == nil && containedPath(evaluatedRoot, evaluatedPath)
+}
+
+func containedPath(root, path string) bool {
+	absoluteRoot, err := filepath.Abs(filepath.Clean(root))
+	if err != nil {
+		return false
+	}
+	absolutePath, err := filepath.Abs(filepath.Clean(path))
+	if err != nil {
+		return false
+	}
+	relative, err := filepath.Rel(absoluteRoot, absolutePath)
+	return err == nil && relative != "." && relative != ".." &&
+		!filepath.IsAbs(relative) && !strings.HasPrefix(relative, ".."+string(filepath.Separator))
+}
+
+func plainRegularMode(mode os.FileMode) bool {
+	return mode.IsRegular() && mode&os.ModeSymlink == 0
+}
+
 func TestCosignCommandVerifierBindsExecutableAndTrustedRootBytes(t *testing.T) {
 	root := t.TempDir()
 	cosignPath := filepath.Join(root, "cosign")
@@ -39,12 +136,15 @@ func TestCosignCommandVerifierBindsExecutableAndTrustedRootBytes(t *testing.T) {
 func TestCosignCommandVerifierBindsEveryGitHubWorkflowClaim(t *testing.T) {
 	root := t.TempDir()
 	argumentsPath := filepath.Join(root, "arguments.txt")
-	cosignPath := filepath.Join(root, "cosign")
 	trustedRootPath := filepath.Join(root, "trusted-root.json")
 	manifestPath := filepath.Join(root, "release-manifest.json")
 	bundlePath := filepath.Join(root, "release-manifest.sigstore.json")
-	script := []byte("#!/bin/sh\nprintf '%s\\n' \"$@\" > '" + argumentsPath + "'\n")
-	if err := os.WriteFile(cosignPath, script, 0o700); err != nil {
+	cosignPath, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cosignBytes, err := os.ReadFile(cosignPath)
+	if err != nil {
 		t.Fatal(err)
 	}
 	trustedRoot := []byte(`{"synthetic":"trusted-root"}`)
@@ -57,7 +157,7 @@ func TestCosignCommandVerifierBindsEveryGitHubWorkflowClaim(t *testing.T) {
 	if err := os.WriteFile(bundlePath, []byte("bundle"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	verifier, err := verify.NewCosignCommandVerifier(cosignPath, verify.DigestBytes(script), trustedRootPath, verify.DigestBytes(trustedRoot))
+	verifier, err := verify.NewCosignCommandVerifier(cosignPath, verify.DigestBytes(cosignBytes), trustedRootPath, verify.DigestBytes(trustedRoot))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,6 +181,122 @@ func TestCosignCommandVerifierBindsEveryGitHubWorkflowClaim(t *testing.T) {
 		if !strings.Contains(arguments, required) {
 			t.Fatalf("required Cosign claim argument absent: %q in %q", required, arguments)
 		}
+	}
+}
+
+func TestCosignTestMainHelperRejectsNearMissesWithoutRecursiveExecution(t *testing.T) {
+	identity := releaseIdentityV2()
+	newFixture := func(t *testing.T) ([]string, string) {
+		t.Helper()
+		root := t.TempDir()
+		trustedRootPath := filepath.Join(root, "trusted-root.json")
+		manifestPath := filepath.Join(root, "release-manifest.json")
+		bundlePath := filepath.Join(root, "release-manifest.sigstore.json")
+		for path, contents := range map[string]string{
+			trustedRootPath: "trusted-root",
+			manifestPath:    "manifest",
+			bundlePath:      "bundle",
+		} {
+			if err := os.WriteFile(path, []byte(contents), 0o600); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return []string{
+			"verify-blob",
+			"--bundle", bundlePath,
+			"--trusted-root", trustedRootPath,
+			"--certificate-identity", identity.CertificateIdentity,
+			"--certificate-oidc-issuer", identity.OIDCIssuer,
+			"--certificate-github-workflow-repository", identity.Repository,
+			"--certificate-github-workflow-ref", identity.Ref,
+			"--certificate-github-workflow-sha", identity.WorkflowSHA,
+			"--certificate-github-workflow-trigger", identity.Trigger,
+			manifestPath,
+		}, filepath.Join(root, "arguments.txt")
+	}
+
+	tests := map[string]func(*testing.T, []string){
+		"wrong length": func(_ *testing.T, _ []string) {},
+		"wrong command": func(_ *testing.T, arguments []string) {
+			arguments[0] = "sign-blob"
+		},
+		"wrong flag position": func(_ *testing.T, arguments []string) {
+			arguments[1], arguments[3] = arguments[3], arguments[1]
+		},
+		"empty value": func(_ *testing.T, arguments []string) {
+			arguments[6] = ""
+		},
+		"bundle escape": func(t *testing.T, arguments []string) {
+			outside := t.TempDir()
+			arguments[2] = filepath.Join(outside, "release-manifest.sigstore.json")
+			if err := os.WriteFile(arguments[2], []byte("bundle"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+		},
+		"manifest escape": func(t *testing.T, arguments []string) {
+			outside := t.TempDir()
+			arguments[17] = filepath.Join(outside, "release-manifest.json")
+			if err := os.WriteFile(arguments[17], []byte("manifest"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+		},
+		"bundle directory": func(t *testing.T, arguments []string) {
+			arguments[2] = t.TempDir()
+		},
+		"manifest directory": func(t *testing.T, arguments []string) {
+			arguments[17] = t.TempDir()
+		},
+	}
+	for name, mutate := range tests {
+		t.Run(name, func(t *testing.T) {
+			arguments, argumentsPath := newFixture(t)
+			if name == "wrong length" {
+				arguments = arguments[:len(arguments)-1]
+			} else {
+				mutate(t, arguments)
+			}
+			runs := 0
+			result := testMainExitCode(arguments, func(name string) string {
+				if name == "COSIGN_YES" {
+					return "false"
+				}
+				return ""
+			}, func() int {
+				runs++
+				return 73
+			})
+			if result != 73 || runs != 1 {
+				t.Fatalf("near miss entered helper: result=%d runs=%d", result, runs)
+			}
+			if _, err := os.Lstat(argumentsPath); !os.IsNotExist(err) {
+				t.Fatalf("near miss created or modified arguments output: %v", err)
+			}
+		})
+	}
+
+	for name, value := range map[string]string{"absent COSIGN_YES": "", "wrong COSIGN_YES": "true"} {
+		t.Run(name, func(t *testing.T) {
+			arguments, argumentsPath := newFixture(t)
+			runs := 0
+			result := testMainExitCode(arguments, func(string) string { return value }, func() int {
+				runs++
+				return 73
+			})
+			if result != 73 || runs != 1 {
+				t.Fatalf("environment near miss entered helper: result=%d runs=%d", result, runs)
+			}
+			if _, err := os.Lstat(argumentsPath); !os.IsNotExist(err) {
+				t.Fatalf("environment near miss created or modified arguments output: %v", err)
+			}
+		})
+	}
+
+	for name, mode := range map[string]os.FileMode{"symlink": os.ModeSymlink, "reparse-like irregular": os.ModeIrregular} {
+		t.Run(name, func(t *testing.T) {
+			if plainRegularMode(mode) {
+				t.Fatalf("hostile file mode admitted: %v", mode)
+			}
+		})
 	}
 }
 
@@ -162,7 +378,9 @@ func TestReleaseManifestV21BindsCorrectionC2AndPreservesC1Parsing(t *testing.T) 
 	for name, mutate := range map[string]func(*verify.ReleaseManifest){
 		"C1 tag under 2.1": func(m *verify.ReleaseManifest) { m.ReleaseTooling.Tag = "release-tooling-v1.0.0-c1" },
 		"C1 ref under 2.1": func(m *verify.ReleaseManifest) { m.ReleaseTooling.WorkflowRef = "refs/tags/release-tooling-v1.0.0-c1" },
-		"role swap": func(m *verify.ReleaseManifest) { m.ProductSource.Tag, m.ReleaseTooling.Tag = m.ReleaseTooling.Tag, m.ProductSource.Tag },
+		"role swap": func(m *verify.ReleaseManifest) {
+			m.ProductSource.Tag, m.ReleaseTooling.Tag = m.ReleaseTooling.Tag, m.ProductSource.Tag
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			candidate := minimumManifestV21()
@@ -193,10 +411,14 @@ func TestReleaseManifestV22BindsR6AndRejectsCrossVersionMixtures(t *testing.T) {
 	}
 
 	for name, mutate := range map[string]func(*verify.ReleaseManifest){
-		"old tag under 2.2":      func(m *verify.ReleaseManifest) { m.ReleaseTooling.Tag = "release-tooling-v1.0.0-c2" },
-		"old ref under 2.2":      func(m *verify.ReleaseManifest) { m.ReleaseTooling.WorkflowRef = "refs/tags/release-tooling-v1.0.0-c2" },
-		"old path under 2.2":     func(m *verify.ReleaseManifest) { m.ReleaseTooling.Workflow = ".github/workflows/release-recovery-v1.0.0.yml" },
-		"old identity under 2.2": func(m *verify.ReleaseManifest) { m.ReleaseIdentity.CertificateIdentity = "https://github.com/ThameeraDananjaya/project-agnostic-secret-scanner/.github/workflows/release-recovery-v1.0.0.yml@refs/tags/release-tooling-v1.0.0-c2" },
+		"old tag under 2.2": func(m *verify.ReleaseManifest) { m.ReleaseTooling.Tag = "release-tooling-v1.0.0-c2" },
+		"old ref under 2.2": func(m *verify.ReleaseManifest) { m.ReleaseTooling.WorkflowRef = "refs/tags/release-tooling-v1.0.0-c2" },
+		"old path under 2.2": func(m *verify.ReleaseManifest) {
+			m.ReleaseTooling.Workflow = ".github/workflows/release-recovery-v1.0.0.yml"
+		},
+		"old identity under 2.2": func(m *verify.ReleaseManifest) {
+			m.ReleaseIdentity.CertificateIdentity = "https://github.com/ThameeraDananjaya/project-agnostic-secret-scanner/.github/workflows/release-recovery-v1.0.0.yml@refs/tags/release-tooling-v1.0.0-c2"
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			candidate := minimumManifestV22()
@@ -209,10 +431,16 @@ func TestReleaseManifestV22BindsR6AndRejectsCrossVersionMixtures(t *testing.T) {
 	}
 
 	for name, mutate := range map[string]func(*verify.ReleaseManifest){
-		"new tag under 2.1":      func(m *verify.ReleaseManifest) { m.ReleaseTooling.Tag = "release-tooling-v1.0.0-c2-r6" },
-		"new ref under 2.1":      func(m *verify.ReleaseManifest) { m.ReleaseTooling.WorkflowRef = "refs/tags/release-tooling-v1.0.0-c2-r6" },
-		"new path under 2.1":     func(m *verify.ReleaseManifest) { m.ReleaseTooling.Workflow = ".github/workflows/release-recovery-v1.0.0-c2-r6.yml" },
-		"new identity under 2.1": func(m *verify.ReleaseManifest) { m.ReleaseIdentity.CertificateIdentity = "https://github.com/ThameeraDananjaya/project-agnostic-secret-scanner/.github/workflows/release-recovery-v1.0.0-c2-r6.yml@refs/tags/release-tooling-v1.0.0-c2-r6" },
+		"new tag under 2.1": func(m *verify.ReleaseManifest) { m.ReleaseTooling.Tag = "release-tooling-v1.0.0-c2-r6" },
+		"new ref under 2.1": func(m *verify.ReleaseManifest) {
+			m.ReleaseTooling.WorkflowRef = "refs/tags/release-tooling-v1.0.0-c2-r6"
+		},
+		"new path under 2.1": func(m *verify.ReleaseManifest) {
+			m.ReleaseTooling.Workflow = ".github/workflows/release-recovery-v1.0.0-c2-r6.yml"
+		},
+		"new identity under 2.1": func(m *verify.ReleaseManifest) {
+			m.ReleaseIdentity.CertificateIdentity = "https://github.com/ThameeraDananjaya/project-agnostic-secret-scanner/.github/workflows/release-recovery-v1.0.0-c2-r6.yml@refs/tags/release-tooling-v1.0.0-c2-r6"
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			candidate := minimumManifestV21()
@@ -253,19 +481,40 @@ func TestIteration007RepositoryIdentityAgreementAndPreservation(t *testing.T) {
 		t.Fatal("historical C2 workflow bytes changed")
 	}
 	newWorkflow := read(".github/workflows/release-recovery-v1.0.0-c2-r6.yml")
-	normalizedWorkflow := strings.ReplaceAll(newWorkflow, "gated-v1.0.0-c2-r6-recovery", "gated-v1.0.0-c2-recovery")
-	normalizedWorkflow = strings.ReplaceAll(normalizedWorkflow, "release-v1.0.0-c2-r6-recovery", "release-v1.0.0-c2-recovery")
-	normalizedWorkflow = strings.ReplaceAll(normalizedWorkflow, "release-tooling-v1.0.0-c2-r6", "release-tooling-v1.0.0-c2")
-	normalizedWorkflow = strings.ReplaceAll(normalizedWorkflow, ".github/workflows/release-recovery-v1.0.0-c2-r6.yml", ".github/workflows/release-recovery-v1.0.0.yml")
-	normalizedWorkflow = strings.ReplaceAll(normalizedWorkflow, "2.2", "2.1")
+	normalizedWorkflow := newWorkflow
+	for _, replacement := range []struct {
+		from  string
+		to    string
+		count int
+	}{
+		{"gated-v1.0.0-c2-r6-recovery", "gated-v1.0.0-c2-recovery", 1},
+		{"release-v1.0.0-c2-r6-recovery", "release-v1.0.0-c2-recovery", 1},
+		{"release-tooling-v1.0.0-c2-r6", "release-tooling-v1.0.0-c2", 8},
+		{".github/workflows/release-recovery-v1.0.0-c2-r6.yml", ".github/workflows/release-recovery-v1.0.0.yml", 3},
+		{`test "$(jq -r .manifestSchemaVersion dist/release-manifest.json)" = '2.2'`, `test "$(jq -r .manifestSchemaVersion dist/release-manifest.json)" = '2.1'`, 1},
+	} {
+		if count := strings.Count(newWorkflow, replacement.from); count != replacement.count {
+			t.Fatalf("R6 workflow token %q count = %d, want %d", replacement.from, count, replacement.count)
+		}
+		normalizedWorkflow = strings.ReplaceAll(normalizedWorkflow, replacement.from, replacement.to)
+	}
+	actionPin := "uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2"
+	for name, workflow := range map[string]string{"old": oldWorkflow, "new": newWorkflow, "normalized": normalizedWorkflow} {
+		if count := strings.Count(workflow, actionPin); count != 1 {
+			t.Fatalf("%s workflow action pin count = %d, want 1", name, count)
+		}
+		if strings.Contains(workflow, "# v4.2.1") {
+			t.Fatalf("%s workflow contains forbidden action-pin normalization", name)
+		}
+	}
 	if normalizedWorkflow != oldWorkflow {
 		t.Fatal("R6 workflow differs from the C2 workflow outside the selected identity/version fields")
 	}
 
 	for path, required := range map[string][]string{
-		"build/release/build.ps1": {"release-tooling-v1.0.0-c2-r6", ".github/workflows/release-recovery-v1.0.0-c2-r6.yml", "manifestSchemaVersion='2.2'", "schema-release-manifest-2.1.json", "schema-release-manifest-2.2.json"},
+		"build/release/build.ps1":                    {"release-tooling-v1.0.0-c2-r6", ".github/workflows/release-recovery-v1.0.0-c2-r6.yml", "manifestSchemaVersion='2.2'", "schema-release-manifest-2.1.json", "schema-release-manifest-2.2.json"},
 		"build/release/cmd/release-verifier/main.go": {"release-tooling-v1.0.0-c2-r6", ".github/workflows/release-recovery-v1.0.0-c2-r6.yml", `ManifestSchemaVersion: "2.2"`},
-		"internal/verify/release.go": {"release-tooling-v1.0.0-c2", "release-tooling-v1.0.0-c2-r6", ".github/workflows/release-recovery-v1.0.0.yml", ".github/workflows/release-recovery-v1.0.0-c2-r6.yml"},
+		"internal/verify/release.go":                 {"release-tooling-v1.0.0-c2", "release-tooling-v1.0.0-c2-r6", ".github/workflows/release-recovery-v1.0.0.yml", ".github/workflows/release-recovery-v1.0.0-c2-r6.yml"},
 	} {
 		source := read(path)
 		for _, token := range required {

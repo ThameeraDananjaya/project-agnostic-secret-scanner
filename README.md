@@ -18,11 +18,12 @@ remain unstaged and uncommitted. A diagnostic continuation proved an inherited
 Windows case-collision fixture is unrepresentable on the current case-
 insensitive filesystems, while the test and production normalizer bytes match
 the clean materialization. The owner-approved iteration 009 continuation adds
-only `tests/unit/artifact/normalize_test.go` for a test-fixture-only repair. It
-is unclaimed and unimplemented, requires a genuinely fresh continuation
-session from the committed continuation authority while carrying the two bound
-work paths, and still requires the complete offline matrix and independent
-review.
+only `tests/unit/artifact/normalize_test.go` for a test-fixture-only repair.
+The genuinely fresh continuation implemented that repair, preserved the
+carried integration patch byte-for-byte, and passed the complete pinned
+offline author matrix including Linux/amd64 compile-only coverage. This
+evidence-bearing candidate is author-validated but not accepted; genuinely
+fresh independent review remains required.
 Recovery R6 remains unauthorized. PSCAN-07 is unselected and PSCAN-08 remains
 inactive.**
 

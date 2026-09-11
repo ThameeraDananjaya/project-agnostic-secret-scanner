@@ -645,3 +645,19 @@ fresh independent review. The authority session runs no retry or Go. Recovery
 R5 remains terminal and consumed; Recovery R6 and every Docker, network,
 remote, tag, workflow, signing, publication, spending, subscription and
 successor gate remain closed.
+
+Fresh continuation session `01a09293-16a9-71f1-8e93-440952d83e2c` implemented
+only that fixture correction while preserving the carried integration patch
+byte-for-byte. Read these new records after the continuation authority:
+
+1. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-009-CONTINUATION-PREFLIGHT.md`
+2. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-009-CONTINUATION-IMPLEMENTATION.md`
+3. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-009-CONTINUATION-AUTHOR-VALIDATION.md`
+
+The exact pinned offline format, targeted, complete package, repository test,
+vet and 36-package Linux/amd64 compile-only matrix passed. The resulting
+evidence-bearing candidate is author validated, not accepted. A genuinely
+fresh independent review must inspect its exact commit and rerun proportionate
+complete offline checks. Recovery R5 remains terminal and consumed; Recovery
+R6 and every Docker, network, remote, tag, workflow, signing, publication,
+spending, subscription and successor gate remain closed.

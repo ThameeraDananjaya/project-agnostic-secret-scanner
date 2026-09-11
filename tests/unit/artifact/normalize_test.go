@@ -499,26 +499,44 @@ func TestCandidateExecutableIsDataOnly(t *testing.T) {
 }
 
 func TestDirectoryLinksAndCaseCollisionsFailClosed(t *testing.T) {
-	root := filepath.Join(t.TempDir(), "input")
-	writeFile(t, filepath.Join(root, "A", "one"), []byte("one"))
-	writeFile(t, filepath.Join(root, "a", "two"), []byte("two"))
-	_, err := artifact.Normalize(context.Background(), root, filepath.Join(t.TempDir(), "out"), limits())
-	if !artifact.IsCode(err, artifact.RejectUnsafe) {
-		t.Fatalf("case-colliding directories got %v", err)
-	}
-	target := filepath.Join(t.TempDir(), "target")
-	writeFile(t, target, []byte("target"))
-	root = filepath.Join(t.TempDir(), "links")
-	if err := os.Mkdir(root, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Symlink(target, filepath.Join(root, "link")); err != nil {
-		t.Skipf("symlinks unavailable: %v", err)
-	}
-	_, err = artifact.Normalize(context.Background(), root, filepath.Join(t.TempDir(), "out"), limits())
-	if !artifact.IsCode(err, artifact.RejectUnsafe) {
-		t.Fatalf("directory symlink got %v", err)
-	}
+	t.Run("case collision", func(t *testing.T) {
+		root := filepath.Join(t.TempDir(), "input")
+		upper := filepath.Join(root, "A")
+		lower := filepath.Join(root, "a")
+		writeFile(t, filepath.Join(upper, "one"), []byte("one"))
+		writeFile(t, filepath.Join(lower, "two"), []byte("two"))
+		upperInfo, err := os.Stat(upper)
+		if err != nil {
+			t.Fatal(err)
+		}
+		lowerInfo, err := os.Stat(lower)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if os.SameFile(upperInfo, lowerInfo) {
+			t.Skip("filesystem cannot represent distinct case-colliding directories")
+		}
+		_, err = artifact.Normalize(context.Background(), root, filepath.Join(t.TempDir(), "out"), limits())
+		if !artifact.IsCode(err, artifact.RejectUnsafe) {
+			t.Fatalf("case-colliding directories got %v", err)
+		}
+	})
+
+	t.Run("directory symlink", func(t *testing.T) {
+		target := filepath.Join(t.TempDir(), "target")
+		writeFile(t, target, []byte("target"))
+		root := filepath.Join(t.TempDir(), "links")
+		if err := os.Mkdir(root, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(target, filepath.Join(root, "link")); err != nil {
+			t.Skipf("symlinks unavailable: %v", err)
+		}
+		_, err := artifact.Normalize(context.Background(), root, filepath.Join(t.TempDir(), "out"), limits())
+		if !artifact.IsCode(err, artifact.RejectUnsafe) {
+			t.Fatalf("directory symlink got %v", err)
+		}
+	})
 }
 
 func TestProductProfilesAreExactAndCannotBeExpanded(t *testing.T) {

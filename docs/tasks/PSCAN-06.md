@@ -1243,3 +1243,25 @@ Recovery R5 remains terminal and consumed; Recovery R6 and all Go in this
 authority session, Docker, network, remote, tag, workflow, signing,
 publication, spending, subscription and successor actions remain
 unauthorized. PSCAN-06 remains open and unaccepted overall.
+
+## Correction C2 iteration 009 continuation candidate
+
+Fresh continuation session `01a09293-16a9-71f1-8e93-440952d83e2c` began from
+exact continuation-authority commit
+`f4c77e239adbb83f5af90741373b22f0bda2c4da` with only the two exact carried
+paths. It changed only the newly authorized combined fixture in
+`tests/unit/artifact/normalize_test.go`: clear subtests now separate case-
+collision capability from directory-symlink rejection; `os.Stat` plus
+`os.SameFile` gates only the collision skip; both exact capable-filesystem
+`RejectUnsafe` assertions remain; and no OS-name branch exists.
+
+The original integration patch remained byte-for-byte exact. The pinned Go
+1.27.1 toolchain, frozen `(RX)` module cache, `go mod verify`, formatting,
+targeted helper/preservation/collision/symlink tests, both complete packages,
+`go test -count=1 ./...`, `go vet ./...` and compile-only Linux/amd64 coverage
+for all 36 packages passed. Exact evidence is in the iteration-009 continuation
+preflight, implementation and author-validation records. This is an author-
+validated candidate, not acceptance. A genuinely fresh independent review is
+required. Recovery R5 remains terminal and consumed; Recovery R6 and all
+Docker, network, remote, release, spending and successor work remain
+unauthorized. PSCAN-06 remains open and unaccepted overall.

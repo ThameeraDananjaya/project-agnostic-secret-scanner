@@ -7,7 +7,7 @@
 | PSCAN-03 | Rejected and closed fail-closed; not accepted | `evidence/PSCAN-03/CLOSEOUT-REJECTED.md` |
 | PSCAN-04 | Completed and independently accepted locally | Exact activation `a21b030e1658f1f98ac4e4d001af12185d9ed311`; evidence-bearing closeout commit |
 | PSCAN-05 | Completed and independently accepted locally | Exact activation `50b4186`; corrected evidence-bearing closeout commit |
-| PSCAN-06 | Correction C2 iteration 006 candidate `cf1679f9bca24887340fa4060f37d1ebff21f305`, tree `6cb0198c71881baff9c601c31ad6aa84217f4a49`, remains independently accepted locally; Recovery R5 remains terminal; iteration 007 candidate `230e1761f7c45d9629cecf360e7498b33d64ab6f`, tree `5d74628d76f95e150c0ea1de51b4892af2350a7d`, remains independently rejected; iteration 008 stopped with no candidate after reproducing the pre-existing formatter and Windows synthetic-Cosign fixture failures; iteration 009 was claimed and retains exactly two unstaged/uncommitted work paths; its owner-approved continuation adds only the inherited unit-test fixture path and is unclaimed and unimplemented; PSCAN-06 remains open and unaccepted overall | Iteration 009 continuation authority: `evidence/PSCAN-06/CORRECTION-C2-ITERATION-009-CONTINUATION-AUTHORITY.md`; a genuinely fresh continuation must carry the two exact bound work paths, apply only the test-fixture correction, rerun the complete offline matrix and stop for independent review; no R6, Docker, network, remote, workflow, tag, release or successor action is authorized |
+| PSCAN-06 | Correction C2 iteration 006 candidate `cf1679f9bca24887340fa4060f37d1ebff21f305`, tree `6cb0198c71881baff9c601c31ad6aa84217f4a49`, remains independently accepted locally; Recovery R5 remains terminal; iteration 007 candidate `230e1761f7c45d9629cecf360e7498b33d64ab6f`, tree `5d74628d76f95e150c0ea1de51b4892af2350a7d`, remains independently rejected; iteration 008 stopped with no candidate; iteration 009 continuation is implemented and complete author validation passed, with genuinely fresh independent review pending; PSCAN-06 remains open and unaccepted overall | Iteration 009 continuation authority and author evidence are under `evidence/PSCAN-06/CORRECTION-C2-ITERATION-009-*`; the exact evidence-bearing candidate must receive fresh independent review before acceptance; no R6, Docker, network, remote, workflow, tag, release or successor action is authorized |
 | PSCAN-07 | Proposed; unselected; signing/publication gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-06 |
 | PSCAN-08 | Inactive; technically and legally gated | Material-gap evidence plus separate owner approval required |
 | PSCAN-09 | Completed and independently accepted locally | Activation `f486989`; accepted closeout commit |
@@ -603,3 +603,17 @@ the two bound dirty paths, rerun the complete offline iteration 009 matrix and
 stop for independent review. This authority session performs no retry, Go,
 Docker, network, remote, tag, workflow, signing, publication, spending,
 subscription, R6 or successor action.
+
+Fresh continuation session `01a09293-16a9-71f1-8e93-440952d83e2c` then
+claimed only iteration 009 from exact continuation-authority commit
+`f4c77e239adbb83f5af90741373b22f0bda2c4da`, while carrying the two exact
+bound work paths. It split only the inherited combined unit fixture, using
+`os.Stat` and `os.SameFile` to skip only an unrepresentable case-collision
+subtest while retaining the capable-filesystem and directory-symlink
+`RejectUnsafe` assertions. The carried integration patch remained byte-for-
+byte unchanged. Exact tool/cache admission, formatting, targeted tests, both
+complete packages, repository-wide tests, vet and compile-only Linux/amd64
+coverage for all 36 packages passed. This evidence-bearing candidate is author
+validated, not accepted; genuinely fresh independent review remains pending.
+Recovery R5 remains terminal and consumed, Recovery R6 remains unauthorized,
+and no successor is selected or activated.

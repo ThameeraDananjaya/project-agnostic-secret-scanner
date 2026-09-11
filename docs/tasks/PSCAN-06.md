@@ -777,3 +777,25 @@ Any further attempt requires trusted current billing, artifact-storage
 allowance and stop-usage evidence plus a new exact owner decision. PSCAN-06
 remains open and unaccepted overall; PSCAN-07 remains proposed and unselected;
 PSCAN-08 remains inactive and ineligible.
+
+## Correction C2 main-branch execution Recovery R4
+
+On 2026-09-11 the owner exactly authorized one bounded Recovery R4 attempt from
+Recovery R3 failure record SHA-256
+`339E5D66B655B5753D239D5347F1BBAFF0E5858C4CCC289368196D014AE07C12` at
+evidence commit `6b7ae32f8768c1e4687e5134696688088f65386b`. Approval-time
+read-only verification confirmed the authenticated account now has the `user`
+scope, current Actions Linux and storage usage both have net amount `USD 0`,
+and the account-level Actions budget is `USD 0` with stop usage enabled.
+
+Recovery R4 preserves maximum spend `USD 0`, at most one workflow dispatch,
+one unsigned uncompressed workflow artifact retained for one day, no local
+Docker action, and the prohibitions on signing, attestation, drafting,
+publication, rerun and successor work. Exact authority is recorded in
+`evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R4-AUTHORITY.md`.
+This authority-recording session does not claim or execute Recovery R4. A
+genuinely fresh saved-project `main` task must begin from the committed R4
+authority bundle and repeat the complete fail-closed preflight before any
+remote mutation or workflow action. PSCAN-06 remains open and unaccepted
+overall; PSCAN-07 remains proposed and unselected; PSCAN-08 remains inactive
+and ineligible.

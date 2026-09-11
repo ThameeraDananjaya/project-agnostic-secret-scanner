@@ -7,7 +7,7 @@
 | PSCAN-03 | Rejected and closed fail-closed; not accepted | `evidence/PSCAN-03/CLOSEOUT-REJECTED.md` |
 | PSCAN-04 | Completed and independently accepted locally | Exact activation `a21b030e1658f1f98ac4e4d001af12185d9ed311`; evidence-bearing closeout commit |
 | PSCAN-05 | Completed and independently accepted locally | Exact activation `50b4186`; corrected evidence-bearing closeout commit |
-| PSCAN-06 | Correction C2 iteration 005 is independently accepted locally; the first proof-gate execution and Recoveries R1-R3 failed closed before remote mutation; Recovery R3 passed authentication but stopped on permission-denied billing and stop-usage evidence with zero mutations or workflow dispatches; PSCAN-06 remains open and unaccepted overall | Recovery R3 failure: `evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R3-FAILURE-001.md` |
+| PSCAN-06 | Correction C2 iteration 005 is independently accepted locally; the first proof-gate execution and Recoveries R1-R3 failed closed before remote mutation; Recovery R4 is owner-approved after trusted zero-net billing, storage-allowance and stop-usage read-back, but is unclaimed and unexecuted; PSCAN-06 remains open and unaccepted overall | Recovery R4 authority: `evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R4-AUTHORITY.md` |
 | PSCAN-07 | Proposed; unselected; signing/publication gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-06 |
 | PSCAN-08 | Inactive; technically and legally gated | Material-gap evidence plus separate owner approval required |
 | PSCAN-09 | Completed and independently accepted locally | Activation `f486989`; accepted closeout commit |
@@ -253,3 +253,20 @@ A further attempt requires trusted current billing, artifact-storage allowance
 and stop-usage evidence plus a new exact owner decision. PSCAN-06 remains open
 and unaccepted overall; PSCAN-07 remains proposed and unselected; PSCAN-08
 remains inactive and ineligible.
+
+On 2026-09-11 the owner exactly authorized one bounded Recovery R4 attempt from
+the immutable Recovery R3 failure record SHA-256
+`339E5D66B655B5753D239D5347F1BBAFF0E5858C4CCC289368196D014AE07C12` at
+evidence commit `6b7ae32f8768c1e4687e5134696688088f65386b`. Read-only
+verification confirmed the active GitHub credential includes the required
+`user` scope; current Actions Linux and storage usage each have net amount
+`USD 0`; and the account-level Actions budget is `USD 0` with stop usage
+enabled. Exact authority is recorded in
+`evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R4-AUTHORITY.md`.
+Recovery R4 is owner-approved, not claimed and not executed. A genuinely fresh
+saved-project `main` task must begin from the committed R4 authority bundle and
+repeat every current preflight check. This session performs no remote mutation,
+workflow dispatch, Docker, artifact, signing, attestation, draft, publication,
+rerun or successor work. PSCAN-06 remains open and unaccepted overall;
+PSCAN-07 remains proposed and unselected; PSCAN-08 remains inactive and
+ineligible.

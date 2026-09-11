@@ -7,7 +7,7 @@
 | PSCAN-03 | Rejected and closed fail-closed; not accepted | `evidence/PSCAN-03/CLOSEOUT-REJECTED.md` |
 | PSCAN-04 | Completed and independently accepted locally | Exact activation `a21b030e1658f1f98ac4e4d001af12185d9ed311`; evidence-bearing closeout commit |
 | PSCAN-05 | Completed and independently accepted locally | Exact activation `50b4186`; corrected evidence-bearing closeout commit |
-| PSCAN-06 | Correction C2 iteration 006 candidate `cf1679f9bca24887340fa4060f37d1ebff21f305`, tree `6cb0198c71881baff9c601c31ad6aa84217f4a49`, remains independently accepted locally; Recovery R5 remains terminal; iteration 007 candidate `230e1761f7c45d9629cecf360e7498b33d64ab6f`, tree `5d74628d76f95e150c0ea1de51b4892af2350a7d`, is independently rejected because its mandatory workflow-preservation regression globally rewrites `2.2` and falsely changes the unchanged `v4.2.2` action comment, guaranteeing test failure; PSCAN-06 remains open and unaccepted overall | Iteration 007 rejection: `evidence/PSCAN-06/CORRECTION-C2-ITERATION-007-REVIEW-REJECTED.md`; no repair, R6, remote, workflow, tag, release or successor action is authorized by the review |
+| PSCAN-06 | Correction C2 iteration 006 candidate `cf1679f9bca24887340fa4060f37d1ebff21f305`, tree `6cb0198c71881baff9c601c31ad6aa84217f4a49`, remains independently accepted locally; Recovery R5 remains terminal; iteration 007 candidate `230e1761f7c45d9629cecf360e7498b33d64ab6f`, tree `5d74628d76f95e150c0ea1de51b4892af2350a7d`, remains independently rejected solely for its global `2.2` workflow-preservation normalization; iteration 008 is owner-approved, unclaimed and limited to the exact identity-specific preservation-test repair plus append-only evidence/living-state sync; PSCAN-06 remains open and unaccepted overall | Iteration 008 authority: `evidence/PSCAN-06/CORRECTION-C2-ITERATION-008-AUTHORITY.md`; no R6, remote, workflow, tag, release or successor action is authorized |
 | PSCAN-07 | Proposed; unselected; signing/publication gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-06 |
 | PSCAN-08 | Inactive; technically and legally gated | Material-gap evidence plus separate owner approval required |
 | PSCAN-09 | Completed and independently accepted locally | Activation `f486989`; accepted closeout commit |
@@ -514,3 +514,24 @@ genuine-Docker, dependency, build, reproducibility and artifact-integrity
 proof remains open. PSCAN-06 remains open and unaccepted overall; PSCAN-07
 remains proposed and unselected; PSCAN-08 remains inactive and ineligible. No
 successor is selected or activated.
+
+On 2026-09-11 the owner selected Correction C2 iteration 008 as the minimal
+append-only correction to the sole iteration-007 review finding. Exact
+authority is in
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-008-AUTHORITY.md`.
+
+Iteration 008 may edit only the workflow-normalization portion of
+`tests/integration/supply-chain/release_test.go`, add new iteration-008
+evidence and synchronize the four named living-state documents. It must
+replace the global workflow `2.2` normalization with exact, occurrence-bound
+normalization of the single manifest-schema assertion while preserving the
+unchanged `# v4.2.2` action comment and every coherent iteration-007 workflow,
+schema, builder, Docker, verifier, product and acceptance-test byte.
+
+The owner supplied an exact local Go 1.27.1 executable and frozen module cache
+for future offline implementation/review checks. A fresh session must re-prove
+that toolchain identity, use fresh external build/temp caches and the exact
+offline environment locks recorded in the authority. This authority session
+does not execute Go or edit the test. Recovery R5 remains terminal and
+consumed; Recovery R6 remains unauthorized. PSCAN-06 remains the sole open
+task and unaccepted overall; no successor is selected or activated.

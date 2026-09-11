@@ -106,6 +106,7 @@ fresh implementation session:
 101. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-007-PREFLIGHT.md`
 102. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-007-IMPLEMENTATION.md`
 103. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-007-REVIEW-REJECTED.md`
+104. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-008-AUTHORITY.md`
 
 Then verify the exact activation commit, branch and clean Git status; the
 activated allowed and forbidden paths; the absence of another selected,
@@ -538,3 +539,29 @@ refinement or acceptance claim:
 The reviewer did not repair the candidate. Recovery R5 remains terminal and
 consumed; Recovery R6 remains unauthorized. All Docker, dependency, build,
 artifact, remote, signing, publication and successor gates remain closed.
+
+The owner then selected Correction C2 iteration 008 as the minimal bounded
+authority needed to repair the sole iteration-007 review finding. Read the
+new authority completely before any claim, edit or validation:
+
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-008-AUTHORITY.md`
+
+Iteration 008 may modify only the workflow-normalization portion of
+`tests/integration/supply-chain/release_test.go`, add new append-only
+iteration-008 evidence and synchronize the named living-state records. It
+must replace the global `2.2` workflow normalization with exact,
+occurrence-bound replacements for only the selected R6 identity, workflow,
+reference and manifest-schema assertion tokens. The unchanged `# v4.2.2`
+action comment and every coherent workflow, schema, builder, Docker,
+verifier, product and acceptance-test byte remain immutable.
+
+The owner supplied an exact local Go 1.27.1 path and frozen module cache for
+future offline validation. The implementation and independent review must
+each re-prove the exact toolchain, keep the module cache unchanged, use fresh
+external build/temp caches, enforce the authority's complete offline
+environment and assert every native exit code. This authority session does
+not run Go or edit the test.
+
+Recovery R5 remains terminal and consumed. Recovery R6 remains unauthorized.
+No Docker, dependency download, network, remote, tag, workflow, signing,
+publication, spending or successor action is conferred by iteration 008.

@@ -12,8 +12,10 @@ Recovery R6 is invalid because the immutable C2 tag, workflow and schema bind
 the pre-fix tooling commit. Correction C2 iteration 007 candidate `230e176` is
 independently rejected because its mandatory workflow-preservation regression
 globally rewrites `2.2` and falsely changes an unchanged `v4.2.2` action
-comment. No repair or R6 execution is authorized. PSCAN-07 is unselected and
-PSCAN-08 remains inactive.**
+comment. Correction C2 iteration 008 is owner-approved, unclaimed and limited
+to that exact test normalization plus append-only evidence/living-state sync.
+Recovery R6 remains unauthorized. PSCAN-07 is unselected and PSCAN-08 remains
+inactive.**
 
 The public repository and locked product tag `v1.0.0` exist, but the authorized
 release workflow failed closed before building and no signed release exists.

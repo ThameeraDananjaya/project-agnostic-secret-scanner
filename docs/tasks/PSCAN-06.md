@@ -1104,3 +1104,37 @@ successor action is authorized by this review. Actual-Linux, genuine-Docker,
 dependency, build, reproducibility and artifact-integrity proof remains open.
 PSCAN-06 remains open and unaccepted overall; PSCAN-07 remains proposed and
 unselected; PSCAN-08 remains inactive and ineligible.
+
+## Correction C2 iteration 008 preservation-test authority
+
+The owner selected iteration 008 as the minimal append-only correction after
+the iteration-007 independent review. Candidate
+`230e1761f7c45d9629cecf360e7498b33d64ab6f`, tree
+`5d74628d76f95e150c0ea1de51b4892af2350a7d`, remains immutable and rejected
+for one bounded reason: its workflow-preservation test globally replaces every
+`2.2` substring, changing the unchanged `# v4.2.2` action comment and forcing
+a false comparison failure. The workflow/schema identity design and all other
+recorded no-Docker/static checks remain green evidence, not acceptance.
+
+Iteration 008 is owner-approved, unclaimed and not implemented. It may change
+only the workflow-normalization portion of
+`tests/integration/supply-chain/release_test.go`, add new append-only
+iteration-008 evidence and synchronize `README.md`, this task, the reading map
+and tracker. The repair must normalize only the exact intended R6
+workflow/schema-operation/reference tokens with proved occurrence counts,
+preserve `# v4.2.2`, and keep every workflow, schema, builder, Docker,
+verifier, product and acceptance-test byte unchanged.
+
+Exact scope, byte identities, offline Go 1.27.1 validation route, acceptance
+matrix and exclusions are controlling in:
+
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-008-AUTHORITY.md`
+
+This authority-recording session does not edit the test or execute Go. A
+genuinely fresh session must claim only iteration 008 from the exact committed
+authority bundle, perform the bounded repair, validate it offline and stop for
+fresh independent review. Recovery R5 remains terminal and consumed; Recovery
+R6 remains unauthorized. No Docker, dependency download, network, remote,
+tag, workflow, signing, publication, spending or successor action is
+authorized. PSCAN-06 remains open and unaccepted overall; PSCAN-07 remains
+proposed and unselected; PSCAN-08 remains inactive and ineligible.

@@ -452,3 +452,25 @@ All three candidates and rejection records remain immutable. No repair is
 authorized by the review. Recovery R5 remains terminal; all actual-Linux,
 Docker, dependency, build, reproducibility, artifact, remote and successor
 gates remain closed.
+
+The same claimed implementation session subsequently performed a third
+bounded regression refinement under the existing iteration-006 authority.
+Read its append-only refinement and fourth author-validation records:
+
+1. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-REFINEMENT-003.md`
+2. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-AUTHOR-VALIDATION-004.md`
+
+Third refined author candidate
+`cf1679f9bca24887340fa4060f37d1ebff21f305`, tree
+`6cb0198c71881baff9c601c31ad6aa84217f4a49`, preserves production blob
+`2fb43bf89df352e9153ba5d7ad23fd59cad77749`. Public `VariablePath` scope
+flags plus exact complete `UserPath` equality now distinguish runtime-proven
+automatic PID forms from legal multi-colon variables and provider paths. All
+earlier typed, parenthesized, nested, multiple-target and non-target cases
+remain covered, and the complete exact-candidate no-Docker matrix passes.
+
+This candidate has author validation only. A fourth genuinely fresh skeptical
+task must inspect that exact commit before any local acceptance. Every earlier
+candidate and rejection remains immutable. Recovery R5 remains terminal; all
+actual-Linux, Docker, dependency, build, reproducibility, artifact, remote and
+successor gates remain closed.

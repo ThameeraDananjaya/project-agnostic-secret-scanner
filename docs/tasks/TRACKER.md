@@ -425,3 +425,24 @@ consumed; actual-Linux, genuine-Docker, dependency, build, reproducibility and
 artifact-integrity proof remains open. PSCAN-06 remains open and unaccepted
 overall; PSCAN-07 remains proposed and unselected; PSCAN-08 remains inactive
 and ineligible. No successor is selected or activated.
+
+The same claimed implementation session then produced a third bounded
+regression refinement. Author candidate
+`cf1679f9bca24887340fa4060f37d1ebff21f305`, tree
+`6cb0198c71881baff9c601c31ad6aa84217f4a49`, preserves production blob
+`2fb43bf89df352e9153ba5d7ad23fd59cad77749`. Its exact predicate uses public
+`VariablePath` scope flags and complete `UserPath` equality, retaining every
+earlier assignment-target wrapper and non-target control while adding parser
+and isolated runtime proof for actual automatic PID scopes versus the
+multi-colon/provider controls from the third review. Exact source trust,
+parsing, two-path confinement, data flow and the complete available-host
+no-Docker native matrix pass. Evidence is in
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-REFINEMENT-003.md` and
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-AUTHOR-VALIDATION-004.md`.
+
+This is author evidence, not independent acceptance. Recovery R5 remains
+terminally failed and consumed; actual-Linux, genuine-Docker, dependency,
+build, reproducibility and artifact-integrity proof remains open. PSCAN-06
+remains open and unaccepted overall; PSCAN-07 remains proposed and unselected;
+PSCAN-08 remains inactive and ineligible. No successor is selected or
+activated.

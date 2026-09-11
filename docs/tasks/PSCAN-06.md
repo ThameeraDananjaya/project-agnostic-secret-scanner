@@ -994,3 +994,30 @@ publication or successor action. Actual-Linux, genuine-Docker, dependency,
 build, reproducibility and artifact-integrity proof remains open. PSCAN-06
 remains open and unaccepted overall; PSCAN-07 remains proposed and unselected;
 PSCAN-08 remains inactive and ineligible.
+
+The same claimed implementation session then refined only the regression a
+third time while preserving all three rejected candidates and review records.
+Third refined author candidate
+`cf1679f9bca24887340fa4060f37d1ebff21f305`, tree
+`6cb0198c71881baff9c601c31ad6aa84217f4a49`, leaves production blob
+`2fb43bf89df352e9153ba5d7ad23fd59cad77749` unchanged. The predicate now uses
+public `VariablePath` scope flags and exact whole `UserPath` equality for only
+the runtime-proven automatic PID forms. It no longer splits arbitrary legal
+variable names on colons.
+
+All earlier wrapper positives and controls remain bound to the exact production
+predicate. New parser and isolated runtime cases prove unqualified,
+`variable:`, global, script, local and private PID targets collide, while the
+third-review multi-colon variables and env/function provider targets do not.
+Exact-commit source trust, both parsers, two-path confinement, committed-byte
+identities and the complete available-host no-Docker matrix pass. Evidence is
+in `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-REFINEMENT-003.md` and
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-AUTHOR-VALIDATION-004.md`.
+This is author evidence only; a fourth fresh independent review is required.
+
+Recovery R5 remains terminally failed and consumed. No remote read or
+mutation, Docker, tag change, workflow dispatch or rerun, signing,
+publication or successor action is authorized. Actual-Linux, genuine-Docker,
+dependency, build, reproducibility and artifact-integrity proof remains open.
+PSCAN-06 remains open and unaccepted overall; PSCAN-07 remains proposed and
+unselected; PSCAN-08 remains inactive and ineligible.

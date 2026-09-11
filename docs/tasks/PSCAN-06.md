@@ -954,3 +954,31 @@ successor action. Actual-Linux, genuine-Docker, dependency, build,
 reproducibility and artifact-integrity proof remains open. PSCAN-06 remains
 open and unaccepted overall; PSCAN-07 remains proposed and unselected;
 PSCAN-08 remains inactive and ineligible.
+
+The same claimed implementation session then refined only the regression a
+second time while preserving both rejected candidates and rejection records.
+Second refined author candidate
+`763730403ae538850e9d806ce9db82c815517b2d`, tree
+`05c0baba5e61edb808b918a2dd6c853f49b8955e`, leaves production blob
+`2fb43bf89df352e9153ba5d7ad23fd59cad77749` unchanged. Its principled walker
+follows only exact assignment-target typed/attributed, parenthesized
+pipeline/command-expression and recursively nested multiple-target wrappers;
+member/index and drive-qualified non-automatic targets remain controls.
+
+The exact earlier untyped/typed cases, all three second-review counterexamples,
+nested wrapper cases and RHS/string/comment/ledger/member/index controls are
+bound to the production predicate. Exact-commit source trust, both parsers,
+two-path confinement, committed-byte identities and the complete available-
+host no-Docker native matrix pass. Evidence is in
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-REFINEMENT-002.md` and
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-AUTHOR-VALIDATION-003.md`.
+This is author evidence only; fresh independent review is still required and
+no acceptance is claimed.
+
+Recovery R5 remains terminally failed and its sole tag push and workflow
+dispatch remain consumed. This refinement authorizes no remote read or
+mutation, Docker, tag change, workflow dispatch or rerun, signing,
+publication or successor action. Actual-Linux, genuine-Docker, dependency,
+build, reproducibility and artifact-integrity proof remains open. PSCAN-06
+remains open and unaccepted overall; PSCAN-07 remains proposed and unselected;
+PSCAN-08 remains inactive and ineligible.

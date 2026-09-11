@@ -384,3 +384,24 @@ consumed; actual-Linux, genuine-Docker, dependency, build, reproducibility and
 artifact-integrity proof remains open. PSCAN-06 remains open and unaccepted
 overall; PSCAN-07 remains proposed and unselected; PSCAN-08 remains inactive
 and ineligible. No successor is selected or activated.
+
+The same claimed implementation session then produced a second bounded
+regression refinement after preserving both rejected candidates and review
+records. Author candidate `763730403ae538850e9d806ce9db82c815517b2d`, tree
+`05c0baba5e61edb808b918a2dd6c853f49b8955e`, keeps production blob
+`2fb43bf89df352e9153ba5d7ad23fd59cad77749` byte-identical. The exact
+assignment-left walker now covers typed/attributed, parenthesized and nested
+multiple-target wrappers, including the three second-review counterexamples,
+while member/index, drive-qualified, RHS, string/comment and ledger-property
+cases remain negative controls. Exact source trust, parsing, two-path
+confinement, data flow and the complete available-host no-Docker native matrix
+pass. Evidence is in
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-REFINEMENT-002.md` and
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-AUTHOR-VALIDATION-003.md`.
+
+This is author evidence, not independent acceptance. Recovery R5 remains
+terminally failed and consumed; actual-Linux, genuine-Docker, dependency,
+build, reproducibility and artifact-integrity proof remains open. PSCAN-06
+remains open and unaccepted overall; PSCAN-07 remains proposed and unselected;
+PSCAN-08 remains inactive and ineligible. No successor is selected or
+activated.

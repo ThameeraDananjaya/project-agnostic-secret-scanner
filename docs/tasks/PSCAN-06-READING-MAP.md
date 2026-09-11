@@ -417,3 +417,26 @@ is authorized by the review. Recovery R5 remains terminal, all actual-Linux,
 Docker, dependency, build, reproducibility, artifact and remote proof remains
 open, and every workflow, tag, signing, publication and successor gate remains
 closed.
+
+The same claimed implementation session subsequently performed a second
+bounded regression refinement under the existing iteration-006 authority.
+Read its append-only refinement and third author-validation records:
+
+1. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-REFINEMENT-002.md`
+2. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-AUTHOR-VALIDATION-003.md`
+
+Second refined author candidate
+`763730403ae538850e9d806ce9db82c815517b2d`, tree
+`05c0baba5e61edb808b918a2dd6c853f49b8955e`, preserves production blob
+`2fb43bf89df352e9153ba5d7ad23fd59cad77749`. Its exact assignment-left walker
+covers typed/attributed, parenthesized pipeline/command-expression and nested
+multiple-target wrappers without searching member/index descendants. The
+three second-review counterexamples and broader positive/control probes are
+bound to the exact production predicate. Exact author checks and the complete
+available-host no-Docker matrix pass.
+
+This candidate has author validation only. A separate genuinely fresh
+skeptical task must inspect that exact commit before any local acceptance.
+Both earlier candidates and rejection records remain immutable. Recovery R5
+remains terminal; all actual-Linux, Docker, dependency, build,
+reproducibility, artifact, remote and successor gates remain closed.

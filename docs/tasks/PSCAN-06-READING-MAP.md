@@ -360,3 +360,19 @@ network, remote read or mutation, tag change, workflow dispatch or rerun,
 signing, publication or successor work. Recovery R5 remains terminal and
 actual-Linux, genuine-Docker, dependency, build, reproducibility and artifact
 proof remains open. PSCAN-06 remains open and unaccepted overall.
+
+Iteration 006 was subsequently claimed alone in genuinely fresh saved-project
+session `01a08fe9-ffdf-73e1-a8a9-c5c7d7424ba2` from exact authority commit
+`de162e8c347c725a0f041d3c8b0f51df1211c12d`. Bounded author candidate
+`8fbbf7b695aa7f0c995dd0a655d40ddd7fc16fb4`, tree
+`de70410df5ec359b85d03262e46c8d2ed5f2d822`, passed exact-commit source trust,
+the case-insensitive PID-assignment regression and the complete available-host
+local no-Docker native matrix. Read these records before review:
+
+1. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-PREFLIGHT.md`
+2. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-IMPLEMENTATION.md`
+3. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-AUTHOR-VALIDATION.md`
+
+This author result is not local acceptance. Independent skeptical review
+remains required. Recovery R5 remains terminal, every remote and Docker gate
+remains closed, and no successor is selected or activated.

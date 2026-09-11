@@ -7,7 +7,7 @@
 | PSCAN-03 | Rejected and closed fail-closed; not accepted | `evidence/PSCAN-03/CLOSEOUT-REJECTED.md` |
 | PSCAN-04 | Completed and independently accepted locally | Exact activation `a21b030e1658f1f98ac4e4d001af12185d9ed311`; evidence-bearing closeout commit |
 | PSCAN-05 | Completed and independently accepted locally | Exact activation `50b4186`; corrected evidence-bearing closeout commit |
-| PSCAN-06 | Correction C2 iteration 006 is owner-approved, unclaimed and unimplemented for the local-only PowerShell PID-collision defect proved by terminal Recovery R5; no Docker, network, remote, tag, workflow, signing, publication or successor action is authorized; PSCAN-06 remains open and unaccepted overall | Iteration 006 authority: `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-AUTHORITY.md`; immutable R5 failure SHA-256 `53C85B1E4ADCFDC3866B9D2194374B7098C296CA11ECDE3050963551566868F0` |
+| PSCAN-06 | Correction C2 iteration 006 is claimed and locally implemented as author candidate `8fbbf7b695aa7f0c995dd0a655d40ddd7fc16fb4`, tree `de70410df5ec359b85d03262e46c8d2ed5f2d822`; exact-commit author checks pass, but independent skeptical review and local acceptance remain open; Recovery R5 remains terminal and no Docker, network, remote, tag, workflow, signing, publication or successor action is authorized; PSCAN-06 remains open and unaccepted overall | Iteration 006 authority: `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-AUTHORITY.md`; author validation: `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-AUTHOR-VALIDATION.md` |
 | PSCAN-07 | Proposed; unselected; signing/publication gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-06 |
 | PSCAN-08 | Inactive; technically and legally gated | Material-gap evidence plus separate owner approval required |
 | PSCAN-09 | Completed and independently accepted locally | Activation `f486989`; accepted closeout commit |
@@ -333,9 +333,14 @@ On 2026-09-11 the owner exactly approved Correction C2 iteration 006 from that
 immutable failure at evidence commit
 `da45bb19480663aa21e9a67754ad509834dcaed7`. The iteration is limited to the
 local PowerShell PID-collision repair, bounded no-Docker regression evidence
-and synchronized PSCAN-06 records. It is owner-approved, unclaimed,
-unimplemented and unaccepted. A genuinely fresh session must claim it from the
-committed authority bundle. No Docker, network, remote read or mutation, tag
-change, workflow dispatch or rerun, signing, publication or successor work is
-authorized. PSCAN-06 remains open and unaccepted overall; PSCAN-07 remains
-proposed and unselected; PSCAN-08 remains inactive and ineligible.
+and synchronized PSCAN-06 records. Genuinely fresh saved-project session
+`01a08fe9-ffdf-73e1-a8a9-c5c7d7424ba2` claimed only iteration 006 from exact
+authority commit `de162e8c347c725a0f041d3c8b0f51df1211c12d` and produced
+bounded author candidate `8fbbf7b695aa7f0c995dd0a655d40ddd7fc16fb4`, tree
+`de70410df5ec359b85d03262e46c8d2ed5f2d822`. The exact source regression and
+complete available-host no-Docker native matrix pass. This is author evidence,
+not independent acceptance. No Docker, network, remote read or mutation, tag
+change, workflow dispatch or rerun, signing, publication or successor work was
+performed or authorized. PSCAN-06 remains open and unaccepted overall;
+PSCAN-07 remains proposed and unselected; PSCAN-08 remains inactive and
+ineligible.

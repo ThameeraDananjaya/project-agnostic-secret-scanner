@@ -912,10 +912,15 @@ release, schema and product boundary remains unchanged.
 
 Exact scope, checks and exclusions are controlling in
 `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-AUTHORITY.md`. Iteration 006 is
-owner-approved but unclaimed, unimplemented and unaccepted. This approval
-session records authority only. A genuinely fresh session must begin from the
-committed authority bundle, claim only iteration 006 and remain local-only and
-no-Docker/no-network.
+owner-approved and was subsequently claimed alone in genuinely fresh saved-
+project session `01a08fe9-ffdf-73e1-a8a9-c5c7d7424ba2` from exact authority
+commit `de162e8c347c725a0f041d3c8b0f51df1211c12d`. Bounded local author
+candidate `8fbbf7b695aa7f0c995dd0a655d40ddd7fc16fb4`, tree
+`de70410df5ec359b85d03262e46c8d2ed5f2d822`, renames only the colliding local
+binding and its two dependent uses and adds the exact-source regression. The
+complete available-host local no-Docker matrix and exact-commit source checks
+pass. This is author validation, not independent acceptance. A separate fresh
+skeptical review remains required.
 
 Recovery R5 remains terminally failed and its sole tag push and workflow
 dispatch remain consumed. This correction authorizes no remote read or

@@ -268,3 +268,33 @@ acquisition, two complete builds, byte comparison, workflow identity and
 artifact read-back remain unproved and require a new exact authority in a
 genuinely fresh execution session. Signing, attestation, draft creation and
 publication remain separate later gates.
+
+## Correction C2 iteration 007 validation addendum
+
+Iteration 007 additionally requires local, no-download and no-Docker proof
+that:
+
+1. the old C2 workflow SHA-256 remains
+   `C5F40F1B32E87C005FE33EE607AF7E3D19EE4F0173C21619E21158C31AA0BDB4`
+   and schema-2.1 SHA-256 remains
+   `CAA9CD26665CC3A3550AFFEA7490A0F1F277A69B10B1F1537787616E8AB973CE`;
+2. the R6 workflow differs from the old workflow only in its selected
+   name/concurrency, tag/ref, workflow path, certificate identity and schema
+   2.2 assertion;
+3. schema 2.2 differs from schema 2.1 only in its version/title/identifier and
+   exact R6 tag/ref/path/certificate identity;
+4. the builder, embedded verifier, generic verifier and schema agree on
+   `release-tooling-v1.0.0-c2-r6`,
+   `.github/workflows/release-recovery-v1.0.0-c2-r6.yml`, its exact tag ref and
+   schema 2.2;
+5. historical schema 2.0/C1 and 2.1/C2 manifests continue to parse only under
+   their original identities, while old-under-2.2 and new-under-2.1 mixtures
+   reject one field at a time;
+6. exact-tree materialization ships schemas 2.0, 2.1 and 2.2 without changing
+   the accepted PID predicate/data flow or Docker operation table; and
+7. graphify-aware current-checkout trust plus a separate clean committed-tree
+   materialization, parsers, tests, path confinement and cleanup all pass.
+
+Author validation is non-acceptance. No Docker, download, remote read or
+mutation, tag, workflow, signing, publication, spending or successor action is
+part of this addendum. Recovery R6 remains unauthorized.

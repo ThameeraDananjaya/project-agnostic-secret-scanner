@@ -1053,7 +1053,11 @@ known defect, using the accepted candidate as input fails the SHA gate, using
 a new ref fails the ref gate, and moving the protected tag would violate
 immutable evidence.
 
-Iteration 007 is therefore owner-approved, unclaimed and local-only. It
+Iteration 007 was owner-approved, unclaimed and local-only at its authority
+commit. Fresh saved-project session
+`01a09151-048a-7bf3-a3a6-2d0c26415f10` then claimed only iteration 007 from
+the exact clean authority commit and implemented the bounded append-only
+identity candidate. It
 selects exact proposed identity `release-tooling-v1.0.0-c2-r6`, new workflow
 path `.github/workflows/release-recovery-v1.0.0-c2-r6.yml` and additive
 manifest schema 2.2. It may implement and locally verify only the append-only
@@ -1061,12 +1065,17 @@ identity/version roll-forward under the exact path and preservation rules in:
 
 `evidence/PSCAN-06/CORRECTION-C2-ITERATION-007-AUTHORITY.md`
 
-This authority-recording session creates no schema, workflow or tag and makes
-no implementation, Docker, dependency, remote, signing, publication or
-spending change. A genuinely fresh session must claim iteration 007 from the
-committed authority bundle, produce a bounded candidate, and stop for separate
-independent local review. Recovery R6 remains unauthorized until iteration 007
-is independently accepted and a later exact R6 authority re-proves all live
-zero-spend remote gates. PSCAN-06 remains open and unaccepted overall;
-PSCAN-07 remains proposed and unselected; PSCAN-08 remains inactive and
-ineligible.
+The implementation adds the new workflow and schema, rolls the active builder
+and embedded verifier to 2.2, extends the generic verifier while preserving
+2.0/2.1 behavior, adds cross-version/source-agreement tests and synchronizes
+the living records. `docker-execution.ps1` changes only to materialize schema
+2.2; the accepted iteration-006 PID predicate/data flow and Docker operation
+table remain unchanged. This is author implementation, not acceptance.
+
+No tag, Docker, dependency, remote, signing, publication or spending action is
+authorized or performed. A separate fresh session must independently review
+the exact committed candidate. Recovery R6 remains unauthorized until
+iteration 007 is independently accepted and a later exact R6 authority
+re-proves all live zero-spend remote gates. PSCAN-06 remains open and
+unaccepted overall; PSCAN-07 remains proposed and unselected; PSCAN-08 remains
+inactive and ineligible.

@@ -80,35 +80,43 @@ comparison or remote proof, and it does not authorize the C2 tooling tag,
 workflow run, signing/draft gate, publication or any successor action. PSCAN-06
 therefore remains open and unaccepted overall.
 
+## Correction C2 iteration 007 immutable identity
+
+Recovery R5 locked the existing C2 tooling tag at the pre-fix candidate, while
+iteration 006 supplied a separately accepted local fix. Because the old
+workflow and schema 2.1 require the protected tag, workflow ref and tooling SHA
+to agree, a direct Recovery R6 cannot carry the fixed bytes without violating
+an identity gate or rewriting immutable evidence.
+
+Iteration 007 therefore adds proposed tag
+`release-tooling-v1.0.0-c2-r6`, workflow
+`.github/workflows/release-recovery-v1.0.0-c2-r6.yml` and manifest schema 2.2.
+The old workflow and schemas remain unchanged. The active builder, embedded
+verifier and generic verifier agree on the new tag/ref/path/certificate while
+the generic verifier preserves 2.0/C1 and 2.1/C2 and rejects cross-version
+mixtures. The Docker materialization payload only adds schema 2.2; its process
+boundary and operation table do not change.
+
+This is a local candidate design. The proposed tag is not created, the new
+workflow is not run, and Recovery R6 remains unauthorized until independent
+local acceptance and a separate exact R6 authority.
+
 ## Current governed execution state
 
-As of 2026-09-06, two separately authorized build-only proof-gate attempts have
-terminated before remote preflight. The first stopped because its fresh
-worktree was detached instead of being the required `main` checkout. Recovery
-R1 then used the correct saved-project `main` checkout but stopped because two
-tracked PowerShell files had mixed working-tree line endings that failed exact
-source trust. Neither attempt made a GitHub request, invoked Docker, dispatched
-the workflow, transferred an artifact, signed, attested, drafted or published.
+As of 2026-09-11, Recovery R5 is terminal. It pushed and protected the exact C2
+tooling tag and dispatched workflow run `34582887399` once. The standard Linux
+job failed in the local native matrix before Docker, dependency acquisition,
+builds or artifact transfer. No retry, second dispatch or tag change is
+authorized.
 
-The two working-tree projections were subsequently restored from their exact
-committed Git objects. Local post-repair validation passed complete tracked-byte
-inspection, all 12 hostile source-trust cases, the synthetic image-admission
-matrix and the Windows no-Docker native-boundary matrix with zero Docker calls.
-That local validation did not rehabilitate either terminal attempt and grants
-no retry authority.
-
-The remaining acceptance work is actual-Linux execution, genuine Docker engine,
-image and container evidence, dependency acquisition, two complete builds,
-every-byte reproducibility comparison, and workflow/artifact read-back. It
-now has one exact recorded authority: Recovery R2, approved on 2026-09-08 but
-not claimed or executed. The required GitHub workflow/ref, Linux-runner,
-run/job/step, retention and artifact identities cannot be supplied by local
-Docker, so R2 permits only the committed GitHub Actions build job. It is limited
-to one dispatch, one unsigned uncompressed one-day artifact and USD 0. The
-approval-session authentication check found the configured GitHub token
-invalid; re-authentication and a genuinely fresh saved-project `main` session
-are required before the complete current preflight. Local Docker, signing,
-attestation, draft creation and publication remain outside this authority.
+Iteration 006 is independently accepted locally for the exact PID correction.
+Iteration 007 is claimed and locally implemented only to provide a new
+append-only identity generation. The remaining acceptance work still includes
+independent iteration-007 review, a separately authorized Recovery R6, actual
+Linux and genuine Docker evidence, dependency acquisition, two complete
+builds, every-byte reproducibility comparison and workflow/artifact read-back.
+Local Docker, signing, attestation, draft creation and publication remain
+outside this authority.
 
 Compilation, tests, vet, Windows cross-compilation and two byte-for-byte builds
 then run with networking disabled and the module cache read-only. Workflow-

@@ -102,6 +102,9 @@ fresh implementation session:
 97. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-REFINEMENT-003.md`
 98. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-AUTHOR-VALIDATION-004.md`
 99. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-ACCEPTANCE.md`
+100. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-007-AUTHORITY.md`
+101. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-007-PREFLIGHT.md`
+102. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-007-IMPLEMENTATION.md`
 
 Then verify the exact activation commit, branch and clean Git status; the
 activated allowed and forbidden paths; the absence of another selected,
@@ -510,3 +513,13 @@ independent review.
 Recovery R6 remains unauthorized. No remote read or mutation, tag operation,
 workflow dispatch, Docker action, dependency acquisition, signing,
 publication, spending or successor work is conferred by iteration 007.
+
+Iteration 007 was subsequently claimed alone in genuinely fresh saved-project
+session `01a09151-048a-7bf3-a3a6-2d0c26415f10` from exact authority commit
+`b7a0fb211e4631f915e368174ae58022d1519182`. Read the preflight and
+implementation records above before reviewing the candidate. The candidate
+adds only the selected workflow/schema identity, bounded builder/verifier and
+materialization changes, preservation/cross-version tests, living documents
+and append-only evidence. Author implementation is not acceptance; a fresh
+independent task must review the exact committed candidate and rerun
+proportionate offline no-Docker checks before any acceptance record.

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -174,6 +175,107 @@ func TestReleaseManifestV21BindsCorrectionC2AndPreservesC1Parsing(t *testing.T) 
 	}
 }
 
+func TestReleaseManifestV22BindsR6AndRejectsCrossVersionMixtures(t *testing.T) {
+	for name, manifest := range map[string]verify.ReleaseManifest{
+		"historical 2.0 C1": minimumManifestV2(),
+		"historical 2.1 C2": minimumManifestV21(),
+		"current 2.2 R6":    minimumManifestV22(),
+	} {
+		t.Run(name, func(t *testing.T) {
+			raw, err := json.Marshal(manifest)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := verify.ParseReleaseManifest(raw); err != nil {
+				t.Fatalf("valid versioned manifest rejected: %v", err)
+			}
+		})
+	}
+
+	for name, mutate := range map[string]func(*verify.ReleaseManifest){
+		"old tag under 2.2":      func(m *verify.ReleaseManifest) { m.ReleaseTooling.Tag = "release-tooling-v1.0.0-c2" },
+		"old ref under 2.2":      func(m *verify.ReleaseManifest) { m.ReleaseTooling.WorkflowRef = "refs/tags/release-tooling-v1.0.0-c2" },
+		"old path under 2.2":     func(m *verify.ReleaseManifest) { m.ReleaseTooling.Workflow = ".github/workflows/release-recovery-v1.0.0.yml" },
+		"old identity under 2.2": func(m *verify.ReleaseManifest) { m.ReleaseIdentity.CertificateIdentity = "https://github.com/ThameeraDananjaya/project-agnostic-secret-scanner/.github/workflows/release-recovery-v1.0.0.yml@refs/tags/release-tooling-v1.0.0-c2" },
+	} {
+		t.Run(name, func(t *testing.T) {
+			candidate := minimumManifestV22()
+			mutate(&candidate)
+			raw, _ := json.Marshal(candidate)
+			if _, err := verify.ParseReleaseManifest(raw); !errors.Is(err, verify.ErrInvalidReference) {
+				t.Fatalf("2.2 cross-version identity was not rejected: %v", err)
+			}
+		})
+	}
+
+	for name, mutate := range map[string]func(*verify.ReleaseManifest){
+		"new tag under 2.1":      func(m *verify.ReleaseManifest) { m.ReleaseTooling.Tag = "release-tooling-v1.0.0-c2-r6" },
+		"new ref under 2.1":      func(m *verify.ReleaseManifest) { m.ReleaseTooling.WorkflowRef = "refs/tags/release-tooling-v1.0.0-c2-r6" },
+		"new path under 2.1":     func(m *verify.ReleaseManifest) { m.ReleaseTooling.Workflow = ".github/workflows/release-recovery-v1.0.0-c2-r6.yml" },
+		"new identity under 2.1": func(m *verify.ReleaseManifest) { m.ReleaseIdentity.CertificateIdentity = "https://github.com/ThameeraDananjaya/project-agnostic-secret-scanner/.github/workflows/release-recovery-v1.0.0-c2-r6.yml@refs/tags/release-tooling-v1.0.0-c2-r6" },
+	} {
+		t.Run(name, func(t *testing.T) {
+			candidate := minimumManifestV21()
+			mutate(&candidate)
+			raw, _ := json.Marshal(candidate)
+			if _, err := verify.ParseReleaseManifest(raw); !errors.Is(err, verify.ErrInvalidReference) {
+				t.Fatalf("2.1 cross-version identity was not rejected: %v", err)
+			}
+		})
+	}
+}
+
+func TestIteration007RepositoryIdentityAgreementAndPreservation(t *testing.T) {
+	root := filepath.Clean(filepath.Join("..", "..", ".."))
+	read := func(path string) string {
+		t.Helper()
+		raw, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(path)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(raw)
+	}
+
+	oldSchema := read("contracts/release-manifest/schema-2.1.json")
+	if verify.DigestBytes([]byte(oldSchema)) != "caa9cd26665cc3a3550affea7490a0f1f277a69b10b1f1537787616e8ab973ce" {
+		t.Fatal("historical schema 2.1 bytes changed")
+	}
+	newSchema := read("contracts/release-manifest/schema-2.2.json")
+	normalizedSchema := strings.ReplaceAll(newSchema, "release-tooling-v1.0.0-c2-r6", "release-tooling-v1.0.0-c2")
+	normalizedSchema = strings.ReplaceAll(normalizedSchema, ".github/workflows/release-recovery-v1.0.0-c2-r6.yml", ".github/workflows/release-recovery-v1.0.0.yml")
+	normalizedSchema = strings.ReplaceAll(normalizedSchema, "2.2", "2.1")
+	if !reflect.DeepEqual([]byte(normalizedSchema), []byte(oldSchema)) {
+		t.Fatal("schema 2.2 differs from schema 2.1 outside the selected identity/version fields")
+	}
+
+	oldWorkflow := read(".github/workflows/release-recovery-v1.0.0.yml")
+	if verify.DigestBytes([]byte(oldWorkflow)) != "c5f40f1b32e87c005fe33ee607af7e3d19ee4f0173c21619e21158c31aa0bdb4" {
+		t.Fatal("historical C2 workflow bytes changed")
+	}
+	newWorkflow := read(".github/workflows/release-recovery-v1.0.0-c2-r6.yml")
+	normalizedWorkflow := strings.ReplaceAll(newWorkflow, "gated-v1.0.0-c2-r6-recovery", "gated-v1.0.0-c2-recovery")
+	normalizedWorkflow = strings.ReplaceAll(normalizedWorkflow, "release-v1.0.0-c2-r6-recovery", "release-v1.0.0-c2-recovery")
+	normalizedWorkflow = strings.ReplaceAll(normalizedWorkflow, "release-tooling-v1.0.0-c2-r6", "release-tooling-v1.0.0-c2")
+	normalizedWorkflow = strings.ReplaceAll(normalizedWorkflow, ".github/workflows/release-recovery-v1.0.0-c2-r6.yml", ".github/workflows/release-recovery-v1.0.0.yml")
+	normalizedWorkflow = strings.ReplaceAll(normalizedWorkflow, "2.2", "2.1")
+	if normalizedWorkflow != oldWorkflow {
+		t.Fatal("R6 workflow differs from the C2 workflow outside the selected identity/version fields")
+	}
+
+	for path, required := range map[string][]string{
+		"build/release/build.ps1": {"release-tooling-v1.0.0-c2-r6", ".github/workflows/release-recovery-v1.0.0-c2-r6.yml", "manifestSchemaVersion='2.2'", "schema-release-manifest-2.1.json", "schema-release-manifest-2.2.json"},
+		"build/release/cmd/release-verifier/main.go": {"release-tooling-v1.0.0-c2-r6", ".github/workflows/release-recovery-v1.0.0-c2-r6.yml", `ManifestSchemaVersion: "2.2"`},
+		"internal/verify/release.go": {"release-tooling-v1.0.0-c2", "release-tooling-v1.0.0-c2-r6", ".github/workflows/release-recovery-v1.0.0.yml", ".github/workflows/release-recovery-v1.0.0-c2-r6.yml"},
+	} {
+		source := read(path)
+		for _, token := range required {
+			if !strings.Contains(source, token) {
+				t.Fatalf("%s does not contain required identity token %q", path, token)
+			}
+		}
+	}
+}
+
 func minimumManifest() verify.ReleaseManifest {
 	digest := verify.DigestBytes([]byte("x"))
 	assets := []verify.ReleaseAsset{}
@@ -219,6 +321,18 @@ func minimumManifestV21() verify.ReleaseManifest {
 	manifest.ReleaseTooling.WorkflowRef = "refs/tags/release-tooling-v1.0.0-c2"
 	manifest.ReleaseIdentity.Ref = manifest.ReleaseTooling.WorkflowRef
 	manifest.ReleaseIdentity.CertificateIdentity = "https://github.com/ThameeraDananjaya/project-agnostic-secret-scanner/.github/workflows/release-recovery-v1.0.0.yml@refs/tags/release-tooling-v1.0.0-c2"
+	return manifest
+}
+
+func minimumManifestV22() verify.ReleaseManifest {
+	manifest := minimumManifestV21()
+	manifest.ManifestSchemaVersion = "2.2"
+	manifest.ReleaseTooling.Tag = "release-tooling-v1.0.0-c2-r6"
+	manifest.ReleaseTooling.Workflow = ".github/workflows/release-recovery-v1.0.0-c2-r6.yml"
+	manifest.ReleaseTooling.WorkflowRef = "refs/tags/release-tooling-v1.0.0-c2-r6"
+	manifest.ReleaseIdentity.Workflow = manifest.ReleaseTooling.Workflow
+	manifest.ReleaseIdentity.Ref = manifest.ReleaseTooling.WorkflowRef
+	manifest.ReleaseIdentity.CertificateIdentity = "https://github.com/ThameeraDananjaya/project-agnostic-secret-scanner/.github/workflows/release-recovery-v1.0.0-c2-r6.yml@refs/tags/release-tooling-v1.0.0-c2-r6"
 	return manifest
 }
 

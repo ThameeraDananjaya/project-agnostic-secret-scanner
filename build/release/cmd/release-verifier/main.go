@@ -13,14 +13,14 @@ import (
 const (
 	repository          = "ThameeraDananjaya/project-agnostic-secret-scanner"
 	repositoryOwnerID   = int64(50274860)
-	workflow            = ".github/workflows/release-recovery-v1.0.0.yml"
-	releaseRef          = "refs/tags/release-tooling-v1.0.0-c2"
+	workflow            = ".github/workflows/release-recovery-v1.0.0-c2-r6.yml"
+	releaseRef          = "refs/tags/release-tooling-v1.0.0-c2-r6"
 	oidcIssuer          = "https://token.actions.githubusercontent.com"
-	certificateIdentity = "https://github.com/ThameeraDananjaya/project-agnostic-secret-scanner/.github/workflows/release-recovery-v1.0.0.yml@refs/tags/release-tooling-v1.0.0-c2"
+	certificateIdentity = "https://github.com/ThameeraDananjaya/project-agnostic-secret-scanner/.github/workflows/release-recovery-v1.0.0-c2-r6.yml@refs/tags/release-tooling-v1.0.0-c2-r6"
 	productSourceTag    = "v1.0.0"
 	productSourceCommit = "a13c28fe7273bc8dc6545f97966a02889524eb4c"
 	productSourceTree   = "217b711ddea51fd0ea7e808edd2e27fdecef8427"
-	releaseToolingTag   = "release-tooling-v1.0.0-c2"
+	releaseToolingTag   = "release-tooling-v1.0.0-c2-r6"
 	workflowTrigger     = "workflow_dispatch"
 )
 
@@ -58,7 +58,7 @@ func run(args []string) int {
 		Policy: verify.ReleaseTrustPolicy{
 			Repository: repository, RepositoryOwnerID: repositoryOwnerID, Workflow: workflow,
 			Ref: releaseRef, OIDCIssuer: oidcIssuer, CertificateIdentity: certificateIdentity,
-			ReleaseVersion: "v1.0.0", ManifestSchemaVersion: "2.1",
+			ReleaseVersion: "v1.0.0", ManifestSchemaVersion: "2.2",
 			ProductSourceTag: productSourceTag, ProductSourceCommit: productSourceCommit, ProductSourceTree: productSourceTree,
 			ReleaseToolingTag: releaseToolingTag, ReleaseToolingCommit: releaseToolingCommit, ReleaseToolingTree: releaseToolingTree,
 			WorkflowSHA: releaseToolingCommit, Trigger: workflowTrigger,

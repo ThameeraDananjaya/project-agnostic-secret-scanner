@@ -106,9 +106,9 @@ $epoch = [DateTimeOffset]::Parse($created).ToUnixTimeSeconds()
 $productTag = 'v1.0.0'
 $productRevision = 'a13c28fe7273bc8dc6545f97966a02889524eb4c'
 $productTree = '217b711ddea51fd0ea7e808edd2e27fdecef8427'
-$toolingTag = 'release-tooling-v1.0.0-c2'
-$workflow = '.github/workflows/release-recovery-v1.0.0.yml'
-$workflowRef = 'refs/tags/release-tooling-v1.0.0-c2'
+$toolingTag = 'release-tooling-v1.0.0-c2-r6'
+$workflow = '.github/workflows/release-recovery-v1.0.0-c2-r6.yml'
+$workflowRef = 'refs/tags/release-tooling-v1.0.0-c2-r6'
 $resolvedProductTag = (Convert-StrictUtf8 -Bytes (Invoke-SourceTrustGit -Repository $root -Arguments @('rev-parse','v1.0.0^{commit}')).Bytes -Label 'Locked product commit').Trim()
 $resolvedProductTree = (Convert-StrictUtf8 -Bytes (Invoke-SourceTrustGit -Repository $root -Arguments @('rev-parse','v1.0.0^{tree}')).Bytes -Label 'Locked product tree').Trim()
 if ($resolvedProductTag -ne $productRevision -or $resolvedProductTree -ne $productTree) {
@@ -191,6 +191,7 @@ Copy-ReleaseFile (Join-Path $productFiles 'contracts\scan-outcome\schema-1.0.jso
 Copy-ReleaseFile (Join-Path $productFiles 'contracts\release-manifest\schema-1.1.json') 'schema-release-manifest-1.1.json' | Out-Null
 Copy-ReleaseFile (Join-Path $toolingFiles 'contracts\release-manifest\schema-2.0.json') 'schema-release-manifest-2.0.json' | Out-Null
 Copy-ReleaseFile (Join-Path $toolingFiles 'contracts\release-manifest\schema-2.1.json') 'schema-release-manifest-2.1.json' | Out-Null
+Copy-ReleaseFile (Join-Path $toolingFiles 'contracts\release-manifest\schema-2.2.json') 'schema-release-manifest-2.2.json' | Out-Null
 Copy-ReleaseFile (Join-Path $productFiles 'contracts\global-revocation\schema-1.1.json') 'schema-global-revocation-1.1.json' | Out-Null
 Copy-ReleaseFile (Join-Path $productFiles 'contracts\rule-pack\schema-1.0.json') 'schema-rule-pack-1.0.json' | Out-Null
 Copy-ReleaseFile (Join-Path $productFiles 'LICENSE') 'LICENSE.txt' | Out-Null
@@ -201,7 +202,7 @@ Copy-ReleaseFile (Join-Path $toolingFiles 'docs\release\OFFLINE-VERIFICATION-RUN
 Copy-ReleaseFile (Join-Path $toolingFiles 'docs\release\SCANNER-IO-REFERENCE.md') 'SCANNER-IO-REFERENCE.md' | Out-Null
 
 $testSummary = [ordered]@{
-    schemaVersion = '2.1'; productSourceRevision = $productRevision; releaseToolingRevision = $toolingRevision; createdAt = $created
+    schemaVersion = '2.2'; productSourceRevision = $productRevision; releaseToolingRevision = $toolingRevision; createdAt = $created
     authoritativeEnvironment = 'pinned-network-disabled-linux-container'
     goToolchain = 'go1.27.1'; engineToolchain = 'go1.27.0'
     commands = @("go test -p=1 -count=1 -run '^TestPinnedRuleAndCoverageIntegrityBindings$' ./tests/acceptance/gitleaks", 'go test -p=1 -count=1 ./...', 'go vet -p=1 ./...', 'GOOS=windows GOARCH=amd64 go test -p=1 -exec /bin/true ./...')
@@ -210,9 +211,9 @@ $testSummary = [ordered]@{
 }
 Write-Utf8 (Join-Path $dist 'TEST-SUMMARY.json') ($testSummary | ConvertTo-Json -Depth 6)
 $compatibility = [ordered]@{
-    schemaVersion = '2.1'; releaseVersion = 'v1.0.0'; productSourceRevision = $productRevision; releaseToolingRevision = $toolingRevision
+    schemaVersion = '2.2'; releaseVersion = 'v1.0.0'; productSourceRevision = $productRevision; releaseToolingRevision = $toolingRevision
     platforms = @([ordered]@{os='linux';arch='amd64'},[ordered]@{os='windows';arch='amd64'})
-    requestSchemas = @('1.0','1.1'); outcomeSchemas = @('1.0'); releaseManifestSchemas = @('1.0','1.1','2.0','2.1')
+    requestSchemas = @('1.0','1.1'); outcomeSchemas = @('1.0'); releaseManifestSchemas = @('1.0','1.1','2.0','2.1','2.2')
     engine = [ordered]@{name='gitleaks';version='8.30.1';adapterVersion='2.0.0'}
 }
 Write-Utf8 (Join-Path $dist 'COMPATIBILITY.json') ($compatibility | ConvertTo-Json -Depth 6)
@@ -232,7 +233,7 @@ Write-Utf8 (Join-Path $dist 'global-revocations.json') ($revocations | ConvertTo
 $checkpoint = [ordered]@{schemaFamily='global-scanner-revocation-checkpoint';schemaVersion='1.0';sequence=0;digest=$null;capturedAt=$created;discoveryLocation=$revocationLocation}
 Write-Utf8 (Join-Path $dist 'global-revocation-checkpoint.json') ($checkpoint | ConvertTo-Json -Depth 6)
 $provenance = [ordered]@{
-    schemaVersion='2.1';createdAt=$created
+    schemaVersion='2.2';createdAt=$created
     productSource=[ordered]@{tag=$productTag;commit=$productRevision;tree=$productTree}
     releaseTooling=[ordered]@{tag=$toolingTag;commit=$toolingRevision;tree=$toolingTree;workflow=$workflow;workflowRef=$workflowRef;workflowSha=$toolingRevision;trigger='workflow_dispatch'}
     sourceTrust=[ordered]@{trackedFiles=$sourceTrust.FileCount;rawEqual=$sourceTrust.RawEqualCount;canonicalCrlfProjection=$sourceTrust.CanonicalEolProjectionCount;workingTreeInputsUsed=$false;buildDriver='exact-git-object-materialization'}
@@ -287,6 +288,7 @@ $assets = @(
     (Asset 'schema-release-manifest-1.1.json' 'schema'),
     (Asset 'schema-release-manifest-2.0.json' 'schema'),
     (Asset 'schema-release-manifest-2.1.json' 'schema'),
+    (Asset 'schema-release-manifest-2.2.json' 'schema'),
     (Asset 'schema-global-revocation-1.1.json' 'schema'),
     (Asset 'schema-rule-pack-1.0.json' 'schema'),
     (Asset 'LICENSE.txt' 'licence'),
@@ -304,7 +306,7 @@ $assets = @(
     (Asset 'CHECKSUMS.sha256' 'checksums')
 )
 $manifest = [ordered]@{
-    schemaFamily='scanner-release-manifest';manifestSchemaVersion='2.1';releaseVersion='v1.0.0'
+    schemaFamily='scanner-release-manifest';manifestSchemaVersion='2.2';releaseVersion='v1.0.0'
     productSource=[ordered]@{tag=$productTag;commit=$productRevision;tree=$productTree}
     releaseTooling=[ordered]@{tag=$toolingTag;commit=$toolingRevision;tree=$toolingTree;workflow=$workflow;workflowRef=$workflowRef;workflowSha=$toolingRevision;trigger='workflow_dispatch'}
     runnerVersion='1.0.0';goToolchainVersion='go1.27.1'
@@ -323,12 +325,13 @@ $manifest = [ordered]@{
         [ordered]@{family='scanner-release-manifest';version='1.1';path='schema-release-manifest-1.1.json';sha256=$assets[12].sha256},
         [ordered]@{family='scanner-release-manifest';version='2.0';path='schema-release-manifest-2.0.json';sha256=$assets[13].sha256},
         [ordered]@{family='scanner-release-manifest';version='2.1';path='schema-release-manifest-2.1.json';sha256=$assets[14].sha256},
-        [ordered]@{family='global-scanner-revocation';version='1.1';path='schema-global-revocation-1.1.json';sha256=$assets[15].sha256},
-        [ordered]@{family='rule-pack';version='1.0';path='schema-rule-pack-1.0.json';sha256=$assets[16].sha256}
+        [ordered]@{family='scanner-release-manifest';version='2.2';path='schema-release-manifest-2.2.json';sha256=$assets[15].sha256},
+        [ordered]@{family='global-scanner-revocation';version='1.1';path='schema-global-revocation-1.1.json';sha256=$assets[16].sha256},
+        [ordered]@{family='rule-pack';version='1.0';path='schema-rule-pack-1.0.json';sha256=$assets[17].sha256}
     )
     releaseIdentity=[ordered]@{
         repository='ThameeraDananjaya/project-agnostic-secret-scanner';repositoryOwnerId=50274860;workflow=$workflow;ref=$workflowRef;workflowSha=$toolingRevision;trigger='workflow_dispatch'
-        oidcIssuer='https://token.actions.githubusercontent.com';certificateIdentity='https://github.com/ThameeraDananjaya/project-agnostic-secret-scanner/.github/workflows/release-recovery-v1.0.0.yml@refs/tags/release-tooling-v1.0.0-c2'
+        oidcIssuer='https://token.actions.githubusercontent.com';certificateIdentity='https://github.com/ThameeraDananjaya/project-agnostic-secret-scanner/.github/workflows/release-recovery-v1.0.0-c2-r6.yml@refs/tags/release-tooling-v1.0.0-c2-r6'
     }
     compatibility=[ordered]@{minimumRunnerVersion='1.0.0';supportedOperatingSystems=@('linux','windows');supportedArchitectures=@('amd64');testSummaryAsset='TEST-SUMMARY.json';limitationsAsset='LIMITATIONS.md'}
     revocation=[ordered]@{discoveryLocation=$revocationLocation;snapshotAsset='global-revocations.json';checkpointAsset='global-revocation-checkpoint.json';schemaVersion='1.1';maximumSnapshotAgeHours=24}

@@ -23,27 +23,21 @@ decision.
 
 ## Current local authority status
 
-The Correction C1 paragraph above records its original planning boundary. A
-2026-09-06 local-only ref inspection found the locked product tag `v1.0.0` at
-`a13c28fe7273bc8dc6545f97966a02889524eb4c` and the locked C1 tooling tag
-`release-tooling-v1.0.0-c1` at
-`3fb7592889820fa2739a4a53588e073689621809`. The proposed C2 tooling tag was
-absent locally. No remote ref, repository setting, workflow, run, artifact,
-environment, variable, ruleset, release or billing fact was queried, and no
-local observation may be promoted to a remote fact.
+The Correction C1 paragraph above records its original planning boundary. The
+locked product tag remains `v1.0.0` at
+`a13c28fe7273bc8dc6545f97966a02889524eb4c`; the locked C1 tooling tag remains
+at `3fb7592889820fa2739a4a53588e073689621809`; and the protected C2 tooling tag
+remains at pre-fix candidate
+`faef8435322c9096df09b56969662411f17356ea`.
 
-The original Correction C2 build-only proof gate and Recovery R1 were each
-separately authorized, but both terminated before remote preflight. The local
-source-trust obstruction found by Recovery R1 has been repaired and revalidated
-without Docker or network access. On 2026-09-08 the owner separately authorized
-one bounded Recovery R2 attempt. Local Docker cannot prove the required GitHub
-workflow, Linux-runner and artifact identities, so Recovery R2 permits only the
-exact GitHub-hosted build job, at most one dispatch and maximum spend USD 0.
-The approval-session authentication check found an invalid stored GitHub token;
-no repository query or mutation followed. A genuinely fresh execution session
-may proceed only after re-authentication and a complete current preflight.
-Signing, attestation, draft creation and publication remain separately owner-
-gated.
+Recovery R5 consumed its only tag push and workflow dispatch and terminally
+failed before Docker or artifact creation. Iteration 006 is independently
+accepted locally for its bounded PID correction. Iteration 007 is claimed and
+locally implemented only to add schema 2.2 plus proposed tag/ref/workflow
+identity `release-tooling-v1.0.0-c2-r6`. It creates no tag and authorizes no
+workflow run. Recovery R6 requires independent local acceptance followed by a
+separate exact authority and fresh zero-spend remote preflight. Signing,
+attestation, draft creation and publication remain separately owner-gated.
 
 ## Separation of authorities
 

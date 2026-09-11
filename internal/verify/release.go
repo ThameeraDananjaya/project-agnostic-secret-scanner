@@ -387,7 +387,7 @@ func validateReleaseIdentityVersion(m ReleaseManifest) error {
 			m.ReleaseIdentity.WorkflowSHA != "" || m.ReleaseIdentity.Trigger != "" {
 			return ErrInvalidReference
 		}
-	case "2.0", "2.1":
+	case "2.0", "2.1", "2.2":
 		if m.ProductSource == nil || m.ReleaseTooling == nil {
 			return ErrInvalidReference
 		}
@@ -395,18 +395,25 @@ func validateReleaseIdentityVersion(m ReleaseManifest) error {
 		tooling := m.ReleaseTooling
 		identity := m.ReleaseIdentity
 		expectedToolingTag := "release-tooling-v1.0.0-c1"
+		expectedWorkflow := ".github/workflows/release-recovery-v1.0.0.yml"
 		if m.ManifestSchemaVersion == "2.1" {
 			expectedToolingTag = "release-tooling-v1.0.0-c2"
+		} else if m.ManifestSchemaVersion == "2.2" {
+			expectedToolingTag = "release-tooling-v1.0.0-c2-r6"
+			expectedWorkflow = ".github/workflows/release-recovery-v1.0.0-c2-r6.yml"
 		}
 		expectedToolingRef := "refs/tags/" + expectedToolingTag
+		expectedCertificateIdentity := "https://github.com/ThameeraDananjaya/project-agnostic-secret-scanner/" + expectedWorkflow + "@" + expectedToolingRef
 		if m.SourceRevision != "" || m.SourceTree != "" || m.ReleaseVersion != "v1.0.0" ||
 			product.Tag != "v1.0.0" || product.Commit != "a13c28fe7273bc8dc6545f97966a02889524eb4c" ||
 			product.Tree != "217b711ddea51fd0ea7e808edd2e27fdecef8427" ||
 			tooling.Tag != expectedToolingTag || !gitOIDPattern.MatchString(tooling.Commit) ||
-			!gitOIDPattern.MatchString(tooling.Tree) || tooling.Workflow != ".github/workflows/release-recovery-v1.0.0.yml" ||
+			!gitOIDPattern.MatchString(tooling.Tree) || tooling.Workflow != expectedWorkflow ||
 			tooling.WorkflowRef != expectedToolingRef || tooling.WorkflowSHA != tooling.Commit ||
 			tooling.Trigger != "workflow_dispatch" || identity.Workflow != tooling.Workflow || identity.Ref != tooling.WorkflowRef ||
-			identity.WorkflowSHA != tooling.WorkflowSHA || identity.Trigger != tooling.Trigger {
+			identity.WorkflowSHA != tooling.WorkflowSHA || identity.Trigger != tooling.Trigger ||
+			identity.Repository != "ThameeraDananjaya/project-agnostic-secret-scanner" || identity.RepositoryOwnerID != 50274860 ||
+			identity.OIDCIssuer != "https://token.actions.githubusercontent.com" || identity.CertificateIdentity != expectedCertificateIdentity {
 			return ErrInvalidReference
 		}
 	default:
@@ -434,7 +441,7 @@ func checkReleasePolicy(m ReleaseManifest, p ReleaseTrustPolicy, now time.Time) 
 			identity.WorkflowSHA != "" || identity.Trigger != "" {
 			return ErrBindingMismatch
 		}
-	case "2.0", "2.1":
+	case "2.0", "2.1", "2.2":
 		if m.ProductSource == nil || m.ReleaseTooling == nil {
 			return ErrBindingMismatch
 		}

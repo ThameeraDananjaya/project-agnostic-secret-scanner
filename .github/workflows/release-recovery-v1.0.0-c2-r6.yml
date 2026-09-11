@@ -1,0 +1,293 @@
+name: gated-v1.0.0-c2-r6-recovery
+
+on:
+  workflow_dispatch:
+    inputs:
+      product_source_revision:
+        description: Locked v1.0.0 product-source commit
+        required: true
+        type: string
+      release_tooling_revision:
+        description: Exact accepted Correction C2 tooling commit
+        required: true
+        type: string
+      release_version:
+        description: Contracted product release tag; only v1.0.0 is permitted
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-v1.0.0-c2-r6-recovery
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: >-
+      github.repository == 'ThameeraDananjaya/project-agnostic-secret-scanner' &&
+      github.ref == 'refs/tags/release-tooling-v1.0.0-c2-r6' &&
+      github.sha == inputs.release_tooling_revision &&
+      github.workflow_ref == 'ThameeraDananjaya/project-agnostic-secret-scanner/.github/workflows/release-recovery-v1.0.0-c2-r6.yml@refs/tags/release-tooling-v1.0.0-c2-r6' &&
+      github.workflow_sha == inputs.release_tooling_revision &&
+      inputs.product_source_revision == 'a13c28fe7273bc8dc6545f97966a02889524eb4c' &&
+      inputs.release_version == 'v1.0.0'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - name: Validate immutable dual-identity invocation
+        shell: bash
+        env:
+          PRODUCT_SOURCE_REVISION: ${{ inputs.product_source_revision }}
+          RELEASE_TOOLING_REVISION: ${{ inputs.release_tooling_revision }}
+          WORKFLOW_REF: ${{ github.workflow_ref }}
+          WORKFLOW_SHA: ${{ github.workflow_sha }}
+        run: |
+          set -euo pipefail
+          test "$PRODUCT_SOURCE_REVISION" = 'a13c28fe7273bc8dc6545f97966a02889524eb4c'
+          test "$RELEASE_TOOLING_REVISION" = "$GITHUB_SHA"
+          test "$GITHUB_REF" = 'refs/tags/release-tooling-v1.0.0-c2-r6'
+          test "$WORKFLOW_REF" = 'ThameeraDananjaya/project-agnostic-secret-scanner/.github/workflows/release-recovery-v1.0.0-c2-r6.yml@refs/tags/release-tooling-v1.0.0-c2-r6'
+          test "$WORKFLOW_SHA" = "$RELEASE_TOOLING_REVISION"
+
+      - name: Check out exact tooling revision without persisted credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.release_tooling_revision }}
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Verify locked product tag and tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse 'v1.0.0^{commit}')" = 'a13c28fe7273bc8dc6545f97966a02889524eb4c'
+          test "$(git rev-parse 'v1.0.0^{tree}')" = '217b711ddea51fd0ea7e808edd2e27fdecef8427'
+
+      - name: Materialize and verify exact committed release entrypoints
+        shell: bash
+        run: |
+          set -euo pipefail
+          export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null GIT_NO_REPLACE_OBJECTS=1 GIT_NO_LAZY_FETCH=1 GIT_OPTIONAL_LOCKS=0
+          exact="$RUNNER_TEMP/pscan-exact-tooling"
+          mkdir -p "$exact"
+          git -c core.autocrlf=false -c core.eol=lf -c tar.umask=0022 archive "$GITHUB_SHA" build/release | tar -xf - -C "$exact"
+          expected=0
+          while IFS=$'\t' read -r metadata path; do
+            mode="${metadata%% *}"
+            remainder="${metadata#* }"
+            type="${remainder%% *}"
+            object="${remainder##* }"
+            test "$type" = blob
+            case "$mode" in 100644|100755) ;; *) exit 1 ;; esac
+            test "$(git hash-object --no-filters "$exact/$path")" = "$object"
+            expected=$((expected + 1))
+          done < <(git ls-tree -r "$GITHUB_SHA" -- build/release)
+          actual="$(find "$exact/build/release" -type f -printf '%P\n' | wc -l)"
+          test "$actual" -eq "$expected"
+          echo "PSCAN_EXACT_TOOLING_ROOT=$exact" >> "$GITHUB_ENV"
+          echo "PSCAN_VERIFIED_REPOSITORY_ROOT=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+          echo "PSCAN_TRUSTED_LAUNCHER_REVISION=$GITHUB_SHA" >> "$GITHUB_ENV"
+
+      - name: Reject hostile Git index and checkout states before build output
+        shell: pwsh
+        run: >-
+          & "$env:PSCAN_EXACT_TOOLING_ROOT/build/release/test-source-trust.ps1"
+          -SourceRepository "$env:GITHUB_WORKSPACE"
+          -SourceRevision "$env:GITHUB_SHA"
+          -WorkingDirectory "$env:RUNNER_TEMP/pscan-source-trust"
+
+      - name: Prove private admission and bounded native process cases without Docker
+        shell: pwsh
+        run: '& "$env:PSCAN_EXACT_TOOLING_ROOT/build/release/test-image-admission.ps1"'
+
+      - name: Prove host cache ownership failures before any image operation
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -d -m 0700 "$RUNNER_TEMP/cache-positive" "$RUNNER_TEMP/cache-wrong-owner" "$RUNNER_TEMP/cache-read-only"
+          sudo chown root:root "$RUNNER_TEMP/cache-wrong-owner"
+          sudo chmod 0755 "$RUNNER_TEMP/cache-wrong-owner"
+          chmod 0500 "$RUNNER_TEMP/cache-read-only"
+          pwsh "$PSCAN_EXACT_TOOLING_ROOT/build/release/test-cache-boundary.ps1" \
+            -PositiveCacheDirectory "$RUNNER_TEMP/cache-positive" \
+            -WrongOwnerCacheDirectory "$RUNNER_TEMP/cache-wrong-owner" \
+            -ReadOnlyCacheDirectory "$RUNNER_TEMP/cache-read-only" \
+            -Phase Host
+
+      - name: Run mandatory host prerequisites and admit the pinned image
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -d -m 0700 "$RUNNER_TEMP/pscan-acquisition" "$RUNNER_TEMP/pscan-acquisition/downloads" "$RUNNER_TEMP/pscan-acquisition/gomodcache"
+          pwsh "$PSCAN_EXACT_TOOLING_ROOT/build/release/admit-image.ps1" \
+            -CacheDirectory "$RUNNER_TEMP/pscan-acquisition" \
+            -SourceRepository "$GITHUB_WORKSPACE" \
+            -SourceRevision "$GITHUB_SHA" \
+            -WorkingDirectory "$RUNNER_TEMP/pscan-crlf-regression"
+
+      - name: Prove offline container cache rejection after image admission
+        shell: pwsh
+        run: >-
+          & "$env:PSCAN_EXACT_TOOLING_ROOT/build/release/test-cache-boundary.ps1"
+          -PositiveCacheDirectory "$env:RUNNER_TEMP/cache-positive"
+          -WrongOwnerCacheDirectory "$env:RUNNER_TEMP/cache-wrong-owner"
+          -ReadOnlyCacheDirectory "$env:RUNNER_TEMP/cache-read-only"
+          -Phase Container
+
+      - name: Prove normalized CRLF payloads parse in the admitted offline image
+        shell: pwsh
+        run: >-
+          & "$env:PSCAN_EXACT_TOOLING_ROOT/build/release/test-crlf-shell-payloads.ps1"
+          -SourceRepository "$env:GITHUB_WORKSPACE"
+          -SourceRevision "$env:GITHUB_SHA"
+          -WorkingDirectory "$env:RUNNER_TEMP/pscan-crlf-container"
+          -Phase Container
+
+      - name: Acquire pinned public inputs after cache canary
+        shell: pwsh
+        run: '& "$env:PSCAN_EXACT_TOOLING_ROOT/build/release/acquire.ps1" -CacheDirectory "$env:RUNNER_TEMP/pscan-acquisition"'
+
+      - name: Build and validate from an actual CRLF checkout without network
+        shell: pwsh
+        run: >-
+          & "$env:PSCAN_EXACT_TOOLING_ROOT/build/release/test-crlf-shell-payloads.ps1"
+          -SourceRepository "$env:GITHUB_WORKSPACE"
+          -SourceRevision "$env:GITHUB_SHA"
+          -WorkingDirectory "$env:RUNNER_TEMP/pscan-crlf-build-a"
+          -AcquisitionDirectory "$env:RUNNER_TEMP/pscan-acquisition"
+          -BuildOutputDirectory "$env:RUNNER_TEMP/pscan-release-a"
+          -Phase Build
+
+      - name: Independently rebuild from a second actual CRLF checkout without network
+        shell: pwsh
+        run: >-
+          & "$env:PSCAN_EXACT_TOOLING_ROOT/build/release/test-crlf-shell-payloads.ps1"
+          -SourceRepository "$env:GITHUB_WORKSPACE"
+          -SourceRevision "$env:GITHUB_SHA"
+          -WorkingDirectory "$env:RUNNER_TEMP/pscan-crlf-build-b"
+          -AcquisitionDirectory "$env:RUNNER_TEMP/pscan-acquisition"
+          -BuildOutputDirectory "$env:RUNNER_TEMP/pscan-release-b"
+          -Phase Build
+
+      - name: Compare every reproduced byte
+        shell: pwsh
+        run: '& "$env:PSCAN_EXACT_TOOLING_ROOT/build/release/compare-builds.ps1" -FirstOutputDirectory "$env:RUNNER_TEMP/pscan-release-a" -SecondOutputDirectory "$env:RUNNER_TEMP/pscan-release-b"'
+
+      - name: Transfer exact unsigned candidate
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: pscan-v1.0.0-c2-unsigned-candidate
+          path: ${{ runner.temp }}/pscan-release-a/dist
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 1
+          compression-level: 0
+
+  sign-attest-and-draft:
+    needs: build
+    if: >-
+      vars.PSCAN_RELEASE_C2_GATE == 'PSCAN-06-C2-SIGNING-APPROVED' &&
+      github.repository == 'ThameeraDananjaya/project-agnostic-secret-scanner' &&
+      github.ref == 'refs/tags/release-tooling-v1.0.0-c2-r6' &&
+      github.sha == inputs.release_tooling_revision &&
+      github.workflow_sha == inputs.release_tooling_revision &&
+      inputs.product_source_revision == 'a13c28fe7273bc8dc6545f97966a02889524eb4c' &&
+      inputs.release_version == 'v1.0.0'
+    environment: release-v1
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      COSIGN_SHA256: 4629c757b7618056f8ddd7e2625ae9fdd94c0372a65049520bc7d9df9efc7f71
+    steps:
+      - name: Download exact unsigned candidate
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: pscan-v1.0.0-c2-unsigned-candidate
+          path: dist
+
+      - name: Revalidate manifest identities against workflow context
+        shell: bash
+        env:
+          WORKFLOW_SHA: ${{ github.workflow_sha }}
+        run: |
+          set -euo pipefail
+          test "$(jq -r .productSource.tag dist/release-manifest.json)" = 'v1.0.0'
+          test "$(jq -r .productSource.commit dist/release-manifest.json)" = 'a13c28fe7273bc8dc6545f97966a02889524eb4c'
+          test "$(jq -r .releaseTooling.tag dist/release-manifest.json)" = 'release-tooling-v1.0.0-c2-r6'
+          test "$(jq -r .manifestSchemaVersion dist/release-manifest.json)" = '2.2'
+          test "$(jq -r .releaseTooling.commit dist/release-manifest.json)" = "$GITHUB_SHA"
+          test "$(jq -r .releaseTooling.workflowSha dist/release-manifest.json)" = "$WORKFLOW_SHA"
+          test "$(jq -r .releaseTooling.trigger dist/release-manifest.json)" = 'workflow_dispatch'
+
+      - name: Acquire and verify pinned Cosign
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --proto '=https' --tlsv1.2 \
+            --output "$RUNNER_TEMP/cosign" \
+            'https://github.com/sigstore/cosign/releases/download/v3.1.3/cosign-linux-amd64'
+          echo "$COSIGN_SHA256  $RUNNER_TEMP/cosign" | sha256sum -c -
+          chmod 0755 "$RUNNER_TEMP/cosign"
+
+      - name: Keyless-sign exact manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/cosign" sign-blob --yes \
+            --bundle dist/release-manifest.sigstore.json \
+            dist/release-manifest.json
+
+      - name: Acquire authenticated Sigstore trusted root
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/cosign" trusted-root create \
+            --with-default-services \
+            --out "$RUNNER_TEMP/sigstore-trusted-root.json"
+          sha256sum "$RUNNER_TEMP/sigstore-trusted-root.json"
+
+      - name: Verify exact keyless workflow claims
+        shell: bash
+        env:
+          WORKFLOW_SHA: ${{ github.workflow_sha }}
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/cosign" verify-blob \
+            --bundle dist/release-manifest.sigstore.json \
+            --trusted-root "$RUNNER_TEMP/sigstore-trusted-root.json" \
+            --certificate-identity 'https://github.com/ThameeraDananjaya/project-agnostic-secret-scanner/.github/workflows/release-recovery-v1.0.0-c2-r6.yml@refs/tags/release-tooling-v1.0.0-c2-r6' \
+            --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
+            --certificate-github-workflow-repository 'ThameeraDananjaya/project-agnostic-secret-scanner' \
+            --certificate-github-workflow-ref 'refs/tags/release-tooling-v1.0.0-c2-r6' \
+            --certificate-github-workflow-sha "$WORKFLOW_SHA" \
+            --certificate-github-workflow-trigger 'workflow_dispatch' \
+            dist/release-manifest.json
+
+      - name: Attest platform bundles with the bound SBOM
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: |
+            dist/project-agnostic-secret-scanner_v1.0.0_linux_amd64.tar.gz
+            dist/project-agnostic-secret-scanner_v1.0.0_windows_amd64.zip
+          sbom-path: dist/sbom.spdx.json
+
+      - name: Create gated draft for locked product tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release create v1.0.0 \
+            --draft \
+            --verify-tag \
+            --title 'Project-Agnostic Secret Scanner v1.0.0' \
+            --notes-file dist/LIMITATIONS.md \
+            dist/*

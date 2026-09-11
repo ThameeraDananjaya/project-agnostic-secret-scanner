@@ -242,14 +242,35 @@ PID sampling or cleanup uncertainty is rejection, not a warning.
 
 ## Current C2 operator status
 
-As of 2026-09-06, this C2 addendum remains a verification design, not usable
-release proof. The original build-only proof-gate attempt and Recovery R1 each
-failed closed before remote preflight and before any Docker action. The local
-working-tree source-trust obstruction found by Recovery R1 was repaired and the
-no-network, no-Docker regression matrices passed, but no retry is authorized.
+As of 2026-09-11, this C2 addendum remains a verification design, not usable
+release proof. Recovery R5 reached the standard Linux runner but terminally
+failed before Docker or artifact creation, and its only tag push and workflow
+dispatch are consumed. Bounded iteration 006 is independently accepted locally
+for the PowerShell PID correction. It does not authorize a retry.
 
-Do not acquire or accept a C2 release set until a newly authorized fresh
-session proves actual Linux, genuine Docker/image/container behavior,
-dependency acquisition, two complete byte-identical builds, and workflow and
-artifact read-back, followed by the separately required independent acceptance
-and release gates.
+## Correction C2 R6 identity addendum
+
+Iteration 007 adds a proposed, separately versioned identity for any future R6
+candidate:
+
+| Binding | Required iteration-007 value |
+|---|---|
+| Manifest schema | `scanner-release-manifest` `2.2` |
+| Release tooling tag | `release-tooling-v1.0.0-c2-r6` |
+| Workflow | `.github/workflows/release-recovery-v1.0.0-c2-r6.yml` |
+| Workflow ref | `refs/tags/release-tooling-v1.0.0-c2-r6` |
+| Certificate identity | `https://github.com/ThameeraDananjaya/project-agnostic-secret-scanner/.github/workflows/release-recovery-v1.0.0-c2-r6.yml@refs/tags/release-tooling-v1.0.0-c2-r6` |
+
+Schema 2.2 is not interchangeable with schema 2.1. A 2.2 manifest containing
+the old C2 tag/ref/path/certificate, or a 2.1 manifest containing the new R6
+identity, must reject. Historical schemas 2.0 and 2.1 remain valid only under
+their original exact identities.
+
+This addendum is local implementation guidance only. The proposed R6 tag does
+not exist locally or remotely under iteration-007 authority, and the workflow
+must not be dispatched. Do not acquire or accept an R6 release set until the
+exact iteration-007 candidate is independently accepted, a separate Recovery
+R6 authority is recorded, and its fresh execution proves actual Linux, genuine
+Docker/image/container behavior, dependency acquisition, two complete
+byte-identical builds, workflow/artifact read-back and every later release
+gate.

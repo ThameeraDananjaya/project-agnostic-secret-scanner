@@ -117,6 +117,7 @@ fresh implementation session:
 112. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-009-CONTINUATION-IMPLEMENTATION.md`
 113. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-009-CONTINUATION-AUTHOR-VALIDATION.md`
 114. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-009-REVIEW-REJECTED.md`
+115. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-010-AUTHORITY.md`
 
 Then verify the exact activation commit, branch and clean Git status; the
 activated allowed and forbidden paths; the absence of another selected,
@@ -677,3 +678,32 @@ The reviewer did not repair the candidate. Recovery R5 remains terminal and
 consumed; Recovery R6 and every Docker, network, remote, tag, workflow,
 signing, publication,
 spending, subscription and successor gate remain closed.
+
+The owner then selected Correction C2 iteration 010 as the minimal bounded
+authority for the sole I009-R01 finding. Read the new authority completely
+before any claim, edit, formatting or validation:
+
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-010-AUTHORITY.md`
+
+Iteration 010 may modify only
+`tests/integration/supply-chain/release_test.go`, add new iteration-010
+evidence and synchronize the four living documents. It requires exact
+`arguments.txt` derivation beside the lexical cleaned `--bundle` at argument
+2 while preserving the trusted-root containment and regular-file/symlink
+admission, exact 18 positions, `COSIGN_YES=false`, six claim assertions,
+exclusive output creation, non-recursion, workflow normalization and
+`# v4.2.2` preservation.
+
+A positive contained nested-bundle regression must prove the helper returns
+and writes only the bundle-sibling output, creates no trusted-root-sibling
+output and leaves hostile escapes, symlinks, directories and pre-existing
+output rejected. A genuinely fresh implementation session must start from the
+exact committed iteration-010 authority, use the pinned offline Go 1.27.1 and
+frozen read-only/RX module cache with fresh external caches, run the complete
+targeted/package/repository/vet/Linux-amd64 compile-only matrix, create one
+bounded candidate commit and stop for genuinely fresh independent review.
+
+The iteration-010 authority session runs no Go and edits no implementation.
+Recovery R5 remains terminal and consumed; Recovery R6 and every Docker,
+network, remote, tag, workflow, signing, publication, spending, subscription
+and successor gate remain closed.

@@ -25,7 +25,11 @@ offline author matrix including Linux/amd64 compile-only coverage. Fresh
 independent review reproduced the complete matrix but rejected local
 acceptance because the admitted test helper derives `arguments.txt` beside
 the trusted root rather than beside a nested `--bundle`, contrary to the exact
-authority. The reviewer did not repair the candidate.
+authority. The reviewer did not repair the candidate. Correction C2 iteration
+010 is now owner-approved as an authority-only, single-test-file correction:
+it selects only exact bundle-sibling output derivation plus positive nested-
+bundle and hostile-path preservation regressions. It is unclaimed, not
+implemented and not accepted.
 Recovery R6 remains unauthorized. PSCAN-07 is unselected and PSCAN-08 remains
 inactive.**
 

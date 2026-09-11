@@ -7,7 +7,7 @@
 | PSCAN-03 | Rejected and closed fail-closed; not accepted | `evidence/PSCAN-03/CLOSEOUT-REJECTED.md` |
 | PSCAN-04 | Completed and independently accepted locally | Exact activation `a21b030e1658f1f98ac4e4d001af12185d9ed311`; evidence-bearing closeout commit |
 | PSCAN-05 | Completed and independently accepted locally | Exact activation `50b4186`; corrected evidence-bearing closeout commit |
-| PSCAN-06 | Correction C2 iteration 006 candidate `cf1679f9bca24887340fa4060f37d1ebff21f305`, tree `6cb0198c71881baff9c601c31ad6aa84217f4a49`, remains independently accepted locally; Recovery R5 remains terminal; iteration 007 candidate `230e1761f7c45d9629cecf360e7498b33d64ab6f`, tree `5d74628d76f95e150c0ea1de51b4892af2350a7d`, remains independently rejected; iteration 008 stopped with no candidate; iteration 009 candidate `d89b033a6bc99c7e7886fffbbe677d047a479723`, tree `a9ade332849f4345f2e7e8f032504dccc9e60e5a`, is independently rejected for violating the exact helper output-path derivation; PSCAN-06 remains open and unaccepted overall | Exact rejection is under `evidence/PSCAN-06/CORRECTION-C2-ITERATION-009-REVIEW-REJECTED.md`; no repair, R6, Docker, network, remote, workflow, tag, release or successor action is authorized |
+| PSCAN-06 | Correction C2 iteration 006 candidate `cf1679f9bca24887340fa4060f37d1ebff21f305`, tree `6cb0198c71881baff9c601c31ad6aa84217f4a49`, remains independently accepted locally; Recovery R5 remains terminal; iteration 007 candidate `230e1761f7c45d9629cecf360e7498b33d64ab6f`, tree `5d74628d76f95e150c0ea1de51b4892af2350a7d`, remains independently rejected; iteration 008 stopped with no candidate; iteration 009 candidate `d89b033a6bc99c7e7886fffbbe677d047a479723`, tree `a9ade332849f4345f2e7e8f032504dccc9e60e5a`, remains independently rejected; iteration 010 is owner-approved, unclaimed, not implemented and not accepted as the minimal single-test-file correction for I009-R01; PSCAN-06 remains open and unaccepted overall | Exact iteration 010 authority is under `evidence/PSCAN-06/CORRECTION-C2-ITERATION-010-AUTHORITY.md`; no implementation in the authority session, R6, Docker, network, remote, workflow, tag, release or successor action is authorized |
 | PSCAN-07 | Proposed; unselected; signing/publication gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-06 |
 | PSCAN-08 | Inactive; technically and legally gated | Material-gap evidence plus separate owner approval required |
 | PSCAN-09 | Completed and independently accepted locally | Activation `f486989`; accepted closeout commit |
@@ -634,3 +634,26 @@ probe reproduced the divergent path. Exact evidence is in
 reviewer did not repair the candidate. Recovery R5 remains terminal and
 consumed; Recovery R6 remains unauthorized. PSCAN-06 remains open and
 unaccepted overall, and no successor is selected or activated.
+
+On 2026-09-12 the owner selected Correction C2 iteration 010 as the minimal
+bounded correction for I009-R01. Exact authority is in
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-010-AUTHORITY.md`. It permits only
+`tests/integration/supply-chain/release_test.go`, new iteration-010 evidence
+and the four living-state documents. For an otherwise exactly admitted helper
+invocation, `arguments.txt` must be derived beside the lexical cleaned
+`--bundle` path at argument 2, never beside `--trusted-root`. A positive
+contained nested-bundle regression must prove the helper returns and writes
+only that exact bundle-sibling path and creates no trusted-root-sibling output;
+hostile escapes, symlinks, directories and pre-existing output must continue
+to reject.
+
+This authority session records governance only. A genuinely fresh
+implementation session must start from the resulting authority commit, use the
+pinned offline Go 1.27.1 and frozen module cache with fresh external caches,
+produce exactly one bounded candidate commit, and stop for genuinely fresh
+independent review. Recovery R5 remains terminal and consumed; Recovery R6 and
+all Docker, network, remote, tag, workflow, signing, publication, spending,
+subscription and successor actions remain unauthorized. PSCAN-06 remains the
+sole open task and remains unaccepted overall. Recovery R6 remains unavailable
+until iteration 010 is independently accepted locally and a separate exact R6
+authority is later recorded.

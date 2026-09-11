@@ -1288,3 +1288,48 @@ The reviewer did not repair the candidate. Recovery R5 remains terminal and
 consumed; Recovery R6 and all Docker, network, remote, tag, workflow, signing,
 publication, spending and successor work remain unauthorized. PSCAN-06
 remains open and unaccepted overall.
+
+## Correction C2 iteration 010 exact helper output-path authority
+
+On 2026-09-12 the owner selected iteration 010 as the minimal bounded
+correction after the iteration-009 independent rejection. Candidate
+`d89b033a6bc99c7e7886fffbbe677d047a479723`, tree
+`a9ade332849f4345f2e7e8f032504dccc9e60e5a`, remains immutable and rejected
+only because the helper admits a contained nested `--bundle` while deriving
+`arguments.txt` beside `--trusted-root`.
+
+Iteration 010 is owner-approved, unclaimed, not implemented and not accepted.
+It may modify only `tests/integration/supply-chain/release_test.go`, add new
+iteration-010 evidence and synchronize the four named living-state documents.
+For every exact admitted helper invocation, the output must equal
+`filepath.Join(filepath.Dir(filepath.Clean(arguments[2])), "arguments.txt")`.
+The existing trusted-root-derived admission root, containment, regular-file
+and symlink checks remain unchanged; only the output-path derivation and its
+bounded regressions are selected.
+
+The positive regression must use a regular bundle inside a contained nested
+directory, with regular trusted-root and manifest inputs, and prove both the
+helper return and exclusive write occur only at the exact bundle-sibling path.
+It must also prove the distinct trusted-root-sibling path is not created.
+Hostile escapes, symlink/reparse substitutions, directories and pre-existing
+output must continue to reject without entering recursively or modifying
+output. Exact 18-position admission, `COSIGN_YES=false`, no custom sentinel,
+all six claim assertions, `O_EXCL`, workflow normalization counts and
+`# v4.2.2` preservation remain mandatory.
+
+Exact scope, starting identities, controlling hashes, offline Go 1.27.1 and
+frozen-cache route, complete validation matrix, one-candidate-commit rule,
+fresh independent review and exclusions are controlling in:
+
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-010-AUTHORITY.md`
+
+This authority-recording session does not edit or execute the test. A
+genuinely fresh implementation session must claim only iteration 010 from the
+resulting exact authority commit, prove source trust, clean materialization and
+path confinement, implement the bounded repair, validate it offline, create
+one candidate commit and stop for genuinely fresh independent review.
+Recovery R5 remains terminal and consumed; Recovery R6 and all Docker,
+network, remote, tag, workflow, signing, publication, spending, subscription
+and successor work remain unauthorized. PSCAN-06 remains open and unaccepted
+overall. Recovery R6 remains unavailable until iteration 010 is independently
+accepted locally and a separate exact R6 authority is later recorded.

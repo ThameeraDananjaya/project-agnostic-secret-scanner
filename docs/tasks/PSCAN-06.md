@@ -859,3 +859,36 @@ begin from the committed R5 authority bundle and repeat the complete
 fail-closed preflight before the single tag-push attempt or any other remote
 action. PSCAN-06 remains open and unaccepted overall; PSCAN-07 remains proposed
 and unselected; PSCAN-08 remains inactive and ineligible.
+
+Recovery R5 was then attempted in genuinely fresh saved-project `main` session
+`01a08fae-2ee1-7553-a126-e635b70a34a6` using Daybreak Blue at `xhigh`. The
+complete current preflight passed, including every-byte source trust, workflow
+identity and permissions, authenticated repository and Actions controls,
+locked predecessor tags/rulesets, the preserved split state, zero prior C2
+runs/artifacts, zero-net Actions Linux and storage billing, and the live
+account-level `USD 0` Actions budget with stop usage enabled.
+
+The exact existing local C2 tag was pushed once using the sole literal
+refspec, read back at accepted candidate
+`faef8435322c9096df09b56969662411f17356ea`, and protected by active no-bypass
+ruleset `22895383` denying update and deletion. Remote `main` remained at
+`a82a3a64a04ee2d8b60757866c9864cd1b73b54b`. The exact workflow was then
+dispatched once as run `34582887399`, attempt `1`, from the locked C2 tag.
+
+The standard `ubuntu-24.04` `build` job passed its identity, checkout,
+product-tag, exact-entrypoint and source-trust steps, then failed in
+`Prove private admission and bounded native process cases without Docker`.
+The clean isolated native matrix attempted a lowercase `$pid` assignment and
+PowerShell failed because automatic `$PID` is read-only. All later Docker,
+dependency, build, byte-comparison and artifact-transfer steps were skipped.
+The signing job was skipped, and no artifact, release or deployment exists.
+
+Recovery R5 is terminally failed and consumed its sole tag push and workflow
+dispatch. Exact append-only evidence is recorded in
+`evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R5-FAILURE-001.md`.
+Its SHA-256 is
+`53C85B1E4ADCFDC3866B9D2194374B7098C296CA11ECDE3050963551566868F0`.
+No rerun, repair, second push, second dispatch, signing, publication or
+successor action is authorized. PSCAN-06 remains open and unaccepted overall;
+PSCAN-07 remains proposed and unselected; PSCAN-08 remains inactive and
+ineligible.

@@ -315,3 +315,28 @@ Recovery R4 consumed zero workflow dispatches and produced no artifact. Remote
 remote C2 tag and ruleset remain absent. Recovery R4 authorizes no correction,
 retry or second push. A future attempt requires a new exact owner decision for
 that split state. PSCAN-06 remains open and unaccepted overall.
+
+The owner then authorized one bounded Recovery R5 attempt from the exact R4
+failure and preserved split state. Read its exact committed authority before
+interpreting the resulting remote tag or workflow run:
+
+`evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R5-AUTHORITY.md`
+
+Recovery R5 passed the complete current preflight, pushed and locked the exact
+C2 tooling tag, and dispatched the build-only workflow once. Run `34582887399`
+failed in the clean isolated native matrix before genuine Docker, dependency
+acquisition, builds or artifact transfer. Read the append-only terminal record
+before any new PSCAN-06 claim or action:
+
+`evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R5-FAILURE-001.md`
+
+The failure record SHA-256 is
+`53C85B1E4ADCFDC3866B9D2194374B7098C296CA11ECDE3050963551566868F0`.
+
+Recovery R5 consumed its sole tag push and sole workflow dispatch. The exact
+remote C2 tag and active no-bypass update/deletion-denial ruleset remain in
+place. No artifact, signing, attestation, draft, release, deployment or
+publication occurred. Recovery R5 authorizes no rerun, repair, retry, second
+push, second dispatch or successor work. A future attempt or correction
+requires a new exact owner decision from this terminal state. PSCAN-06 remains
+open and unaccepted overall.

@@ -96,6 +96,9 @@ fresh implementation session:
 91. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-REFINEMENT-001.md`
 92. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-AUTHOR-VALIDATION-002.md`
 93. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-REVIEW-REJECTED-002.md`
+94. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-REFINEMENT-002.md`
+95. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-AUTHOR-VALIDATION-003.md`
+96. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-REVIEW-REJECTED-003.md`
 
 Then verify the exact activation commit, branch and clean Git status; the
 activated allowed and forbidden paths; the absence of another selected,
@@ -435,8 +438,17 @@ three second-review counterexamples and broader positive/control probes are
 bound to the exact production predicate. Exact author checks and the complete
 available-host no-Docker matrix pass.
 
-This candidate has author validation only. A separate genuinely fresh
-skeptical task must inspect that exact commit before any local acceptance.
-Both earlier candidates and rejection records remain immutable. Recovery R5
-remains terminal; all actual-Linux, Docker, dependency, build,
-reproducibility, artifact, remote and successor gates remain closed.
+Fresh independent review rejected this candidate for local acceptance because
+the predicate splits every true variable path on `:` and compares only its
+last component. Legal braced names such as `${variable:env:PID}`,
+`${global:env:PID}` and `${local:foo:PID}` execute without binding automatic
+variable `PID`, but the exact predicate falsely reports each as reserved. Read
+the third bounded rejection before any further iteration-006 claim, repair or
+readiness statement:
+
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-REVIEW-REJECTED-003.md`
+
+All three candidates and rejection records remain immutable. No repair is
+authorized by the review. Recovery R5 remains terminal; all actual-Linux,
+Docker, dependency, build, reproducibility, artifact, remote and successor
+gates remain closed.

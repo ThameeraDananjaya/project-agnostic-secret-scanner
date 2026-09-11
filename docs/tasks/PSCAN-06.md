@@ -975,6 +975,18 @@ host no-Docker native matrix pass. Evidence is in
 This is author evidence only; fresh independent review is still required and
 no acceptance is claimed.
 
+Fresh independent review then rejected local acceptance a third time. The
+walker treats every true variable path whose final colon-delimited component
+is `PID` as automatic variable `PID`. Legal braced variables such as
+`${variable:env:PID}`, `${global:env:PID}` and `${local:foo:PID}` instead bind
+distinct variable names, parse and execute without the automatic-variable
+collision, but the exact committed predicate reports one reserved assignment
+for each. The author-bound drive controls do not cover this valid multi-colon
+family, so the built-in regression passes despite the false positive. Exact
+evidence is in
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-REVIEW-REJECTED-003.md`. The
+reviewer did not repair the candidate.
+
 Recovery R5 remains terminally failed and its sole tag push and workflow
 dispatch remain consumed. This refinement authorizes no remote read or
 mutation, Docker, tag change, workflow dispatch or rerun, signing,

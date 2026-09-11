@@ -7,7 +7,7 @@
 | PSCAN-03 | Rejected and closed fail-closed; not accepted | `evidence/PSCAN-03/CLOSEOUT-REJECTED.md` |
 | PSCAN-04 | Completed and independently accepted locally | Exact activation `a21b030e1658f1f98ac4e4d001af12185d9ed311`; evidence-bearing closeout commit |
 | PSCAN-05 | Completed and independently accepted locally | Exact activation `50b4186`; corrected evidence-bearing closeout commit |
-| PSCAN-06 | Prior Correction C2 iteration 006 candidate `8fbbf7b695aa7f0c995dd0a655d40ddd7fc16fb4` remains independently rejected for its typed-assignment AST bypass; refined candidate `e6a767aab71db1d3f62063dded379b4701d2cb52`, tree `288664447272f9543de1b69b8ca28c27c6e1e9ff`, is independently rejected for local acceptance because parenthesized and multiple case-insensitive `PID` assignment targets still evade its predicate, although the production blob, exact data flow and available-host no-Docker matrix pass; Recovery R5 remains terminal and no repair, Docker, network, remote, tag, workflow, signing, publication or successor action is authorized; PSCAN-06 remains open and unaccepted overall | Iteration 006 authority: `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-AUTHORITY.md`; first rejected review: `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-REVIEW-REJECTED.md`; second rejected review: `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-REVIEW-REJECTED-002.md` |
+| PSCAN-06 | Correction C2 iteration 006 candidates `8fbbf7b695aa7f0c995dd0a655d40ddd7fc16fb4` and `e6a767aab71db1d3f62063dded379b4701d2cb52` remain independently rejected for typed and parenthesized/multiple assignment-target bypasses; second refined candidate `763730403ae538850e9d806ce9db82c815517b2d`, tree `05c0baba5e61edb808b918a2dd6c853f49b8955e`, is independently rejected because legal multi-colon braced variable names ending in `PID` are false positives, although production data flow and the available-host no-Docker matrix pass; Recovery R5 remains terminal and no repair, Docker, network, remote, tag, workflow, signing, publication or successor action is authorized; PSCAN-06 remains open and unaccepted overall | Iteration 006 authority: `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-AUTHORITY.md`; third rejected review: `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-REVIEW-REJECTED-003.md` |
 | PSCAN-07 | Proposed; unselected; signing/publication gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-06 |
 | PSCAN-08 | Inactive; technically and legally gated | Material-gap evidence plus separate owner approval required |
 | PSCAN-09 | Completed and independently accepted locally | Activation `f486989`; accepted closeout commit |
@@ -405,3 +405,23 @@ build, reproducibility and artifact-integrity proof remains open. PSCAN-06
 remains open and unaccepted overall; PSCAN-07 remains proposed and unselected;
 PSCAN-08 remains inactive and ineligible. No successor is selected or
 activated.
+
+Fresh independent review session `01a09003-9a4c-7862-967e-972112c9855d`
+then inspected exact second refined candidate
+`763730403ae538850e9d806ce9db82c815517b2d`. Its production blob, exact data
+flow, parsers, source trust, path confinement, complete available-host local
+no-Docker matrix and residual cleanup checks pass. Local acceptance was
+rejected, however, because the exact predicate reduces every true variable
+path to the component after its last colon. Legal braced assignments such as
+`${variable:env:PID} = 1`, `${global:env:PID} = 1` and
+`${local:foo:PID} = 1` execute without colliding with automatic variable
+`PID`, while the candidate predicate falsely reports one reserved assignment
+for each. Exact evidence is in
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-REVIEW-REJECTED-003.md`.
+
+The reviewer did not repair the candidate. All three rejection records and
+their candidates remain immutable. Recovery R5 remains terminally failed and
+consumed; actual-Linux, genuine-Docker, dependency, build, reproducibility and
+artifact-integrity proof remains open. PSCAN-06 remains open and unaccepted
+overall; PSCAN-07 remains proposed and unselected; PSCAN-08 remains inactive
+and ineligible. No successor is selected or activated.

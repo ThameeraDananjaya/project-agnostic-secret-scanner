@@ -1162,3 +1162,42 @@ the full package still failed solely at Cosign. A new exact owner decision is
 required before another implementation attempt.
 Recovery R5 remains terminal and consumed; Recovery R6 and all Docker,
 dependency, remote, release and successor work remain unauthorized.
+
+## Correction C2 iteration 009 single-file test authority
+
+On 2026-09-12 the owner selected iteration 009 after iteration 008 stopped
+with no candidate. The exact owner-selected boundary reconciles only the two
+pre-existing within-file blockers with the already proved normalization
+repair. Read-only diagnostic task
+`01a091b7-90ec-7561-bd79-c8a0f91a522f` established that the synthetic
+extensionless POSIX Cosign script cannot execute on Windows: executable
+resolution returns `*exec.Error` wrapping `exec.ErrNotFound` before
+`CreateProcess`. The production verifier behaves as designed.
+
+Iteration 009 may modify only
+`tests/integration/supply-chain/release_test.go`, add new iteration-009
+evidence and synchronize the four named living-state documents. It must:
+
+1. apply the exact iteration-008 five-token normalization with counts
+   `1,1,8,3,1`, exact schema-assertion replacement, workflow byte equality,
+   preserved `# v4.2.2` and absent `# v4.2.1`;
+2. apply only the demonstrated 66-line/four-hunk Go 1.27.1 mechanical
+   formatting projection outside the helper and normalization; and
+3. replace only the POSIX synthetic fixture with a current-test-executable
+   `TestMain` helper that admits the exact 18-argument, fixed-order,
+   non-empty, temp-root-contained invocation under `COSIGN_YES=false`, while
+   preserving every claim assertion and adding hostile near-miss coverage.
+
+Exact scope, helper admission, offline/frozen-cache checks, Linux-amd64
+cross-compile, acceptance matrix and exclusions are controlling in:
+
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-009-AUTHORITY.md`
+
+This authority-recording session does not edit or execute the test. A
+genuinely fresh session must claim only iteration 009, implement and validate
+the bounded correction offline, commit its candidate and stop for genuinely
+fresh independent review. Actual Linux runtime remains separately gated and
+does not block this local test-only correction. Recovery R5 remains terminal
+and consumed; Recovery R6 and all Docker, network, remote, tag, workflow,
+signing, publication, spending and successor work remain unauthorized.
+PSCAN-06 remains open and unaccepted overall.

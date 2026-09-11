@@ -110,6 +110,7 @@ fresh implementation session:
 105. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-008-PREFLIGHT.md`
 106. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-008-IMPLEMENTATION.md`
 107. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-008-AUTHOR-VALIDATION.md`
+108. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-009-AUTHORITY.md`
 
 Then verify the exact activation commit, branch and clean Git status; the
 activated allowed and forbidden paths; the absence of another selected,
@@ -587,3 +588,26 @@ with the exact offline Go route: the untouched preservation test failed at
 Windows synthetic Cosign case at `release_test.go:66`. The bounded probe made
 the targeted test pass while the full package still failed solely at Cosign,
 then was restored. No repository-wide test, vet or no-Docker result is claimed.
+
+The owner then selected Correction C2 iteration 009 as the bounded single-file
+test authority needed to reconcile those baseline failures without expanding
+into production code. Read the new authority completely before any claim,
+edit, formatting or validation:
+
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-009-AUTHORITY.md`
+
+Iteration 009 combines only the exact iteration-008 five-token normalization,
+the demonstrated Go 1.27.1 66-line/four-hunk mechanical projection and a
+cross-platform current-test-executable `TestMain` helper. The helper admits
+only the exact 18-argument fixed-order Cosign invocation with
+`COSIGN_YES=false`, contained bundle/manifest paths and no custom environment
+sentinel. It preserves every claim assertion and adds hostile near-miss
+non-entry coverage.
+
+Implementation must occur in a genuinely fresh session, use the exact offline
+Go 1.27.1 and frozen read-only cache route, run the targeted, package-wide,
+repository-wide, vet and Linux-amd64 compile checks, commit the bounded
+candidate and stop for fresh independent review. Actual Linux runtime remains
+separately gated. Recovery R5 remains terminal and consumed; Recovery R6 and
+all Docker, network, remote, tag, workflow, signing, publication, spending and
+successor gates remain closed.

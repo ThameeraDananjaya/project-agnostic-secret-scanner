@@ -7,7 +7,7 @@
 | PSCAN-03 | Rejected and closed fail-closed; not accepted | `evidence/PSCAN-03/CLOSEOUT-REJECTED.md` |
 | PSCAN-04 | Completed and independently accepted locally | Exact activation `a21b030e1658f1f98ac4e4d001af12185d9ed311`; evidence-bearing closeout commit |
 | PSCAN-05 | Completed and independently accepted locally | Exact activation `50b4186`; corrected evidence-bearing closeout commit |
-| PSCAN-06 | Correction C2 iteration 006 candidate `cf1679f9bca24887340fa4060f37d1ebff21f305`, tree `6cb0198c71881baff9c601c31ad6aa84217f4a49`, remains independently accepted locally; Recovery R5 remains terminal; iteration 007 candidate `230e1761f7c45d9629cecf360e7498b33d64ab6f`, tree `5d74628d76f95e150c0ea1de51b4892af2350a7d`, remains independently rejected solely for its global `2.2` workflow-preservation normalization; iteration 008 was claimed but stopped with no candidate after exact Go 1.27.1 `gofmt` reproduced a pre-existing out-of-scope diff and the full package reproduced a separate pre-existing Windows synthetic Cosign failure; its target-only probe passed and was restored; PSCAN-06 remains open and unaccepted overall | Iteration 008 fail-closed author record: `evidence/PSCAN-06/CORRECTION-C2-ITERATION-008-AUTHOR-VALIDATION.md`; a new owner decision is required before another implementation attempt; no R6, remote, workflow, tag, release or successor action is authorized |
+| PSCAN-06 | Correction C2 iteration 006 candidate `cf1679f9bca24887340fa4060f37d1ebff21f305`, tree `6cb0198c71881baff9c601c31ad6aa84217f4a49`, remains independently accepted locally; Recovery R5 remains terminal; iteration 007 candidate `230e1761f7c45d9629cecf360e7498b33d64ab6f`, tree `5d74628d76f95e150c0ea1de51b4892af2350a7d`, remains independently rejected; iteration 008 stopped with no candidate after reproducing the pre-existing formatter and Windows synthetic-Cosign fixture failures; iteration 009 is owner-approved, unclaimed and unimplemented for the bounded single-file test correction; PSCAN-06 remains open and unaccepted overall | Iteration 009 authority: `evidence/PSCAN-06/CORRECTION-C2-ITERATION-009-AUTHORITY.md`; implementation requires a genuinely fresh session and independent review; no R6, Docker, network, remote, workflow, tag, release or successor action is authorized |
 | PSCAN-07 | Proposed; unselected; signing/publication gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-06 |
 | PSCAN-08 | Inactive; technically and legally gated | Material-gap evidence plus separate owner approval required |
 | PSCAN-09 | Completed and independently accepted locally | Activation `f486989`; accepted closeout commit |
@@ -556,3 +556,22 @@ implementation requires a new exact owner decision reconciling both baseline
 failures with the within-file scope. Recovery R5
 remains terminal and consumed; Recovery R6 and all Docker, dependency, remote,
 release and successor work remain unauthorized.
+
+On 2026-09-12 the owner selected Correction C2 iteration 009 as the exact
+bounded decision for those two baseline failures. It permits only
+`tests/integration/supply-chain/release_test.go`, new iteration-009 evidence
+and the four named living-state documents. The future candidate must combine
+the exact iteration-008 five-token normalization, the demonstrated Go 1.27.1
+66-line/four-hunk mechanical formatting projection, and a cross-platform
+current-test-executable `TestMain` helper replacing the POSIX-only synthetic
+Cosign fixture. Read-only diagnostic task
+`01a091b7-90ec-7561-bd79-c8a0f91a522f` proved Windows fails executable
+resolution with `exec.ErrNotFound` before `CreateProcess`; no production
+verifier defect exists.
+
+Exact authority is in
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-009-AUTHORITY.md`. This session
+records authority only. Iteration 009 is owner-approved, unclaimed, not
+implemented and not accepted. Recovery R5 remains terminal and consumed;
+Recovery R6 and all Docker, network, remote, release, spending and successor
+work remain unauthorized.

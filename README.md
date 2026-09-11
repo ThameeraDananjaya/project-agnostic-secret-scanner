@@ -10,15 +10,14 @@ unaccepted overall. Recovery R5 is terminal after its sole protected C2-tag
 push and workflow dispatch failed before Docker or artifact creation. A direct
 Recovery R6 is invalid because the immutable C2 tag, workflow and schema bind
 the pre-fix tooling commit. Correction C2 iteration 007 candidate `230e176` is
-independently rejected because its mandatory workflow-preservation regression
-globally rewrites `2.2` and falsely changes an unchanged `v4.2.2` action
-comment. Correction C2 iteration 008 was claimed in a fresh session, but the
-required exact Go 1.27.1 formatter check reproduced a pre-existing 66-line
-diff on the untouched authority commit outside the permitted normalization
-block. The full supply-chain package also retained a pre-existing Windows
-synthetic Cosign failure. The bounded test probe passed its targeted check but
-was reverted, so no iteration-008 candidate or acceptance exists. Further
-implementation requires a new owner decision.
+independently rejected for its over-broad workflow normalization. Iteration 008
+stopped with no candidate after reproducing a pre-existing 66-line Go 1.27.1
+formatting projection and Windows-only synthetic Cosign fixture failure.
+Correction C2 iteration 009 is owner-approved, unclaimed and unimplemented as
+the single-file test-only authority for the exact five-token normalization,
+mechanical formatter projection and cross-platform current-test-executable
+helper. It requires a genuinely fresh implementation session and independent
+review.
 Recovery R6 remains unauthorized. PSCAN-07 is unselected and PSCAN-08 remains
 inactive.**
 

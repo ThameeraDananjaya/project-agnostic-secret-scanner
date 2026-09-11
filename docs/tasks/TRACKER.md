@@ -7,7 +7,7 @@
 | PSCAN-03 | Rejected and closed fail-closed; not accepted | `evidence/PSCAN-03/CLOSEOUT-REJECTED.md` |
 | PSCAN-04 | Completed and independently accepted locally | Exact activation `a21b030e1658f1f98ac4e4d001af12185d9ed311`; evidence-bearing closeout commit |
 | PSCAN-05 | Completed and independently accepted locally | Exact activation `50b4186`; corrected evidence-bearing closeout commit |
-| PSCAN-06 | Correction C2 iteration 005 is independently accepted locally; Recovery R5 passed full preflight, pushed and locked the exact C2 tag, then its sole build-only workflow run failed in the clean isolated native matrix before Docker, builds or artifact transfer; no artifact, signing or publication occurred; Recovery R5 is terminal and PSCAN-06 remains open and unaccepted overall | Recovery R5 failure: `evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R5-FAILURE-001.md` SHA-256 `53C85B1E4ADCFDC3866B9D2194374B7098C296CA11ECDE3050963551566868F0` |
+| PSCAN-06 | Correction C2 iteration 006 is owner-approved, unclaimed and unimplemented for the local-only PowerShell PID-collision defect proved by terminal Recovery R5; no Docker, network, remote, tag, workflow, signing, publication or successor action is authorized; PSCAN-06 remains open and unaccepted overall | Iteration 006 authority: `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-AUTHORITY.md`; immutable R5 failure SHA-256 `53C85B1E4ADCFDC3866B9D2194374B7098C296CA11ECDE3050963551566868F0` |
 | PSCAN-07 | Proposed; unselected; signing/publication gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-06 |
 | PSCAN-08 | Inactive; technically and legally gated | Material-gap evidence plus separate owner approval required |
 | PSCAN-09 | Completed and independently accepted locally | Activation `f486989`; accepted closeout commit |
@@ -316,3 +316,26 @@ publication, rerun and successor work are forbidden. Exact authority is in
 This authority-recording session performs no execution. PSCAN-06 remains open
 and unaccepted overall; PSCAN-07 remains proposed and unselected; PSCAN-08
 remains inactive and ineligible.
+
+Recovery R5 was then attempted in genuinely fresh saved-project `main` session
+`01a08fae-2ee1-7553-a126-e635b70a34a6`. It passed the complete preflight,
+pushed and locked the exact C2 tooling tag, and dispatched workflow run
+`34582887399` exactly once. The clean isolated native matrix failed before
+Docker, dependency acquisition, builds or artifact transfer because lowercase
+local variable `$pid` collided case-insensitively with read-only automatic
+variable `$PID`. Recovery R5 consumed its sole tag push and workflow dispatch
+and is terminally failed. Exact evidence is in
+`evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R5-FAILURE-001.md`,
+SHA-256
+`53C85B1E4ADCFDC3866B9D2194374B7098C296CA11ECDE3050963551566868F0`.
+
+On 2026-09-11 the owner exactly approved Correction C2 iteration 006 from that
+immutable failure at evidence commit
+`da45bb19480663aa21e9a67754ad509834dcaed7`. The iteration is limited to the
+local PowerShell PID-collision repair, bounded no-Docker regression evidence
+and synchronized PSCAN-06 records. It is owner-approved, unclaimed,
+unimplemented and unaccepted. A genuinely fresh session must claim it from the
+committed authority bundle. No Docker, network, remote read or mutation, tag
+change, workflow dispatch or rerun, signing, publication or successor work is
+authorized. PSCAN-06 remains open and unaccepted overall; PSCAN-07 remains
+proposed and unselected; PSCAN-08 remains inactive and ineligible.

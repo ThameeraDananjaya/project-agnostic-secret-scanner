@@ -892,3 +892,35 @@ No rerun, repair, second push, second dispatch, signing, publication or
 successor action is authorized. PSCAN-06 remains open and unaccepted overall;
 PSCAN-07 remains proposed and unselected; PSCAN-08 remains inactive and
 ineligible.
+
+## Correction C2 iteration 006 approved boundary
+
+On 2026-09-11 the owner exactly approved the local-only Correction C2
+iteration 006 PowerShell PID-collision correction from immutable Recovery R5
+failure record SHA-256
+`53C85B1E4ADCFDC3866B9D2194374B7098C296CA11ECDE3050963551566868F0` at
+evidence commit `da45bb19480663aa21e9a67754ad509834dcaed7`.
+
+The bounded defect is the lowercase `$pid` assignment inside
+`Get-LinuxSessionMembers` in `build/release/docker-execution.ps1`. PowerShell
+variable names are case-insensitive, so that local name collides with read-only
+automatic variable `$PID`. Iteration 006 may rename only that local parsed
+process identifier and its direct identity/ledger uses, with a bounded
+regression proving the collision is absent and the process identity semantics
+remain intact. Every iteration-005 isolation and earlier containment, Docker,
+release, schema and product boundary remains unchanged.
+
+Exact scope, checks and exclusions are controlling in
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-AUTHORITY.md`. Iteration 006 is
+owner-approved but unclaimed, unimplemented and unaccepted. This approval
+session records authority only. A genuinely fresh session must begin from the
+committed authority bundle, claim only iteration 006 and remain local-only and
+no-Docker/no-network.
+
+Recovery R5 remains terminally failed and its sole tag push and workflow
+dispatch remain consumed. This correction authorizes no remote read or
+mutation, tag change, workflow dispatch or rerun, signing, publication or
+successor action. Actual-Linux, genuine-Docker, dependency, build,
+reproducibility and artifact-integrity proof remains open. PSCAN-06 remains
+open and unaccepted overall; PSCAN-07 remains proposed and unselected;
+PSCAN-08 remains inactive and ineligible.

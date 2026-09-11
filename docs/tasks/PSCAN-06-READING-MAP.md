@@ -88,6 +88,7 @@ fresh implementation session:
 83. `evidence/PSCAN-06/CORRECTION-C2-BUILD-ONLY-LINUX-DOCKER-PROOF-GATE-AUTHORITY.md`
 84. `evidence/PSCAN-06/CORRECTION-C2-BUILD-ONLY-LINUX-DOCKER-PROOF-GATE-FAILURE-001.md`
 85. `evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R1-AUTHORITY.md`
+86. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-AUTHORITY.md`
 
 Then verify the exact activation commit, branch and clean Git status; the
 activated allowed and forbidden paths; the absence of another selected,
@@ -340,3 +341,22 @@ publication occurred. Recovery R5 authorizes no rerun, repair, retry, second
 push, second dispatch or successor work. A future attempt or correction
 requires a new exact owner decision from this terminal state. PSCAN-06 remains
 open and unaccepted overall.
+
+The owner then exactly approved Correction C2 iteration 006 from the immutable
+Recovery R5 failure record and evidence commit. Read the new bounded authority
+before any claim, edit or local check:
+
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-AUTHORITY.md`
+
+Iteration 006 permits only the local PowerShell PID-collision correction in
+the allowed production/test paths and synchronized PSCAN-06 evidence. A fresh
+session must prove the lowercase local process-identifier binding no longer
+collides with automatic `$PID`, while preserving the parsed identity, ledger
+and every existing containment boundary. Local no-Docker checks and
+independent review are required.
+
+The iteration authorizes no implementation in the approval session, Docker,
+network, remote read or mutation, tag change, workflow dispatch or rerun,
+signing, publication or successor work. Recovery R5 remains terminal and
+actual-Linux, genuine-Docker, dependency, build, reproducibility and artifact
+proof remains open. PSCAN-06 remains open and unaccepted overall.

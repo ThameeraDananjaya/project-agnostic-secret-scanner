@@ -827,3 +827,35 @@ Any future attempt requires a new exact owner decision addressing remote
 `main` at `a82a3a64`, the preserved local C2 tag, and the absent remote tag and
 ruleset. PSCAN-06 remains open and unaccepted overall; PSCAN-07 remains
 proposed and unselected; PSCAN-08 remains inactive and ineligible.
+
+## Correction C2 main-branch execution Recovery R5
+
+On 2026-09-11 the owner exactly authorized one bounded Recovery R5 attempt from
+Recovery R4 failure record SHA-256
+`5F694FF128515A2B79A2BFA500F299FECAB8836763365E9D774DA5D847D68BEE` at
+evidence commit `6fbeb633bf373d2f64d95d0ff93c328631a99a05`.
+
+Recovery R5 preserves the exact split state: remote `main` remains at
+`a82a3a64a04ee2d8b60757866c9864cd1b73b54b`; the exact local lightweight tag
+`refs/tags/release-tooling-v1.0.0-c2` remains at accepted candidate
+`faef8435322c9096df09b56969662411f17356ea`; and the remote C2 tag, C2
+ruleset, C2 workflow run and C2 artifact remain absent. It authorizes no tag
+recreation or remote `main` push.
+
+After a complete genuinely fresh preflight, Recovery R5 permits at most one
+non-force tag push with literal lowercase refspec
+`refs/tags/release-tooling-v1.0.0-c2:refs/tags/release-tooling-v1.0.0-c2`, one
+exact-name no-bypass update/deletion-denial tag ruleset, and at most one
+workflow dispatch. Maximum spend remains `USD 0`; only one unsigned,
+uncompressed artifact retained for one day is permitted. Local Docker,
+signing, attestation, drafting, publication, rerun and successor work remain
+forbidden.
+
+Exact authority is recorded in
+`evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R5-AUTHORITY.md`.
+This authority-recording session does not claim or execute Recovery R5. A
+genuinely fresh saved-project `main` task using Daybreak Blue at `xhigh` must
+begin from the committed R5 authority bundle and repeat the complete
+fail-closed preflight before the single tag-push attempt or any other remote
+action. PSCAN-06 remains open and unaccepted overall; PSCAN-07 remains proposed
+and unselected; PSCAN-08 remains inactive and ineligible.

@@ -7,7 +7,7 @@
 | PSCAN-03 | Rejected and closed fail-closed; not accepted | `evidence/PSCAN-03/CLOSEOUT-REJECTED.md` |
 | PSCAN-04 | Completed and independently accepted locally | Exact activation `a21b030e1658f1f98ac4e4d001af12185d9ed311`; evidence-bearing closeout commit |
 | PSCAN-05 | Completed and independently accepted locally | Exact activation `50b4186`; corrected evidence-bearing closeout commit |
-| PSCAN-06 | Correction C2 iteration 005 is independently accepted locally; the first proof-gate execution and Recoveries R1-R3 failed closed before remote mutation; Recovery R4 passed preflight and fast-forwarded remote `main`, then failed closed before the remote C2 tag because the first tag-push refspec was invalid; zero dispatches and artifacts were consumed, and the exact local C2 tag is preserved; PSCAN-06 remains open and unaccepted overall | Recovery R4 failure: `evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R4-FAILURE-001.md` |
+| PSCAN-06 | Correction C2 iteration 005 is independently accepted locally; Recovery R4 passed preflight and fast-forwarded remote `main`, then failed closed on its first invalid tag-push refspec with zero dispatches or artifacts; Recovery R5 is owner-approved for one fresh, exact-refspec tag push and at most one build-only dispatch from the preserved local tag; PSCAN-06 remains open and unaccepted overall | Recovery R5 authority: `evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R5-AUTHORITY.md` |
 | PSCAN-07 | Proposed; unselected; signing/publication gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-06 |
 | PSCAN-08 | Inactive; technically and legally gated | Material-gap evidence plus separate owner approval required |
 | PSCAN-09 | Completed and independently accepted locally | Activation `f486989`; accepted closeout commit |
@@ -293,3 +293,26 @@ the remote C2 tag and ruleset remain absent. Any future attempt requires a new
 exact owner decision for that split state. PSCAN-06 remains open and unaccepted
 overall; PSCAN-07 remains proposed and unselected; PSCAN-08 remains inactive
 and ineligible.
+
+On 2026-09-11 the owner exactly authorized one bounded Recovery R5 attempt from
+the immutable Recovery R4 failure record SHA-256
+`5F694FF128515A2B79A2BFA500F299FECAB8836763365E9D774DA5D847D68BEE` at
+evidence commit `6fbeb633bf373d2f64d95d0ff93c328631a99a05`. The authority preserves
+remote `main` at `a82a3a64a04ee2d8b60757866c9864cd1b73b54b`, the existing
+local C2 tag at `faef8435322c9096df09b56969662411f17356ea`, and the absent
+remote C2 tag, exact-name ruleset, C2 run and artifact.
+
+Recovery R5 permits one genuinely fresh saved-project `main` task using
+Daybreak Blue at `xhigh` to repeat the complete fail-closed preflight and, only
+if it passes, push the preserved tag exactly once with literal lowercase
+refspec
+`refs/tags/release-tooling-v1.0.0-c2:refs/tags/release-tooling-v1.0.0-c2`.
+It may then create or confirm the exact-name no-bypass tag ruleset and dispatch
+the exact build-only workflow at most once. Maximum spend is `USD 0`; at most
+one unsigned uncompressed artifact retained for one day is allowed. Tag
+recreation, remote `main` mutation, local Docker, signing, attestation, draft,
+publication, rerun and successor work are forbidden. Exact authority is in
+`evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R5-AUTHORITY.md`.
+This authority-recording session performs no execution. PSCAN-06 remains open
+and unaccepted overall; PSCAN-07 remains proposed and unselected; PSCAN-08
+remains inactive and ineligible.

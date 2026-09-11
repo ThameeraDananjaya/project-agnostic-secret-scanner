@@ -93,6 +93,9 @@ fresh implementation session:
 88. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-IMPLEMENTATION.md`
 89. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-AUTHOR-VALIDATION.md`
 90. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-REVIEW-REJECTED.md`
+91. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-REFINEMENT-001.md`
+92. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-AUTHOR-VALIDATION-002.md`
+93. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-REVIEW-REJECTED-002.md`
 
 Then verify the exact activation commit, branch and clean Git status; the
 activated allowed and forbidden paths; the absence of another selected,
@@ -401,7 +404,16 @@ refinement and second author-validation records:
 Refined author candidate `e6a767aab71db1d3f62063dded379b4701d2cb52`,
 tree `288664447272f9543de1b69b8ca28c27c6e1e9ff`, preserves the accepted
 production blob and adds typed-target-aware, adversarially self-tested AST
-coverage. Exact author checks pass. The earlier candidate and rejection remain
-immutable and the refined candidate has not been independently accepted. A
-separate fresh skeptical review is required. All Docker, network, remote,
-workflow, tag, signing, publication and successor gates remain closed.
+coverage. Exact author checks pass. Fresh independent review nevertheless
+rejected local acceptance because valid parenthesized and multiple `PID`
+assignment targets reproduce the automatic-variable collision while evading
+the exact refined predicate. Read the second bounded rejection before any
+further iteration-006 claim, repair or readiness statement:
+
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-REVIEW-REJECTED-002.md`
+
+The earlier candidate and both rejection records remain immutable. No repair
+is authorized by the review. Recovery R5 remains terminal, all actual-Linux,
+Docker, dependency, build, reproducibility, artifact and remote proof remains
+open, and every workflow, tag, signing, publication and successor gate remains
+closed.

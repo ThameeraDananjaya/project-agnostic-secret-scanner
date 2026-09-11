@@ -7,7 +7,7 @@
 | PSCAN-03 | Rejected and closed fail-closed; not accepted | `evidence/PSCAN-03/CLOSEOUT-REJECTED.md` |
 | PSCAN-04 | Completed and independently accepted locally | Exact activation `a21b030e1658f1f98ac4e4d001af12185d9ed311`; evidence-bearing closeout commit |
 | PSCAN-05 | Completed and independently accepted locally | Exact activation `50b4186`; corrected evidence-bearing closeout commit |
-| PSCAN-06 | Prior Correction C2 iteration 006 candidate `8fbbf7b695aa7f0c995dd0a655d40ddd7fc16fb4` remains independently rejected for its typed-assignment AST bypass; refined author candidate `e6a767aab71db1d3f62063dded379b4701d2cb52`, tree `288664447272f9543de1b69b8ca28c27c6e1e9ff`, corrects only that regression and passes exact author checks with the accepted production blob unchanged; fresh independent review and local acceptance remain open; Recovery R5 remains terminal and no Docker, network, remote, tag, workflow, signing, publication or successor action is authorized; PSCAN-06 remains open and unaccepted overall | Iteration 006 authority: `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-AUTHORITY.md`; rejected review: `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-REVIEW-REJECTED.md`; refined author validation: `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-AUTHOR-VALIDATION-002.md` |
+| PSCAN-06 | Prior Correction C2 iteration 006 candidate `8fbbf7b695aa7f0c995dd0a655d40ddd7fc16fb4` remains independently rejected for its typed-assignment AST bypass; refined candidate `e6a767aab71db1d3f62063dded379b4701d2cb52`, tree `288664447272f9543de1b69b8ca28c27c6e1e9ff`, is independently rejected for local acceptance because parenthesized and multiple case-insensitive `PID` assignment targets still evade its predicate, although the production blob, exact data flow and available-host no-Docker matrix pass; Recovery R5 remains terminal and no repair, Docker, network, remote, tag, workflow, signing, publication or successor action is authorized; PSCAN-06 remains open and unaccepted overall | Iteration 006 authority: `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-AUTHORITY.md`; first rejected review: `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-REVIEW-REJECTED.md`; second rejected review: `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-REVIEW-REJECTED-002.md` |
 | PSCAN-07 | Proposed; unselected; signing/publication gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-06 |
 | PSCAN-08 | Inactive; technically and legally gated | Material-gap evidence plus separate owner approval required |
 | PSCAN-09 | Completed and independently accepted locally | Activation `f486989`; accepted closeout commit |
@@ -371,6 +371,16 @@ candidate `e6a767aab71db1d3f62063dded379b4701d2cb52`, tree
 AST wrappers and binds the predicate to untyped, typed and non-target
 adversarial self-tests. The production blob remains byte-identical. Exact-
 commit source trust, path confinement, parsing, PID source/data-flow regression
-and the complete available-host no-Docker matrix pass. This is new author
-evidence only; it does not overturn the prior rejection or establish
-independent acceptance. A separate fresh skeptical review remains required.
+and the complete available-host no-Docker matrix pass. Fresh independent review
+rejected local acceptance because valid `($PiD) = 1`,
+`$PiD, $other = 1, 2` and `($PiD, $other) = 1, 2` targets all reproduce the
+read-only automatic-variable collision while the exact refined predicate
+reports zero reserved assignments. Exact evidence is in
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-REVIEW-REJECTED-002.md`.
+
+The reviewer did not repair the candidate. Both rejection records and their
+candidates remain immutable. Recovery R5 remains terminally failed and
+consumed; actual-Linux, genuine-Docker, dependency, build, reproducibility and
+artifact-integrity proof remains open. PSCAN-06 remains open and unaccepted
+overall; PSCAN-07 remains proposed and unselected; PSCAN-08 remains inactive
+and ineligible. No successor is selected or activated.

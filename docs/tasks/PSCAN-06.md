@@ -938,9 +938,14 @@ source/data-flow regression and the complete available-host no-Docker native
 matrix pass. Evidence is in
 `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-REFINEMENT-001.md` and
 `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-AUTHOR-VALIDATION-002.md`.
-This is author validation only. It does not overturn the prior rejection or
-claim independent acceptance; a separate fresh skeptical review remains
-required.
+Fresh independent review then rejected local acceptance again. The refined
+predicate correctly unwraps typed and attributed targets but not valid
+parenthesized or multiple assignment targets. `($PiD) = 1`,
+`$PiD, $other = 1, 2` and `($PiD, $other) = 1, 2` each reproduce the
+read-only automatic-variable collision while the exact predicate reports zero
+reserved assignments. Exact evidence is in
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-REVIEW-REJECTED-002.md`. The
+reviewer did not repair the refined candidate.
 
 Recovery R5 remains terminally failed and its sole tag push and workflow
 dispatch remain consumed. This correction authorizes no remote read or

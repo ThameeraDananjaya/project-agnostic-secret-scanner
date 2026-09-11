@@ -7,7 +7,7 @@
 | PSCAN-03 | Rejected and closed fail-closed; not accepted | `evidence/PSCAN-03/CLOSEOUT-REJECTED.md` |
 | PSCAN-04 | Completed and independently accepted locally | Exact activation `a21b030e1658f1f98ac4e4d001af12185d9ed311`; evidence-bearing closeout commit |
 | PSCAN-05 | Completed and independently accepted locally | Exact activation `50b4186`; corrected evidence-bearing closeout commit |
-| PSCAN-06 | Correction C2 iteration 006 third refined candidate `cf1679f9bca24887340fa4060f37d1ebff21f305`, tree `6cb0198c71881baff9c601c31ad6aa84217f4a49`, is independently accepted for its bounded local PID-collision correction after preserving all three rejected predecessors; production data flow, exact predicate/runtime adversarial coverage, source trust and the available-host no-Docker matrix pass; Recovery R5 remains terminal, actual-Linux/Docker/build proof remains open, and PSCAN-06 remains open and unaccepted overall | Iteration 006 local acceptance: `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-ACCEPTANCE.md`; no remote, workflow, release or successor action is authorized |
+| PSCAN-06 | Correction C2 iteration 006 candidate `cf1679f9bca24887340fa4060f37d1ebff21f305`, tree `6cb0198c71881baff9c601c31ad6aa84217f4a49`, is independently accepted locally; Recovery R5 remains terminal; direct R6 is invalid against the protected pre-fix C2 tag and exact workflow/schema bindings; iteration 007 is owner-approved, unclaimed and local-only to add a separately versioned R6 identity before independent review; PSCAN-06 remains open and unaccepted overall | Iteration 007 authority: `evidence/PSCAN-06/CORRECTION-C2-ITERATION-007-AUTHORITY.md`; no R6, remote, workflow, tag, release or successor action is authorized |
 | PSCAN-07 | Proposed; unselected; signing/publication gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-06 |
 | PSCAN-08 | Inactive; technically and legally gated | Material-gap evidence plus separate owner approval required |
 | PSCAN-09 | Completed and independently accepted locally | Activation `f486989`; accepted closeout commit |
@@ -468,3 +468,26 @@ reproducibility and artifact-integrity proof remains open. PSCAN-06 remains
 open and unaccepted overall; PSCAN-07 remains proposed and unselected;
 PSCAN-08 remains inactive and ineligible. No successor is selected or
 activated.
+
+The owner then directed repository-consistent autonomous continuation and
+authorized recording the minimal prerequisite instead of forcing an invalid
+Recovery R6. Read-only Git-object analysis proved that the existing protected
+`release-tooling-v1.0.0-c2` tag still points to pre-fix candidate
+`faef8435322c9096df09b56969662411f17356ea`, while the committed workflow,
+schema 2.1, builder and verifier require that exact tag/ref identity. The
+accepted iteration-006 candidate cannot pass those SHA/ref gates, and moving
+the protected tag would destroy immutable evidence.
+
+Correction C2 iteration 007 is therefore owner-approved as an unclaimed,
+local-only immutable identity roll-forward. It selects proposed tag
+`release-tooling-v1.0.0-c2-r6`, new workflow path
+`.github/workflows/release-recovery-v1.0.0-c2-r6.yml` and additive manifest
+schema 2.2 for bounded implementation and independent local review. Exact
+authority is in
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-007-AUTHORITY.md`. This authority
+session creates none of those implementation artifacts and performs no remote,
+Docker, dependency, tag, workflow, signing, publication or spending action.
+Recovery R6 remains unauthorized until iteration 007 is implemented, validated
+and independently accepted and a separate exact R6 authority records fresh
+zero-spend remote facts. PSCAN-06 remains the sole open task; PSCAN-07 remains
+proposed and unselected; PSCAN-08 remains inactive and ineligible.

@@ -4,12 +4,14 @@ This repository is the local product workspace for an independently versioned,
 offline secret-scanning package. The product is governed by
 PASS-OUTCOME-SPEC-001.
 
-Current state: **PSCAN-06 Correction C2 iteration 005 is independently accepted
-locally for its bounded objective, but PSCAN-06 remains open and unaccepted
-overall. Recovery R1 failed closed at local source-trust preflight before any
-remote request or workflow dispatch. The two noncanonical working-tree
-projections were subsequently repaired from exact committed Git objects, but
-no retry is authorized. PSCAN-07 is unselected and PSCAN-08 remains inactive.**
+Current state: **PSCAN-06 Correction C2 iteration 006 is independently accepted
+locally for its bounded PID-collision correction, but PSCAN-06 remains open and
+unaccepted overall. Recovery R5 is terminal after its sole protected C2-tag
+push and workflow dispatch failed before Docker or artifact creation. A direct
+Recovery R6 is invalid because the immutable C2 tag, workflow and schema bind
+the pre-fix tooling commit. Correction C2 iteration 007 is owner-approved,
+unclaimed and local-only to add an append-only R6 identity; R6 itself remains
+unauthorized. PSCAN-07 is unselected and PSCAN-08 remains inactive.**
 
 The public repository and locked product tag `v1.0.0` exist, but the authorized
 release workflow failed closed before building and no signed release exists.
@@ -38,7 +40,7 @@ allowlists, receipts, keys, evidence custody, deployment gates, and retention.
 PSCAN-09 established the controlling outcome contract; PSCAN-10 supplied the
 accepted exact-object primary coverage; PSCAN-04 supplied accepted internal
 artifact normalization; and PSCAN-05 supplied accepted policy/reference
-verification. PSCAN-06 remains open until its correction is independently
-accepted and separately owner-gated remote signing/release work succeeds. No
-credential, long-lived signing key, signed release or project integration is
-present.
+verification. PSCAN-06 remains open while the append-only R6 identity,
+actual-Linux/Docker build proof and separately owner-gated signing/release work
+remain incomplete. No credential, long-lived signing key, signed release or
+project integration is present.

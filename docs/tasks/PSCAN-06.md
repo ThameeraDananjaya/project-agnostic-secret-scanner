@@ -1035,3 +1035,38 @@ publication or successor action is authorized. Actual-Linux, genuine-Docker,
 dependency, build, reproducibility and artifact-integrity proof remains open.
 PSCAN-06 remains open and unaccepted overall; PSCAN-07 remains proposed and
 unselected; PSCAN-08 remains inactive and ineligible.
+
+## Correction C2 iteration 007 immutable R6 identity authority
+
+The owner then directed autonomous, repository-consistent continuation and
+authorized this authority session to select Correction C2 iteration 007 if an
+immutable identity prerequisite proved necessary before Recovery R6. Exact
+Git-object and source inspection proved that prerequisite.
+
+The active protected tag `release-tooling-v1.0.0-c2` remains at pre-fix
+candidate `faef8435322c9096df09b56969662411f17356ea`. The accepted
+iteration-006 candidate `cf1679f9bca24887340fa4060f37d1ebff21f305` retains
+the same committed C2 workflow and schema bytes. That workflow requires the
+old tag, its SHA and its workflow ref simultaneously; schema 2.1, the builder
+and verifier bind the same old identity. Dispatching the old tag reruns the
+known defect, using the accepted candidate as input fails the SHA gate, using
+a new ref fails the ref gate, and moving the protected tag would violate
+immutable evidence.
+
+Iteration 007 is therefore owner-approved, unclaimed and local-only. It
+selects exact proposed identity `release-tooling-v1.0.0-c2-r6`, new workflow
+path `.github/workflows/release-recovery-v1.0.0-c2-r6.yml` and additive
+manifest schema 2.2. It may implement and locally verify only the append-only
+identity/version roll-forward under the exact path and preservation rules in:
+
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-007-AUTHORITY.md`
+
+This authority-recording session creates no schema, workflow or tag and makes
+no implementation, Docker, dependency, remote, signing, publication or
+spending change. A genuinely fresh session must claim iteration 007 from the
+committed authority bundle, produce a bounded candidate, and stop for separate
+independent local review. Recovery R6 remains unauthorized until iteration 007
+is independently accepted and a later exact R6 authority re-proves all live
+zero-spend remote gates. PSCAN-06 remains open and unaccepted overall;
+PSCAN-07 remains proposed and unselected; PSCAN-08 remains inactive and
+ineligible.

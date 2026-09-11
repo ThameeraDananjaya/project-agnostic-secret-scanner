@@ -487,3 +487,26 @@ acceptance of iteration 006 only. Recovery R5 remains terminal; all actual-
 Linux, Docker, dependency, build, reproducibility, artifact, remote and
 successor gates remain closed, and PSCAN-06 remains open and unaccepted
 overall.
+
+The owner then authorized the authority-only session to select the minimal
+repository-consistent prerequisite if immutable identity made direct Recovery
+R6 invalid. Git-object inspection proved that the protected C2 tag still binds
+the pre-fix tooling commit and that the existing workflow, schema 2.1, builder
+and verifier cannot truthfully run the accepted iteration-006 candidate under
+a different immutable ref. Read the selected local-only authority before any
+new edit or claim:
+
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-007-AUTHORITY.md`
+
+Iteration 007 selects proposed tag `release-tooling-v1.0.0-c2-r6`, new
+workflow path `.github/workflows/release-recovery-v1.0.0-c2-r6.yml` and
+additive manifest schema 2.2 for a bounded append-only identity roll-forward.
+The authority session creates none of them. A fresh implementation session
+must claim only iteration 007, preserve the old workflow/schema and every
+locked tag, use graphify-aware checkout verification plus a separate exact
+clean source-trust materialization, run offline no-Docker checks, and stop for
+independent review.
+
+Recovery R6 remains unauthorized. No remote read or mutation, tag operation,
+workflow dispatch, Docker action, dependency acquisition, signing,
+publication, spending or successor work is conferred by iteration 007.

@@ -238,9 +238,40 @@ $linuxSessionAssignments = @($linuxSessionFunction.FindAll({
     param($node)
     $node -is [Management.Automation.Language.AssignmentStatementAst]
 }, $true))
+$getAssignmentTargetVariableName = {
+    param([Management.Automation.Language.AssignmentStatementAst]$Assignment)
+    $target = $Assignment.Left
+    while ($target -is [Management.Automation.Language.AttributedExpressionAst]) {
+        $target = $target.Child
+    }
+    if ($target -isnot [Management.Automation.Language.VariableExpressionAst]) { return $null }
+    ($target.VariablePath.UserPath -split ':')[-1]
+}
+$isReservedPidAssignment = {
+    param([Management.Automation.Language.AssignmentStatementAst]$Assignment)
+    (& $getAssignmentTargetVariableName $Assignment) -ieq 'PID'
+}
+$assignmentPredicateCases = @(
+    @{ Name='untyped-mixed-case'; Source='$pId = 1'; Expected=1 },
+    @{ Name='typed-mixed-case'; Source='[int]$PiD = 1'; Expected=1 },
+    @{ Name='rhs-and-ledger-property'; Source='$value = $PID; $ledger = [pscustomobject]@{ PID=$value }; [int]$other = 1'; Expected=0 }
+)
+foreach ($case in $assignmentPredicateCases) {
+    $probeTokens = $null
+    $probeErrors = $null
+    $probeAst = [Management.Automation.Language.Parser]::ParseInput($case.Source, [ref]$probeTokens, [ref]$probeErrors)
+    if ($probeErrors.Count -ne 0) { throw "PID assignment predicate self-test did not parse: $($case.Name)" }
+    $probeAssignments = @($probeAst.FindAll({
+        param($node)
+        $node -is [Management.Automation.Language.AssignmentStatementAst]
+    }, $true))
+    $probeReserved = @($probeAssignments | Where-Object { & $isReservedPidAssignment $_ })
+    if ($probeReserved.Count -ne $case.Expected) {
+        throw "PID assignment predicate self-test failed: $($case.Name)"
+    }
+}
 $reservedPidAssignments = @($linuxSessionAssignments | Where-Object {
-    $_.Left -is [Management.Automation.Language.VariableExpressionAst] -and
-        (($_.Left.VariablePath.UserPath -split ':')[-1] -ieq 'PID')
+    & $isReservedPidAssignment $_
 })
 if ($reservedPidAssignments.Count -ne 0) { throw 'Get-LinuxSessionMembers assigns to reserved automatic variable PID' }
 $identifierAssignments = @($linuxSessionAssignments | Where-Object {
@@ -288,6 +319,7 @@ if ($ledgerPidVariables.Count -ne 1 -or $ledgerPidVariables[0].VariablePath.User
     $ledgerStartTimeVariables.Count -ne 1 -or $ledgerStartTimeVariables[0].VariablePath.UserPath -cne 'startTime') {
     throw 'Linux session ledger does not preserve PID and StartTime bindings'
 }
+Write-Output 'Docker execution iteration-006 PID source regression PASS untyped-mixed-case=REJECT typed-mixed-case=REJECT rhs-and-ledger-property=ALLOW data-flow=PASS'
 if (($allSource -join "`n") -match '(?m)&\s+(docker|docker\.exe)\b') { throw 'A workflow-reachable release script retains an ambient Docker invocation' }
 if (($allSource -join "`n").Contains('Invoke-ExactReleaseImageInspectProcess')) { throw 'A duplicated Docker runner remains outside the closed entrypoint' }
 foreach ($forbidden in @('ScriptBlock','Callback','Invoker','ExecutablePath','ArgumentListInput','DOCKER_CONTEXT','ReleaseDockerInvoker')) {

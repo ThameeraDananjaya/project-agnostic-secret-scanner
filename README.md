@@ -21,9 +21,11 @@ the clean materialization. The owner-approved iteration 009 continuation adds
 only `tests/unit/artifact/normalize_test.go` for a test-fixture-only repair.
 The genuinely fresh continuation implemented that repair, preserved the
 carried integration patch byte-for-byte, and passed the complete pinned
-offline author matrix including Linux/amd64 compile-only coverage. This
-evidence-bearing candidate is author-validated but not accepted; genuinely
-fresh independent review remains required.
+offline author matrix including Linux/amd64 compile-only coverage. Fresh
+independent review reproduced the complete matrix but rejected local
+acceptance because the admitted test helper derives `arguments.txt` beside
+the trusted root rather than beside a nested `--bundle`, contrary to the exact
+authority. The reviewer did not repair the candidate.
 Recovery R6 remains unauthorized. PSCAN-07 is unselected and PSCAN-08 remains
 inactive.**
 

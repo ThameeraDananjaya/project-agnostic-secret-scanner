@@ -113,6 +113,10 @@ fresh implementation session:
 108. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-009-AUTHORITY.md`
 109. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-009-PREFLIGHT.md`
 110. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-009-CONTINUATION-AUTHORITY.md`
+111. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-009-CONTINUATION-PREFLIGHT.md`
+112. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-009-CONTINUATION-IMPLEMENTATION.md`
+113. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-009-CONTINUATION-AUTHOR-VALIDATION.md`
+114. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-009-REVIEW-REJECTED.md`
 
 Then verify the exact activation commit, branch and clean Git status; the
 activated allowed and forbidden paths; the absence of another selected,
@@ -653,11 +657,23 @@ byte-for-byte. Read these new records after the continuation authority:
 1. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-009-CONTINUATION-PREFLIGHT.md`
 2. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-009-CONTINUATION-IMPLEMENTATION.md`
 3. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-009-CONTINUATION-AUTHOR-VALIDATION.md`
+4. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-009-REVIEW-REJECTED.md`
 
 The exact pinned offline format, targeted, complete package, repository test,
 vet and 36-package Linux/amd64 compile-only matrix passed. The resulting
-evidence-bearing candidate is author validated, not accepted. A genuinely
-fresh independent review must inspect its exact commit and rerun proportionate
-complete offline checks. Recovery R5 remains terminal and consumed; Recovery
-R6 and every Docker, network, remote, tag, workflow, signing, publication,
+evidence-bearing candidate was author validated, not accepted.
+
+Fresh independent review then rejected exact candidate
+`d89b033a6bc99c7e7886fffbbe677d047a479723`, tree
+`a9ade332849f4345f2e7e8f032504dccc9e60e5a`. Although the complete pinned
+offline matrix passed, the helper admits a contained nested `--bundle` and
+derives `arguments.txt` beside `--trusted-root`, not beside the bundle as the
+authority mandates. Read the bounded rejection before any readiness,
+refinement or acceptance statement:
+
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-009-REVIEW-REJECTED.md`
+
+The reviewer did not repair the candidate. Recovery R5 remains terminal and
+consumed; Recovery R6 and every Docker, network, remote, tag, workflow,
+signing, publication,
 spending, subscription and successor gate remain closed.

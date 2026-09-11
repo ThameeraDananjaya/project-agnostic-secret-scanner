@@ -7,7 +7,7 @@
 | PSCAN-03 | Rejected and closed fail-closed; not accepted | `evidence/PSCAN-03/CLOSEOUT-REJECTED.md` |
 | PSCAN-04 | Completed and independently accepted locally | Exact activation `a21b030e1658f1f98ac4e4d001af12185d9ed311`; evidence-bearing closeout commit |
 | PSCAN-05 | Completed and independently accepted locally | Exact activation `50b4186`; corrected evidence-bearing closeout commit |
-| PSCAN-06 | Correction C2 iteration 006 candidate `cf1679f9bca24887340fa4060f37d1ebff21f305`, tree `6cb0198c71881baff9c601c31ad6aa84217f4a49`, remains independently accepted locally; Recovery R5 remains terminal; iteration 007 candidate `230e1761f7c45d9629cecf360e7498b33d64ab6f`, tree `5d74628d76f95e150c0ea1de51b4892af2350a7d`, remains independently rejected; iteration 008 stopped with no candidate; iteration 009 continuation is implemented and complete author validation passed, with genuinely fresh independent review pending; PSCAN-06 remains open and unaccepted overall | Iteration 009 continuation authority and author evidence are under `evidence/PSCAN-06/CORRECTION-C2-ITERATION-009-*`; the exact evidence-bearing candidate must receive fresh independent review before acceptance; no R6, Docker, network, remote, workflow, tag, release or successor action is authorized |
+| PSCAN-06 | Correction C2 iteration 006 candidate `cf1679f9bca24887340fa4060f37d1ebff21f305`, tree `6cb0198c71881baff9c601c31ad6aa84217f4a49`, remains independently accepted locally; Recovery R5 remains terminal; iteration 007 candidate `230e1761f7c45d9629cecf360e7498b33d64ab6f`, tree `5d74628d76f95e150c0ea1de51b4892af2350a7d`, remains independently rejected; iteration 008 stopped with no candidate; iteration 009 candidate `d89b033a6bc99c7e7886fffbbe677d047a479723`, tree `a9ade332849f4345f2e7e8f032504dccc9e60e5a`, is independently rejected for violating the exact helper output-path derivation; PSCAN-06 remains open and unaccepted overall | Exact rejection is under `evidence/PSCAN-06/CORRECTION-C2-ITERATION-009-REVIEW-REJECTED.md`; no repair, R6, Docker, network, remote, workflow, tag, release or successor action is authorized |
 | PSCAN-07 | Proposed; unselected; signing/publication gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-06 |
 | PSCAN-08 | Inactive; technically and legally gated | Material-gap evidence plus separate owner approval required |
 | PSCAN-09 | Completed and independently accepted locally | Activation `f486989`; accepted closeout commit |
@@ -617,3 +617,20 @@ coverage for all 36 packages passed. This evidence-bearing candidate is author
 validated, not accepted; genuinely fresh independent review remains pending.
 Recovery R5 remains terminal and consumed, Recovery R6 remains unauthorized,
 and no successor is selected or activated.
+
+Fresh independent review session `01a0929e-4232-7ec0-a99a-894a8e90ae74`
+then inspected exact candidate `d89b033a6bc99c7e7886fffbbe677d047a479723`,
+tree `a9ade332849f4345f2e7e8f032504dccc9e60e5a`. Exact checkout,
+materialization, ten-path confinement, formatting, five-token workflow
+normalization, `# v4.2.2` preservation, fixture capability checks, complete
+packages, repository tests, vet and all 36 Linux/amd64 compile-only packages
+passed with the pinned offline toolchain and unchanged frozen cache.
+
+Local acceptance was rejected because the helper admits a contained nested
+`--bundle` but derives `arguments.txt` beside `--trusted-root` rather than
+beside that bundle as the authority requires. An external-only exact-candidate
+probe reproduced the divergent path. Exact evidence is in
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-009-REVIEW-REJECTED.md`. The
+reviewer did not repair the candidate. Recovery R5 remains terminal and
+consumed; Recovery R6 remains unauthorized. PSCAN-06 remains open and
+unaccepted overall, and no successor is selected or activated.

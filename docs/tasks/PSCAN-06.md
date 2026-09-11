@@ -1265,3 +1265,26 @@ validated candidate, not acceptance. A genuinely fresh independent review is
 required. Recovery R5 remains terminal and consumed; Recovery R6 and all
 Docker, network, remote, release, spending and successor work remain
 unauthorized. PSCAN-06 remains open and unaccepted overall.
+
+## Correction C2 iteration 009 independent rejection
+
+Fresh independent review session `01a0929e-4232-7ec0-a99a-894a8e90ae74`
+inspected exact candidate `d89b033a6bc99c7e7886fffbbe677d047a479723`,
+tree `a9ade332849f4345f2e7e8f032504dccc9e60e5a`. Exact materialization,
+ten-path confinement, both formatter checks, exact workflow normalization,
+`# v4.2.2` preservation, the repaired case/symlink fixture, complete targeted
+and package tests, `go test -count=1 ./...`, `go vet ./...` and compile-only
+Linux/amd64 coverage for all 36 packages passed with an unchanged frozen
+module cache.
+
+Local acceptance was nevertheless rejected. The authority requires the
+helper to derive `arguments.txt` beside `--bundle`. The candidate instead
+derives it beside `--trusted-root`, while admitting contained bundles in
+nested directories. An external-only exact-candidate probe admitted that
+shape and reproduced the divergent output path. Exact evidence is in
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-009-REVIEW-REJECTED.md`.
+
+The reviewer did not repair the candidate. Recovery R5 remains terminal and
+consumed; Recovery R6 and all Docker, network, remote, tag, workflow, signing,
+publication, spending and successor work remain unauthorized. PSCAN-06
+remains open and unaccepted overall.

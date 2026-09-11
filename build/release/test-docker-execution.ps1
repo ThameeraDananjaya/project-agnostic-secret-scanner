@@ -238,23 +238,83 @@ $linuxSessionAssignments = @($linuxSessionFunction.FindAll({
     param($node)
     $node -is [Management.Automation.Language.AssignmentStatementAst]
 }, $true))
-$getAssignmentTargetVariableName = {
-    param([Management.Automation.Language.AssignmentStatementAst]$Assignment)
-    $target = $Assignment.Left
-    while ($target -is [Management.Automation.Language.AttributedExpressionAst]) {
-        $target = $target.Child
+$getAssignmentTargetVariableNames = {
+    param([Management.Automation.Language.Ast]$Target)
+
+    $targetVariableNames = [Collections.Generic.List[string]]::new()
+    $walkAssignmentTarget = $null
+    $walkAssignmentTarget = {
+        param([Management.Automation.Language.Ast]$Node)
+
+        if ($Node -is [Management.Automation.Language.AttributedExpressionAst]) {
+            & $walkAssignmentTarget -Node $Node.Child
+            return
+        }
+        if ($Node -is [Management.Automation.Language.ParenExpressionAst]) {
+            & $walkAssignmentTarget -Node $Node.Pipeline
+            return
+        }
+        if ($Node -is [Management.Automation.Language.PipelineAst]) {
+            if ($Node.PipelineElements.Count -ne 1) {
+                throw "PID assignment target walker found a non-assignable pipeline: $($Node.Extent.Text)"
+            }
+            & $walkAssignmentTarget -Node $Node.PipelineElements[0]
+            return
+        }
+        if ($Node -is [Management.Automation.Language.CommandExpressionAst]) {
+            if ($Node.Redirections.Count -ne 0) {
+                throw "PID assignment target walker found a redirected command expression: $($Node.Extent.Text)"
+            }
+            & $walkAssignmentTarget -Node $Node.Expression
+            return
+        }
+        if ($Node -is [Management.Automation.Language.ArrayLiteralAst]) {
+            foreach ($element in $Node.Elements) {
+                & $walkAssignmentTarget -Node $element
+            }
+            return
+        }
+        if ($Node -is [Management.Automation.Language.VariableExpressionAst]) {
+            if (!$Node.Splatted -and $Node.VariablePath.IsVariable) {
+                [void]$targetVariableNames.Add(($Node.VariablePath.UserPath -split ':')[-1])
+            }
+            return
+        }
+        if ($Node -is [Management.Automation.Language.MemberExpressionAst] -or
+            $Node -is [Management.Automation.Language.IndexExpressionAst]) {
+            return
+        }
+        throw "PID assignment target walker found an unsupported AST shape: $($Node.GetType().FullName)"
     }
-    if ($target -isnot [Management.Automation.Language.VariableExpressionAst]) { return $null }
-    ($target.VariablePath.UserPath -split ':')[-1]
+
+    & $walkAssignmentTarget -Node $Target
+    $targetVariableNames.ToArray()
 }
 $isReservedPidAssignment = {
     param([Management.Automation.Language.AssignmentStatementAst]$Assignment)
-    (& $getAssignmentTargetVariableName $Assignment) -ieq 'PID'
+    $targetVariableNames = @(& $getAssignmentTargetVariableNames -Target $Assignment.Left)
+    @($targetVariableNames | Where-Object { $_ -ieq 'PID' }).Count -gt 0
 }
+$nonTargetPidSource = @'
+$value = $PID
+$text = '$PID = 1'
+# $PiD = 1
+$ledger = [pscustomobject]@{ PID=$value }
+[int]$other = 1
+'@
 $assignmentPredicateCases = @(
     @{ Name='untyped-mixed-case'; Source='$pId = 1'; Expected=1 },
     @{ Name='typed-mixed-case'; Source='[int]$PiD = 1'; Expected=1 },
-    @{ Name='rhs-and-ledger-property'; Source='$value = $PID; $ledger = [pscustomobject]@{ PID=$value }; [int]$other = 1'; Expected=0 }
+    @{ Name='parenthesized-mixed-case'; Source='($PiD) = 1'; Expected=1 },
+    @{ Name='multi-target-mixed-case'; Source='$PiD, $other = 1, 2'; Expected=1 },
+    @{ Name='parenthesized-multi-target-mixed-case'; Source='($PiD, $other) = 1, 2'; Expected=1 },
+    @{ Name='nested-typed-parenthesized-scoped'; Source='[int](($script:PiD)) = 1'; Expected=1 },
+    @{ Name='nested-multi-target-elements'; Source='(($other)), (([int]$PiD)) = 1, 2'; Expected=1 },
+    @{ Name='background-parenthesized'; Source='($PiD &) = 1'; Expected=1 },
+    @{ Name='member-and-index-targets'; Source='$array[$PID] = 1; $object.PID = 1; ($array[$PID]) = 2; ($object.PID) = 2'; Expected=0 },
+    @{ Name='typed-member-and-index-targets'; Source='[int]$array[$PID] = 1; [int]$object.PID = 1'; Expected=0 },
+    @{ Name='drive-qualified-non-automatic-targets'; Source='$env:PID = 1; ${function:PID} = { 1 }'; Expected=0 },
+    @{ Name='rhs-string-comment-and-ledger-property'; Source=$nonTargetPidSource; Expected=0 }
 )
 foreach ($case in $assignmentPredicateCases) {
     $probeTokens = $null
@@ -319,7 +379,7 @@ if ($ledgerPidVariables.Count -ne 1 -or $ledgerPidVariables[0].VariablePath.User
     $ledgerStartTimeVariables.Count -ne 1 -or $ledgerStartTimeVariables[0].VariablePath.UserPath -cne 'startTime') {
     throw 'Linux session ledger does not preserve PID and StartTime bindings'
 }
-Write-Output 'Docker execution iteration-006 PID source regression PASS untyped-mixed-case=REJECT typed-mixed-case=REJECT rhs-and-ledger-property=ALLOW data-flow=PASS'
+Write-Output 'Docker execution iteration-006 PID source regression PASS untyped=REJECT typed=REJECT parenthesized=REJECT multi-target=REJECT nested-wrapper=REJECT member-index-drive-controls=ALLOW rhs-string-comment-ledger=ALLOW data-flow=PASS'
 if (($allSource -join "`n") -match '(?m)&\s+(docker|docker\.exe)\b') { throw 'A workflow-reachable release script retains an ambient Docker invocation' }
 if (($allSource -join "`n").Contains('Invoke-ExactReleaseImageInspectProcess')) { throw 'A duplicated Docker runner remains outside the closed entrypoint' }
 foreach ($forbidden in @('ScriptBlock','Callback','Invoker','ExecutablePath','ArgumentListInput','DOCKER_CONTEXT','ReleaseDockerInvoker')) {

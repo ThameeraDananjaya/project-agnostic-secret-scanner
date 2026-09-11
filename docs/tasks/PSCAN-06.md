@@ -799,3 +799,31 @@ authority bundle and repeat the complete fail-closed preflight before any
 remote mutation or workflow action. PSCAN-06 remains open and unaccepted
 overall; PSCAN-07 remains proposed and unselected; PSCAN-08 remains inactive
 and ineligible.
+
+Recovery R4 was then attempted in genuinely fresh saved-project `main` session
+`01a08f7a-7d13-7ee1-be72-a997e4ff9cb6` using Daybreak Blue at `xhigh`. The
+complete mandatory preflight passed, including every-byte local source trust,
+workflow identity and permissions, current authenticated repository and
+Actions controls, exact locked tags/rulesets, absent C2 signing gate/tag/run/
+artifact, zero-net Actions Linux and storage usage, and the live account-level
+`USD 0` Actions budget with stop usage enabled.
+
+The ordered transaction fast-forwarded remote `main` exactly from
+`3523e4409ebc53cc1931e3dcaf7d1eea74bb15ab` to Recovery R4 authority commit
+`a82a3a64a04ee2d8b60757866c9864cd1b73b54b`. It then created the exact unsigned
+local tag `release-tooling-v1.0.0-c2` at accepted candidate
+`faef8435322c9096df09b56969662411f17356ea`. The first tag-push command failed
+locally because its shell-expanded refspec was invalid. The no-retry condition
+stopped the transaction without correcting or repeating the command.
+
+Recovery R4 is terminally failed and consumed zero workflow dispatches and
+zero artifacts. The remote C2 tag and ruleset remain absent; no Docker, build,
+signing, attestation, draft, release or publication action occurred. The exact
+local C2 tag remains preserved. Exact append-only evidence is recorded in
+`evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R4-FAILURE-001.md`.
+Its SHA-256 is
+`5F694FF128515A2B79A2BFA500F299FECAB8836763365E9D774DA5D847D68BEE`.
+Any future attempt requires a new exact owner decision addressing remote
+`main` at `a82a3a64`, the preserved local C2 tag, and the absent remote tag and
+ruleset. PSCAN-06 remains open and unaccepted overall; PSCAN-07 remains
+proposed and unselected; PSCAN-08 remains inactive and ineligible.

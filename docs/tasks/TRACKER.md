@@ -7,7 +7,7 @@
 | PSCAN-03 | Rejected and closed fail-closed; not accepted | `evidence/PSCAN-03/CLOSEOUT-REJECTED.md` |
 | PSCAN-04 | Completed and independently accepted locally | Exact activation `a21b030e1658f1f98ac4e4d001af12185d9ed311`; evidence-bearing closeout commit |
 | PSCAN-05 | Completed and independently accepted locally | Exact activation `50b4186`; corrected evidence-bearing closeout commit |
-| PSCAN-06 | Correction C2 iteration 005 is independently accepted locally; the first proof-gate execution and Recoveries R1-R3 failed closed before remote mutation; Recovery R4 is owner-approved after trusted zero-net billing, storage-allowance and stop-usage read-back, but is unclaimed and unexecuted; PSCAN-06 remains open and unaccepted overall | Recovery R4 authority: `evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R4-AUTHORITY.md` |
+| PSCAN-06 | Correction C2 iteration 005 is independently accepted locally; the first proof-gate execution and Recoveries R1-R3 failed closed before remote mutation; Recovery R4 passed preflight and fast-forwarded remote `main`, then failed closed before the remote C2 tag because the first tag-push refspec was invalid; zero dispatches and artifacts were consumed, and the exact local C2 tag is preserved; PSCAN-06 remains open and unaccepted overall | Recovery R4 failure: `evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R4-FAILURE-001.md` |
 | PSCAN-07 | Proposed; unselected; signing/publication gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-06 |
 | PSCAN-08 | Inactive; technically and legally gated | Material-gap evidence plus separate owner approval required |
 | PSCAN-09 | Completed and independently accepted locally | Activation `f486989`; accepted closeout commit |
@@ -270,3 +270,26 @@ workflow dispatch, Docker, artifact, signing, attestation, draft, publication,
 rerun or successor work. PSCAN-06 remains open and unaccepted overall;
 PSCAN-07 remains proposed and unselected; PSCAN-08 remains inactive and
 ineligible.
+
+Recovery R4 was then attempted in genuinely fresh saved-project `main` session
+`01a08f7a-7d13-7ee1-be72-a997e4ff9cb6` using Daybreak Blue at `xhigh`. The
+complete local, workflow, GitHub identity, tag/ruleset, prior-run, current
+billing, storage, budget and stop-usage preflight passed. Remote `main`
+fast-forwarded exactly from `3523e4409ebc53cc1931e3dcaf7d1eea74bb15ab`
+to R4 authority commit `a82a3a64a04ee2d8b60757866c9864cd1b73b54b`.
+The exact unsigned local tag `release-tooling-v1.0.0-c2` was created at
+accepted candidate `faef8435322c9096df09b56969662411f17356ea`, but the first
+tag-push command failed locally because its shell-expanded refspec was invalid.
+The no-retry gate stopped immediately. The command was not corrected or
+repeated; no remote C2 tag or ruleset, workflow dispatch, Docker action, build,
+artifact, signing, attestation, draft, release or publication occurred.
+Recovery R4 is terminally failed and consumed zero dispatches. Exact evidence
+is in
+`evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R4-FAILURE-001.md`,
+SHA-256
+`5F694FF128515A2B79A2BFA500F299FECAB8836763365E9D774DA5D847D68BEE`.
+The exact local C2 tag remains preserved; remote `main` is at `a82a3a64`, while
+the remote C2 tag and ruleset remain absent. Any future attempt requires a new
+exact owner decision for that split state. PSCAN-06 remains open and unaccepted
+overall; PSCAN-07 remains proposed and unselected; PSCAN-08 remains inactive
+and ineligible.

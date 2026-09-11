@@ -292,3 +292,26 @@ build or artifact action. Recovery R3 authorizes no retry or credential-scope
 change. A further proof-gate attempt requires trusted current billing,
 artifact-storage allowance and stop-usage evidence plus a new exact owner
 decision. PSCAN-06 remains open and unaccepted overall.
+
+The owner then authorized one bounded Recovery R4 attempt after current
+read-only billing and stop-usage evidence repaired the Recovery R3 blocker.
+Read the exact committed authority before any action:
+
+`evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R4-AUTHORITY.md`
+
+Recovery R4 passed the complete fresh preflight and fast-forwarded remote
+`main` to the exact authority commit. It created the exact local C2 tooling tag
+at the accepted candidate, then failed closed before creating the remote tag
+because the first tag-push refspec was invalid. Read the append-only terminal
+record before any new PSCAN-06 claim or action:
+
+`evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R4-FAILURE-001.md`
+
+The failure record SHA-256 is
+`5F694FF128515A2B79A2BFA500F299FECAB8836763365E9D774DA5D847D68BEE`.
+
+Recovery R4 consumed zero workflow dispatches and produced no artifact. Remote
+`main` is at the R4 authority commit; the exact local C2 tag is preserved; the
+remote C2 tag and ruleset remain absent. Recovery R4 authorizes no correction,
+retry or second push. A future attempt requires a new exact owner decision for
+that split state. PSCAN-06 remains open and unaccepted overall.

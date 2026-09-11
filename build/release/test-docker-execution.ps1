@@ -238,6 +238,18 @@ $linuxSessionAssignments = @($linuxSessionFunction.FindAll({
     param($node)
     $node -is [Management.Automation.Language.AssignmentStatementAst]
 }, $true))
+$isAutomaticPidVariablePath = {
+    param([Management.Automation.VariablePath]$Path)
+
+    if (!$Path.IsVariable -or $Path.IsDriveQualified) { return $false }
+    if ($Path.IsUnqualified) { return $Path.UserPath -ieq 'PID' }
+    if ($Path.IsUnscopedVariable) { return $Path.UserPath -ieq 'variable:PID' }
+    if ($Path.IsGlobal) { return $Path.UserPath -ieq 'global:PID' }
+    if ($Path.IsScript) { return $Path.UserPath -ieq 'script:PID' }
+    if ($Path.IsLocal) { return $Path.UserPath -ieq 'local:PID' }
+    if ($Path.IsPrivate) { return $Path.UserPath -ieq 'private:PID' }
+    return $false
+}
 $getAssignmentTargetVariableNames = {
     param([Management.Automation.Language.Ast]$Target)
 
@@ -275,8 +287,8 @@ $getAssignmentTargetVariableNames = {
             return
         }
         if ($Node -is [Management.Automation.Language.VariableExpressionAst]) {
-            if (!$Node.Splatted -and $Node.VariablePath.IsVariable) {
-                [void]$targetVariableNames.Add(($Node.VariablePath.UserPath -split ':')[-1])
+            if (!$Node.Splatted -and (& $isAutomaticPidVariablePath -Path $Node.VariablePath)) {
+                [void]$targetVariableNames.Add('PID')
             }
             return
         }
@@ -311,9 +323,11 @@ $assignmentPredicateCases = @(
     @{ Name='nested-typed-parenthesized-scoped'; Source='[int](($script:PiD)) = 1'; Expected=1 },
     @{ Name='nested-multi-target-elements'; Source='(($other)), (([int]$PiD)) = 1, 2'; Expected=1 },
     @{ Name='background-parenthesized'; Source='($PiD &) = 1'; Expected=1 },
+    @{ Name='automatic-variable-scope-targets'; Source='$PID = 1; ${PID} = 1; $variable:PID = 1; ${variable:PID} = 1; $global:PID = 1; ${global:PID} = 1; $script:PID = 1; ${script:PID} = 1; $local:PID = 1; ${local:PID} = 1; $private:PID = 1; ${private:PID} = 1'; Expected=12 },
     @{ Name='member-and-index-targets'; Source='$array[$PID] = 1; $object.PID = 1; ($array[$PID]) = 2; ($object.PID) = 2'; Expected=0 },
     @{ Name='typed-member-and-index-targets'; Source='[int]$array[$PID] = 1; [int]$object.PID = 1'; Expected=0 },
-    @{ Name='drive-qualified-non-automatic-targets'; Source='$env:PID = 1; ${function:PID} = { 1 }'; Expected=0 },
+    @{ Name='drive-qualified-non-automatic-targets'; Source='$env:PID = 1; ${env:PID} = 1; ${function:PID} = { 1 }; ${foo:bar:PID} = 1'; Expected=0 },
+    @{ Name='multi-colon-true-variable-targets'; Source='${variable:env:PID} = 1; ${global:env:PID} = 1; ${local:foo:PID} = 1; ${script:foo:PID} = 1; ${private:foo:PID} = 1'; Expected=0 },
     @{ Name='rhs-string-comment-and-ledger-property'; Source=$nonTargetPidSource; Expected=0 }
 )
 foreach ($case in $assignmentPredicateCases) {
@@ -328,6 +342,61 @@ foreach ($case in $assignmentPredicateCases) {
     $probeReserved = @($probeAssignments | Where-Object { & $isReservedPidAssignment $_ })
     if ($probeReserved.Count -ne $case.Expected) {
         throw "PID assignment predicate self-test failed: $($case.Name)"
+    }
+}
+$assignmentRuntimeCases = @(
+    @{ Name='direct'; Source='$PID = 1'; Collision=$true },
+    @{ Name='braced-direct'; Source='${PID} = 1'; Collision=$true },
+    @{ Name='variable-scope'; Source='${variable:PID} = 1'; Collision=$true },
+    @{ Name='global-scope'; Source='$global:PID = 1'; Collision=$true },
+    @{ Name='braced-global-scope'; Source='${global:PID} = 1'; Collision=$true },
+    @{ Name='script-scope'; Source='$script:PID = 1'; Collision=$true },
+    @{ Name='braced-script-scope'; Source='${script:PID} = 1'; Collision=$true },
+    @{ Name='local-scope'; Source='$local:PID = 1'; Collision=$true },
+    @{ Name='braced-local-scope'; Source='${local:PID} = 1'; Collision=$true },
+    @{ Name='private-scope'; Source='$private:PID = 1'; Collision=$true },
+    @{ Name='braced-private-scope'; Source='${private:PID} = 1'; Collision=$true },
+    @{ Name='variable-multi-colon'; Source='${variable:env:PID} = 1'; Collision=$false },
+    @{ Name='global-multi-colon'; Source='${global:env:PID} = 1'; Collision=$false },
+    @{ Name='local-multi-colon'; Source='${local:foo:PID} = 1'; Collision=$false },
+    @{ Name='script-multi-colon'; Source='${script:foo:PID} = 1'; Collision=$false },
+    @{ Name='private-multi-colon'; Source='${private:foo:PID} = 1'; Collision=$false },
+    @{ Name='environment-provider'; Source='$env:PID = ''control'''; Collision=$false },
+    @{ Name='braced-environment-provider'; Source='${env:PID} = ''control'''; Collision=$false },
+    @{ Name='function-provider'; Source='${function:PID} = { ''control'' }'; Collision=$false }
+)
+foreach ($case in $assignmentRuntimeCases) {
+    $runtimeBody = "`$ErrorActionPreference='Stop'; try { function Invoke-PidAssignmentProbe { $($case.Source) }; Invoke-PidAssignmentProbe; [Console]::Out.WriteLine('EXECUTED_WITHOUT_PID_COLLISION'); exit 0 } catch { [Console]::Error.WriteLine(`$_.Exception.Message); exit 73 }"
+    $runtimeStart = [Diagnostics.ProcessStartInfo]::new()
+    $runtimeStart.FileName = $hostExecutable
+    $runtimeStart.UseShellExecute = $false
+    $runtimeStart.CreateNoWindow = $true
+    $runtimeStart.RedirectStandardOutput = $true
+    $runtimeStart.RedirectStandardError = $true
+    foreach ($argument in @('-NoProfile','-NonInteractive','-Command',$runtimeBody)) {
+        [void]$runtimeStart.ArgumentList.Add($argument)
+    }
+    $runtimeProcess = [Diagnostics.Process]::new()
+    $runtimeProcess.StartInfo = $runtimeStart
+    try {
+        [void]$runtimeProcess.Start()
+        $runtimeOutputRead = $runtimeProcess.StandardOutput.ReadToEndAsync()
+        $runtimeErrorRead = $runtimeProcess.StandardError.ReadToEndAsync()
+        if (!$runtimeProcess.WaitForExit(10000)) {
+            $runtimeProcess.Kill($true)
+            throw "PID assignment runtime self-test timed out: $($case.Name)"
+        }
+        $runtimeOutput = $runtimeOutputRead.GetAwaiter().GetResult().Trim()
+        $runtimeError = $runtimeErrorRead.GetAwaiter().GetResult().Trim()
+        $runtimeExitCode = $runtimeProcess.ExitCode
+    } finally {
+        $runtimeProcess.Dispose()
+    }
+    $runtimeCollision = $runtimeExitCode -eq 73 -and
+        $runtimeError -match '(?i)Cannot overwrite variable PID because it is read-only or constant'
+    $runtimeAllowed = $runtimeExitCode -eq 0 -and $runtimeOutput -ceq 'EXECUTED_WITHOUT_PID_COLLISION'
+    if (($case.Collision -and !$runtimeCollision) -or (!$case.Collision -and !$runtimeAllowed)) {
+        throw "PID assignment runtime self-test failed: $($case.Name) exit=$runtimeExitCode output=$runtimeOutput error=$runtimeError"
     }
 }
 $reservedPidAssignments = @($linuxSessionAssignments | Where-Object {
@@ -379,7 +448,7 @@ if ($ledgerPidVariables.Count -ne 1 -or $ledgerPidVariables[0].VariablePath.User
     $ledgerStartTimeVariables.Count -ne 1 -or $ledgerStartTimeVariables[0].VariablePath.UserPath -cne 'startTime') {
     throw 'Linux session ledger does not preserve PID and StartTime bindings'
 }
-Write-Output 'Docker execution iteration-006 PID source regression PASS untyped=REJECT typed=REJECT parenthesized=REJECT multi-target=REJECT nested-wrapper=REJECT member-index-drive-controls=ALLOW rhs-string-comment-ledger=ALLOW data-flow=PASS'
+Write-Output 'Docker execution iteration-006 PID source regression PASS untyped=REJECT typed=REJECT parenthesized=REJECT multi-target=REJECT nested-wrapper=REJECT runtime-scopes=REJECT multi-colon-provider-controls=ALLOW member-index=ALLOW rhs-string-comment-ledger=ALLOW data-flow=PASS'
 if (($allSource -join "`n") -match '(?m)&\s+(docker|docker\.exe)\b') { throw 'A workflow-reachable release script retains an ambient Docker invocation' }
 if (($allSource -join "`n").Contains('Invoke-ExactReleaseImageInspectProcess')) { throw 'A duplicated Docker runner remains outside the closed entrypoint' }
 foreach ($forbidden in @('ScriptBlock','Callback','Invoker','ExecutablePath','ArgumentListInput','DOCKER_CONTEXT','ReleaseDockerInvoker')) {

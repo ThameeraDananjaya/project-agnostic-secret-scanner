@@ -7,7 +7,7 @@
 | PSCAN-03 | Rejected and closed fail-closed; not accepted | `evidence/PSCAN-03/CLOSEOUT-REJECTED.md` |
 | PSCAN-04 | Completed and independently accepted locally | Exact activation `a21b030e1658f1f98ac4e4d001af12185d9ed311`; evidence-bearing closeout commit |
 | PSCAN-05 | Completed and independently accepted locally | Exact activation `50b4186`; corrected evidence-bearing closeout commit |
-| PSCAN-06 | Correction C2 iteration 006 candidate `cf1679f9bca24887340fa4060f37d1ebff21f305`, tree `6cb0198c71881baff9c601c31ad6aa84217f4a49`, remains independently accepted locally; Recovery R5 remains terminal; iteration 007 candidate `230e1761f7c45d9629cecf360e7498b33d64ab6f`, tree `5d74628d76f95e150c0ea1de51b4892af2350a7d`, remains independently rejected solely for its global `2.2` workflow-preservation normalization; iteration 008 is owner-approved, unclaimed and limited to the exact identity-specific preservation-test repair plus append-only evidence/living-state sync; PSCAN-06 remains open and unaccepted overall | Iteration 008 authority: `evidence/PSCAN-06/CORRECTION-C2-ITERATION-008-AUTHORITY.md`; no R6, remote, workflow, tag, release or successor action is authorized |
+| PSCAN-06 | Correction C2 iteration 006 candidate `cf1679f9bca24887340fa4060f37d1ebff21f305`, tree `6cb0198c71881baff9c601c31ad6aa84217f4a49`, remains independently accepted locally; Recovery R5 remains terminal; iteration 007 candidate `230e1761f7c45d9629cecf360e7498b33d64ab6f`, tree `5d74628d76f95e150c0ea1de51b4892af2350a7d`, remains independently rejected solely for its global `2.2` workflow-preservation normalization; iteration 008 was claimed but stopped with no candidate after exact Go 1.27.1 `gofmt` reproduced a pre-existing out-of-scope diff and the full package reproduced a separate pre-existing Windows synthetic Cosign failure; its target-only probe passed and was restored; PSCAN-06 remains open and unaccepted overall | Iteration 008 fail-closed author record: `evidence/PSCAN-06/CORRECTION-C2-ITERATION-008-AUTHOR-VALIDATION.md`; a new owner decision is required before another implementation attempt; no R6, remote, workflow, tag, release or successor action is authorized |
 | PSCAN-07 | Proposed; unselected; signing/publication gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-06 |
 | PSCAN-08 | Inactive; technically and legally gated | Material-gap evidence plus separate owner approval required |
 | PSCAN-09 | Completed and independently accepted locally | Activation `f486989`; accepted closeout commit |
@@ -535,3 +535,24 @@ offline environment locks recorded in the authority. This authority session
 does not execute Go or edit the test. Recovery R5 remains terminal and
 consumed; Recovery R6 remains unauthorized. PSCAN-06 remains the sole open
 task and unaccepted overall; no successor is selected or activated.
+
+Fresh saved-project session `01a091b5-687a-7392-b366-4b71f8bbbe8d` claimed
+only iteration 008 from exact authority commit
+`4f86651de67a05db8ae0076c0c155bd184082af3`, tree
+`4ef9e344c1849c42509a61077e6a509fae8ef355`. Exact source trust, authority
+hashes, critical bytes, token counts and the supplied Go 1.27.1 identity
+passed. The required formatter check then returned exit `1` with a 66-line
+diff outside the authorized workflow-normalization block. A separate clean
+materialization of the untouched authority commit reproduced the same result.
+
+The bounded test attempt was reverted exactly and no candidate survives. The
+claiming session stopped before Go tests or vet rather than broaden the
+correction. A separate fresh verification continuation then reproduced the
+targeted authority failure, the full-package Windows synthetic Cosign failure,
+and a passing targeted result under the bounded probe; the probe was restored
+and the full package still failed solely at Cosign. Exact evidence is in the
+iteration-008 preflight, implementation and author-validation records. Further
+implementation requires a new exact owner decision reconciling both baseline
+failures with the within-file scope. Recovery R5
+remains terminal and consumed; Recovery R6 and all Docker, dependency, remote,
+release and successor work remain unauthorized.

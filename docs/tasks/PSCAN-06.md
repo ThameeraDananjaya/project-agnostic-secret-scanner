@@ -1138,3 +1138,27 @@ R6 remains unauthorized. No Docker, dependency download, network, remote,
 tag, workflow, signing, publication, spending or successor action is
 authorized. PSCAN-06 remains open and unaccepted overall; PSCAN-07 remains
 proposed and unselected; PSCAN-08 remains inactive and ineligible.
+
+Fresh saved-project session `01a091b5-687a-7392-b366-4b71f8bbbe8d` claimed
+only iteration 008 from exact authority commit
+`4f86651de67a05db8ae0076c0c155bd184082af3`. The exact source-trust,
+authority, critical-byte, token-count and Go 1.27.1 toolchain gates passed. Its
+bounded workflow-normalization repair was applied in the working tree, but the
+required `gofmt -d` check returned native exit `1` with a 66-line diff outside
+that permitted block. A separate clean materialization of the untouched
+authority commit reproduced the same formatter result and four pre-existing
+hunks.
+
+The session stopped on that unrelated failure without broadening the repair.
+The test attempt was reverted byte-for-byte to the authority commit; no
+iteration-008 candidate, author-validation pass or acceptance exists. Exact
+non-acceptance evidence is in
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-008-IMPLEMENTATION.md` and
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-008-AUTHOR-VALIDATION.md`. A
+separate fresh verification continuation reproduced the expected untouched
+targeted failure, the full-package Windows synthetic Cosign failure, and a
+passing targeted result under the bounded probe; the probe was restored and
+the full package still failed solely at Cosign. A new exact owner decision is
+required before another implementation attempt.
+Recovery R5 remains terminal and consumed; Recovery R6 and all Docker,
+dependency, remote, release and successor work remain unauthorized.

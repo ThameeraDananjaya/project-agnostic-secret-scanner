@@ -12,8 +12,13 @@ Recovery R6 is invalid because the immutable C2 tag, workflow and schema bind
 the pre-fix tooling commit. Correction C2 iteration 007 candidate `230e176` is
 independently rejected because its mandatory workflow-preservation regression
 globally rewrites `2.2` and falsely changes an unchanged `v4.2.2` action
-comment. Correction C2 iteration 008 is owner-approved, unclaimed and limited
-to that exact test normalization plus append-only evidence/living-state sync.
+comment. Correction C2 iteration 008 was claimed in a fresh session, but the
+required exact Go 1.27.1 formatter check reproduced a pre-existing 66-line
+diff on the untouched authority commit outside the permitted normalization
+block. The full supply-chain package also retained a pre-existing Windows
+synthetic Cosign failure. The bounded test probe passed its targeted check but
+was reverted, so no iteration-008 candidate or acceptance exists. Further
+implementation requires a new owner decision.
 Recovery R6 remains unauthorized. PSCAN-07 is unselected and PSCAN-08 remains
 inactive.**
 

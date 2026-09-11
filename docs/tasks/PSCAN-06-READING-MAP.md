@@ -107,6 +107,9 @@ fresh implementation session:
 102. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-007-IMPLEMENTATION.md`
 103. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-007-REVIEW-REJECTED.md`
 104. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-008-AUTHORITY.md`
+105. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-008-PREFLIGHT.md`
+106. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-008-IMPLEMENTATION.md`
+107. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-008-AUTHOR-VALIDATION.md`
 
 Then verify the exact activation commit, branch and clean Git status; the
 activated allowed and forbidden paths; the absence of another selected,
@@ -565,3 +568,22 @@ not run Go or edit the test.
 Recovery R5 remains terminal and consumed. Recovery R6 remains unauthorized.
 No Docker, dependency download, network, remote, tag, workflow, signing,
 publication, spending or successor action is conferred by iteration 008.
+
+Iteration 008 was claimed in fresh session
+`01a091b5-687a-7392-b366-4b71f8bbbe8d`, but the required exact Go 1.27.1
+formatter check found a pre-existing 66-line diff outside the authorized
+workflow-normalization block. A clean exact materialization of the untouched
+authority commit reproduced the same result. The bounded test attempt was
+reverted exactly; no implementation candidate exists. The claiming session
+ran no Go test or vet command after the formatter failure. Read the iteration-
+008 preflight, implementation and author-validation records before interpreting
+status. Further implementation needs a new exact owner decision; all R6,
+Docker, network, remote, signing,
+publication, spending and successor gates remain closed.
+
+A separate fresh verification continuation reproduced both baseline failures
+with the exact offline Go route: the untouched preservation test failed at
+`release_test.go:262`, and the full package also failed the pre-existing
+Windows synthetic Cosign case at `release_test.go:66`. The bounded probe made
+the targeted test pass while the full package still failed solely at Cosign,
+then was restored. No repository-wide test, vet or no-Docker result is claimed.

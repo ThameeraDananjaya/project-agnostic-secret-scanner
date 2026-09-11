@@ -1015,6 +1015,20 @@ in `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-REFINEMENT-003.md` and
 `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-AUTHOR-VALIDATION-004.md`.
 This is author evidence only; a fourth fresh independent review is required.
 
+Fourth independent review then accepted bounded local iteration 006.
+The reviewer extracted the exact predicate, verified the public
+`VariablePath` contract against the installed parser, and exercised all prior
+positives and controls plus independently mutated qualifier case, bracing,
+escaping, extra-colon and separator placement, wrapper depth, tuple position,
+provider paths and every installed-parser assignment-left family. Every
+predicate result agreed with isolated runtime collision behavior; supported
+non-PID lvalues were allowed and unsupported parser-invalid target shapes
+failed closed. Production blob and exact identity/ledger data flow, both
+parsers, source trust, path confinement, the complete available-host no-Docker
+matrix and residual cleanup all pass. Exact evidence is in
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-ACCEPTANCE.md`. This accepts
+only bounded local iteration 006, not PSCAN-06 overall or any remote proof.
+
 Recovery R5 remains terminally failed and consumed. No remote read or
 mutation, Docker, tag change, workflow dispatch or rerun, signing,
 publication or successor action is authorized. Actual-Linux, genuine-Docker,

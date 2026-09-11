@@ -99,6 +99,9 @@ fresh implementation session:
 94. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-REFINEMENT-002.md`
 95. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-AUTHOR-VALIDATION-003.md`
 96. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-REVIEW-REJECTED-003.md`
+97. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-REFINEMENT-003.md`
+98. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-AUTHOR-VALIDATION-004.md`
+99. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-ACCEPTANCE.md`
 
 Then verify the exact activation commit, branch and clean Git status; the
 activated allowed and forbidden paths; the absence of another selected,
@@ -469,8 +472,18 @@ automatic PID forms from legal multi-colon variables and provider paths. All
 earlier typed, parenthesized, nested, multiple-target and non-target cases
 remain covered, and the complete exact-candidate no-Docker matrix passes.
 
-This candidate has author validation only. A fourth genuinely fresh skeptical
-task must inspect that exact commit before any local acceptance. Every earlier
-candidate and rejection remains immutable. Recovery R5 remains terminal; all
-actual-Linux, Docker, dependency, build, reproducibility, artifact, remote and
-successor gates remain closed.
+Fourth independent review accepted this exact candidate for bounded
+local iteration 006. The exact committed predicate agreed with isolated
+runtime behavior across every prior case and independent case/scope, bracing,
+escape, colon/separator, wrapper, tuple, provider, member/index and supported-
+lvalue mutations. Production data flow, parsers, source trust, confinement,
+the full available-host no-Docker matrix and cleanup pass. Read the exact
+bounded acceptance before interpreting status:
+
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-ACCEPTANCE.md`
+
+Every earlier candidate and rejection remains immutable. This is local
+acceptance of iteration 006 only. Recovery R5 remains terminal; all actual-
+Linux, Docker, dependency, build, reproducibility, artifact, remote and
+successor gates remain closed, and PSCAN-06 remains open and unaccepted
+overall.

@@ -7,7 +7,7 @@
 | PSCAN-03 | Rejected and closed fail-closed; not accepted | `evidence/PSCAN-03/CLOSEOUT-REJECTED.md` |
 | PSCAN-04 | Completed and independently accepted locally | Exact activation `a21b030e1658f1f98ac4e4d001af12185d9ed311`; evidence-bearing closeout commit |
 | PSCAN-05 | Completed and independently accepted locally | Exact activation `50b4186`; corrected evidence-bearing closeout commit |
-| PSCAN-06 | Correction C2 iteration 006 candidates `8fbbf7b695aa7f0c995dd0a655d40ddd7fc16fb4` and `e6a767aab71db1d3f62063dded379b4701d2cb52` remain independently rejected for typed and parenthesized/multiple assignment-target bypasses; second refined candidate `763730403ae538850e9d806ce9db82c815517b2d`, tree `05c0baba5e61edb808b918a2dd6c853f49b8955e`, is independently rejected because legal multi-colon braced variable names ending in `PID` are false positives, although production data flow and the available-host no-Docker matrix pass; Recovery R5 remains terminal and no repair, Docker, network, remote, tag, workflow, signing, publication or successor action is authorized; PSCAN-06 remains open and unaccepted overall | Iteration 006 authority: `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-AUTHORITY.md`; third rejected review: `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-REVIEW-REJECTED-003.md` |
+| PSCAN-06 | Correction C2 iteration 006 third refined candidate `cf1679f9bca24887340fa4060f37d1ebff21f305`, tree `6cb0198c71881baff9c601c31ad6aa84217f4a49`, is independently accepted for its bounded local PID-collision correction after preserving all three rejected predecessors; production data flow, exact predicate/runtime adversarial coverage, source trust and the available-host no-Docker matrix pass; Recovery R5 remains terminal, actual-Linux/Docker/build proof remains open, and PSCAN-06 remains open and unaccepted overall | Iteration 006 local acceptance: `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-ACCEPTANCE.md`; no remote, workflow, release or successor action is authorized |
 | PSCAN-07 | Proposed; unselected; signing/publication gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-06 |
 | PSCAN-08 | Inactive; technically and legally gated | Material-gap evidence plus separate owner approval required |
 | PSCAN-09 | Completed and independently accepted locally | Activation `f486989`; accepted closeout commit |
@@ -444,5 +444,27 @@ This is author evidence, not independent acceptance. Recovery R5 remains
 terminally failed and consumed; actual-Linux, genuine-Docker, dependency,
 build, reproducibility and artifact-integrity proof remains open. PSCAN-06
 remains open and unaccepted overall; PSCAN-07 remains proposed and unselected;
+PSCAN-08 remains inactive and ineligible. No successor is selected or
+activated.
+
+Fourth independent review session `01a09003-9a4c-7862-967e-972112c9855d`
+then accepted exact third refined candidate
+`cf1679f9bca24887340fa4060f37d1ebff21f305`, tree
+`6cb0198c71881baff9c601c31ad6aa84217f4a49`, for bounded local iteration 006.
+The reviewer extracted the exact committed predicate and independently
+verified public `VariablePath` semantics, every earlier positive and control,
+mutated case/scope/bracing/escaping/colon/separator forms, wrapper depth,
+tuple positions, provider paths, member/index controls and all installed-
+parser assignment-left families against isolated runtime behavior. No real
+predicate/runtime divergence remained. Production source/data flow, both
+parsers, exact source trust, two-path confinement, the complete available-host
+no-Docker hostile/native matrix and residual cleanup pass. Exact evidence is
+in `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-ACCEPTANCE.md`.
+
+All three rejected candidates and review records remain immutable. This is
+local acceptance of iteration 006 only. Recovery R5 remains terminally failed
+and consumed; actual-Linux, genuine-Docker, dependency, build,
+reproducibility and artifact-integrity proof remains open. PSCAN-06 remains
+open and unaccepted overall; PSCAN-07 remains proposed and unselected;
 PSCAN-08 remains inactive and ineligible. No successor is selected or
 activated.

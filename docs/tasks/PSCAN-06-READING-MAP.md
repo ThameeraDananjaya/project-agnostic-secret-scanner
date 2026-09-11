@@ -118,6 +118,9 @@ fresh implementation session:
 113. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-009-CONTINUATION-AUTHOR-VALIDATION.md`
 114. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-009-REVIEW-REJECTED.md`
 115. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-010-AUTHORITY.md`
+116. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-010-PREFLIGHT.md`
+117. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-010-IMPLEMENTATION.md`
+118. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-010-AUTHOR-VALIDATION.md`
 
 Then verify the exact activation commit, branch and clean Git status; the
 activated allowed and forbidden paths; the absence of another selected,
@@ -703,7 +706,19 @@ frozen read-only/RX module cache with fresh external caches, run the complete
 targeted/package/repository/vet/Linux-amd64 compile-only matrix, create one
 bounded candidate commit and stop for genuinely fresh independent review.
 
-The iteration-010 authority session runs no Go and edits no implementation.
+Genuinely fresh implementation session
+`01a092b2-d833-74f3-99c0-a2def0764153` claimed only iteration 010 from exact
+authority commit `ad77e68f8ae6710c24ba818bfb04c8ecfec5f4e4`. Its bounded
+candidate implements the exact argument-2 bundle-sibling derivation and the
+required positive nested-bundle and hostile preservation regressions. The
+complete pinned offline author matrix, including both relevant packages,
+repository tests, vet and compile-only Linux/amd64 coverage for all 36
+packages, passed with an unchanged frozen module cache. Read the three new
+iteration-010 records above before review.
+
+This is author validation only. The resulting one-commit candidate is not
+accepted until a genuinely fresh independent reviewer completes the full
+matrix without repair.
 Recovery R5 remains terminal and consumed; Recovery R6 and every Docker,
 network, remote, tag, workflow, signing, publication, spending, subscription
 and successor gate remain closed.

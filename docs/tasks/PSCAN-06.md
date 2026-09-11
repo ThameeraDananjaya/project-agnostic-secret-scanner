@@ -1298,7 +1298,9 @@ correction after the iteration-009 independent rejection. Candidate
 only because the helper admits a contained nested `--bundle` while deriving
 `arguments.txt` beside `--trusted-root`.
 
-Iteration 010 is owner-approved, unclaimed, not implemented and not accepted.
+Iteration 010 is claimed and implemented as a bounded author candidate; it is
+author-validated, not independently accepted and pending genuinely fresh
+independent review.
 It may modify only `tests/integration/supply-chain/release_test.go`, add new
 iteration-010 evidence and synchronize the four named living-state documents.
 For every exact admitted helper invocation, the output must equal
@@ -1323,11 +1325,19 @@ fresh independent review and exclusions are controlling in:
 
 `evidence/PSCAN-06/CORRECTION-C2-ITERATION-010-AUTHORITY.md`
 
-This authority-recording session does not edit or execute the test. A
-genuinely fresh implementation session must claim only iteration 010 from the
-resulting exact authority commit, prove source trust, clean materialization and
-path confinement, implement the bounded repair, validate it offline, create
-one candidate commit and stop for genuinely fresh independent review.
+Genuinely fresh session `01a092b2-d833-74f3-99c0-a2def0764153` claimed only
+iteration 010 from exact authority commit
+`ad77e68f8ae6710c24ba818bfb04c8ecfec5f4e4`. Its selected test-only change
+uses the exact argument-2 bundle-sibling derivation and adds positive nested-
+bundle plus hostile path/output regressions while preserving the trusted-root
+admission root and every mandatory helper/workflow boundary. The pinned
+offline formatter, `go mod verify`, targeted checks, both complete relevant
+packages, repository tests, vet and all 36 Linux/amd64 CGO-disabled compile-
+only packages passed with an unchanged frozen module cache.
+
+The resulting single candidate commit is author-validated only. A genuinely
+fresh independent reviewer must inspect and rerun the complete matrix without
+repair before any acceptance record.
 Recovery R5 remains terminal and consumed; Recovery R6 and all Docker,
 network, remote, tag, workflow, signing, publication, spending, subscription
 and successor work remain unauthorized. PSCAN-06 remains open and unaccepted

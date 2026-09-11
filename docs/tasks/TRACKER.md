@@ -7,7 +7,7 @@
 | PSCAN-03 | Rejected and closed fail-closed; not accepted | `evidence/PSCAN-03/CLOSEOUT-REJECTED.md` |
 | PSCAN-04 | Completed and independently accepted locally | Exact activation `a21b030e1658f1f98ac4e4d001af12185d9ed311`; evidence-bearing closeout commit |
 | PSCAN-05 | Completed and independently accepted locally | Exact activation `50b4186`; corrected evidence-bearing closeout commit |
-| PSCAN-06 | Correction C2 iteration 006 candidate `cf1679f9bca24887340fa4060f37d1ebff21f305`, tree `6cb0198c71881baff9c601c31ad6aa84217f4a49`, remains independently accepted locally; Recovery R5 remains terminal; iteration 007 candidate `230e1761f7c45d9629cecf360e7498b33d64ab6f`, tree `5d74628d76f95e150c0ea1de51b4892af2350a7d`, remains independently rejected; iteration 008 stopped with no candidate; iteration 009 candidate `d89b033a6bc99c7e7886fffbbe677d047a479723`, tree `a9ade332849f4345f2e7e8f032504dccc9e60e5a`, remains independently rejected; iteration 010 is owner-approved, unclaimed, not implemented and not accepted as the minimal single-test-file correction for I009-R01; PSCAN-06 remains open and unaccepted overall | Exact iteration 010 authority is under `evidence/PSCAN-06/CORRECTION-C2-ITERATION-010-AUTHORITY.md`; no implementation in the authority session, R6, Docker, network, remote, workflow, tag, release or successor action is authorized |
+| PSCAN-06 | Correction C2 iteration 006 candidate `cf1679f9bca24887340fa4060f37d1ebff21f305`, tree `6cb0198c71881baff9c601c31ad6aa84217f4a49`, remains independently accepted locally; Recovery R5 remains terminal; iteration 007 candidate `230e1761f7c45d9629cecf360e7498b33d64ab6f`, tree `5d74628d76f95e150c0ea1de51b4892af2350a7d`, remains independently rejected; iteration 008 stopped with no candidate; iteration 009 candidate `d89b033a6bc99c7e7886fffbbe677d047a479723`, tree `a9ade332849f4345f2e7e8f032504dccc9e60e5a`, remains independently rejected; iteration 010 is implemented as a bounded one-test-file candidate whose complete pinned offline author matrix passes; the resulting commit is author-validated, not accepted, and pending genuinely fresh independent review; PSCAN-06 remains open and unaccepted overall | Exact iteration 010 authority and new preflight, implementation and author-validation records are under `evidence/PSCAN-06/`; R6, Docker, network, remote, workflow, tag, release and successor action remain unauthorized |
 | PSCAN-07 | Proposed; unselected; signing/publication gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-06 |
 | PSCAN-08 | Inactive; technically and legally gated | Material-gap evidence plus separate owner approval required |
 | PSCAN-09 | Completed and independently accepted locally | Activation `f486989`; accepted closeout commit |
@@ -657,3 +657,24 @@ subscription and successor actions remain unauthorized. PSCAN-06 remains the
 sole open task and remains unaccepted overall. Recovery R6 remains unavailable
 until iteration 010 is independently accepted locally and a separate exact R6
 authority is later recorded.
+
+Genuinely fresh implementation session
+`01a092b2-d833-74f3-99c0-a2def0764153` claimed only iteration 010 from exact
+authority commit `ad77e68f8ae6710c24ba818bfb04c8ecfec5f4e4`. The selected
+test-only helper now derives `arguments.txt` beside the lexical cleaned bundle
+at argument 2 while preserving the argument-4-derived admission root and every
+existing exact-position, containment, regular-file, symlink, environment,
+claim, exclusive-create and non-recursion boundary. A positive contained
+nested-bundle regression proves the exact return, exclusive write, ordered
+capture, no fallback and absent trusted-root-sibling output; expanded hostile
+cases cover real input symlinks, trusted-root escape/directories and immutable
+pre-existing output.
+
+The pinned offline Go 1.27.1 formatter, `go mod verify`, targeted checks, both
+complete relevant packages, repository tests, vet and Linux/amd64 CGO-disabled
+compile-only coverage for all 36 packages passed. The frozen module cache was
+unchanged. This is author validation only; the resulting one-commit candidate
+requires genuinely fresh independent review and is not accepted. Recovery R5
+remains terminal and consumed; Recovery R6 and all Docker, network, remote,
+tag, workflow, signing, publication, spending, subscription and successor
+actions remain unauthorized.

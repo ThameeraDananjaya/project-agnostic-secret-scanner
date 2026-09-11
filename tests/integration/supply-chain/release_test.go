@@ -63,7 +63,7 @@ func cosignHelperArgumentsPath(arguments []string, getenv func(string) string) (
 			return "", false
 		}
 	}
-	argumentsPath := filepath.Join(root, "arguments.txt")
+	argumentsPath := filepath.Join(filepath.Dir(filepath.Clean(arguments[2])), "arguments.txt")
 	if _, err := os.Lstat(argumentsPath); err == nil || !os.IsNotExist(err) {
 		return "", false
 	}
@@ -184,8 +184,96 @@ func TestCosignCommandVerifierBindsEveryGitHubWorkflowClaim(t *testing.T) {
 	}
 }
 
+func TestCosignTestMainHelperWritesOnlyBesideContainedNestedBundle(t *testing.T) {
+	root := t.TempDir()
+	nested := filepath.Join(root, "nested")
+	if err := os.Mkdir(nested, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	trustedRootPath := filepath.Join(root, "trusted-root.json")
+	manifestPath := filepath.Join(root, "release-manifest.json")
+	bundlePath := filepath.Join(nested, "release-manifest.sigstore.json")
+	for path, contents := range map[string]string{
+		trustedRootPath: "trusted-root",
+		manifestPath:    "manifest",
+		bundlePath:      "bundle",
+	} {
+		if err := os.WriteFile(path, []byte(contents), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	identity := releaseIdentityV2()
+	arguments := []string{
+		"verify-blob",
+		"--bundle", bundlePath,
+		"--trusted-root", trustedRootPath,
+		"--certificate-identity", identity.CertificateIdentity,
+		"--certificate-oidc-issuer", identity.OIDCIssuer,
+		"--certificate-github-workflow-repository", identity.Repository,
+		"--certificate-github-workflow-ref", identity.Ref,
+		"--certificate-github-workflow-sha", identity.WorkflowSHA,
+		"--certificate-github-workflow-trigger", identity.Trigger,
+		manifestPath,
+	}
+	getenv := func(name string) string {
+		if name == "COSIGN_YES" {
+			return "false"
+		}
+		return ""
+	}
+	bundleSibling := filepath.Join(filepath.Dir(filepath.Clean(arguments[2])), "arguments.txt")
+	trustedRootSibling := filepath.Join(filepath.Dir(filepath.Clean(arguments[4])), "arguments.txt")
+	if bundleSibling == trustedRootSibling {
+		t.Fatal("nested bundle and trusted-root output paths are not distinct")
+	}
+	gotPath, admitted := cosignHelperArgumentsPath(arguments, getenv)
+	if !admitted || gotPath != bundleSibling {
+		t.Fatalf("contained nested bundle not admitted beside bundle: admitted=%v path=%q want=%q", admitted, gotPath, bundleSibling)
+	}
+	runs := 0
+	if result := testMainExitCode(arguments, getenv, func() int {
+		runs++
+		return 73
+	}); result != 0 || runs != 0 {
+		t.Fatalf("admitted nested bundle did not use helper exclusively: result=%d runs=%d", result, runs)
+	}
+	raw, err := os.ReadFile(bundleSibling)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := strings.Join(arguments, "\n") + "\n"; string(raw) != want {
+		t.Fatalf("captured arguments differ from exact ordered invocation: got %q want %q", raw, want)
+	}
+	for position, want := range map[int]string{
+		6: identity.CertificateIdentity, 8: identity.OIDCIssuer,
+		10: identity.Repository, 12: identity.Ref,
+		14: identity.WorkflowSHA, 16: identity.Trigger,
+	} {
+		if arguments[position] != want {
+			t.Fatalf("claim position %d = %q, want %q", position, arguments[position], want)
+		}
+	}
+	if _, err := os.Lstat(trustedRootSibling); !os.IsNotExist(err) {
+		t.Fatalf("helper created distinct trusted-root-sibling output: %v", err)
+	}
+}
+
 func TestCosignTestMainHelperRejectsNearMissesWithoutRecursiveExecution(t *testing.T) {
 	identity := releaseIdentityV2()
+	replaceWithSymlink := func(t *testing.T, arguments []string, position int) {
+		t.Helper()
+		target := filepath.Join(t.TempDir(), "regular-target")
+		if err := os.WriteFile(target, []byte("target"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		link := arguments[position]
+		if err := os.Remove(link); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(target, link); err != nil {
+			t.Skipf("file symlinks unavailable: %v", err)
+		}
+	}
 	newFixture := func(t *testing.T) ([]string, string) {
 		t.Helper()
 		root := t.TempDir()
@@ -240,11 +328,39 @@ func TestCosignTestMainHelperRejectsNearMissesWithoutRecursiveExecution(t *testi
 				t.Fatal(err)
 			}
 		},
+		"trusted-root escape": func(t *testing.T, arguments []string) {
+			outside := t.TempDir()
+			arguments[4] = filepath.Join(outside, "trusted-root.json")
+			if err := os.WriteFile(arguments[4], []byte("trusted-root"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+		},
+		"bundle symlink": func(t *testing.T, arguments []string) {
+			replaceWithSymlink(t, arguments, 2)
+		},
+		"trusted-root symlink": func(t *testing.T, arguments []string) {
+			replaceWithSymlink(t, arguments, 4)
+		},
+		"manifest symlink": func(t *testing.T, arguments []string) {
+			replaceWithSymlink(t, arguments, 17)
+		},
 		"bundle directory": func(t *testing.T, arguments []string) {
-			arguments[2] = t.TempDir()
+			arguments[2] = filepath.Join(filepath.Dir(arguments[4]), "bundle-directory")
+			if err := os.Mkdir(arguments[2], 0o700); err != nil {
+				t.Fatal(err)
+			}
+		},
+		"trusted-root directory": func(t *testing.T, arguments []string) {
+			arguments[4] = filepath.Join(filepath.Dir(arguments[4]), "trusted-root-directory")
+			if err := os.Mkdir(arguments[4], 0o700); err != nil {
+				t.Fatal(err)
+			}
 		},
 		"manifest directory": func(t *testing.T, arguments []string) {
-			arguments[17] = t.TempDir()
+			arguments[17] = filepath.Join(filepath.Dir(arguments[4]), "manifest-directory")
+			if err := os.Mkdir(arguments[17], 0o700); err != nil {
+				t.Fatal(err)
+			}
 		},
 	}
 	for name, mutate := range tests {
@@ -290,6 +406,34 @@ func TestCosignTestMainHelperRejectsNearMissesWithoutRecursiveExecution(t *testi
 			}
 		})
 	}
+
+	t.Run("pre-existing exact output", func(t *testing.T) {
+		arguments, argumentsPath := newFixture(t)
+		original := []byte("preserve-existing-output")
+		if err := os.WriteFile(argumentsPath, original, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		runs := 0
+		result := testMainExitCode(arguments, func(name string) string {
+			if name == "COSIGN_YES" {
+				return "false"
+			}
+			return ""
+		}, func() int {
+			runs++
+			return 73
+		})
+		if result != 73 || runs != 1 {
+			t.Fatalf("pre-existing output entered helper: result=%d runs=%d", result, runs)
+		}
+		raw, err := os.ReadFile(argumentsPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(raw, original) {
+			t.Fatalf("pre-existing output mutated: got %q want %q", raw, original)
+		}
+	})
 
 	for name, mode := range map[string]os.FileMode{"symlink": os.ModeSymlink, "reparse-like irregular": os.ModeIrregular} {
 		t.Run(name, func(t *testing.T) {

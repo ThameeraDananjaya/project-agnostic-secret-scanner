@@ -227,6 +227,67 @@ $releaseFiles = @(
 )
 $allSource = foreach ($name in $releaseFiles) { Get-Content -Raw -LiteralPath (Join-Path $PSScriptRoot $name) }
 $production = Get-Content -Raw -LiteralPath $productionPath
+$parsedProduction = Get-NativeBoundarySource
+$linuxSessionFunction = $parsedProduction.Ast.Find({
+    param($node)
+    $node -is [Management.Automation.Language.FunctionDefinitionAst] -and
+        $node.Name -ceq 'Get-LinuxSessionMembers'
+}, $true)
+if ($null -eq $linuxSessionFunction) { throw 'Production omits Get-LinuxSessionMembers' }
+$linuxSessionAssignments = @($linuxSessionFunction.FindAll({
+    param($node)
+    $node -is [Management.Automation.Language.AssignmentStatementAst]
+}, $true))
+$reservedPidAssignments = @($linuxSessionAssignments | Where-Object {
+    $_.Left -is [Management.Automation.Language.VariableExpressionAst] -and
+        (($_.Left.VariablePath.UserPath -split ':')[-1] -ieq 'PID')
+})
+if ($reservedPidAssignments.Count -ne 0) { throw 'Get-LinuxSessionMembers assigns to reserved automatic variable PID' }
+$identifierAssignments = @($linuxSessionAssignments | Where-Object {
+    $_.Left -is [Management.Automation.Language.VariableExpressionAst] -and
+        $_.Left.VariablePath.UserPath -ceq 'linuxProcessIdentifier'
+})
+if ($identifierAssignments.Count -ne 1 -or
+    $identifierAssignments[0].Right.Extent.Text -cne "[int]`$stat.Substring(0, `$stat.IndexOf(' '))") {
+    throw 'Linux process identifier is not bound once from the parsed stat PID as int'
+}
+$identityAssignments = @($linuxSessionAssignments | Where-Object {
+    $_.Left -is [Management.Automation.Language.VariableExpressionAst] -and
+        $_.Left.VariablePath.UserPath -ceq 'identity'
+})
+if ($identityAssignments.Count -ne 1 -or
+    $identityAssignments[0].Right.Extent.Text -cne '"${linuxProcessIdentifier}:$startTime"') {
+    throw 'Linux process identity does not preserve <process-id>:<start-time> from the renamed identifier'
+}
+$ledgerAssignments = @($linuxSessionAssignments | Where-Object {
+    $_.Left -is [Management.Automation.Language.IndexExpressionAst] -and
+        $_.Left.Extent.Text -ceq '$Ledger[$identity]'
+})
+if ($ledgerAssignments.Count -ne 1) { throw 'Linux session ledger assignment is not exact' }
+$ledgerTables = @($ledgerAssignments[0].Right.FindAll({
+    param($node)
+    $node -is [Management.Automation.Language.HashtableAst]
+}, $true))
+if ($ledgerTables.Count -ne 1 -or $ledgerTables[0].KeyValuePairs.Count -ne 2) {
+    throw 'Linux session ledger does not preserve its two-field shape'
+}
+$ledgerPid = @($ledgerTables[0].KeyValuePairs | Where-Object { $_.Item1.Value -ceq 'PID' })
+$ledgerStartTime = @($ledgerTables[0].KeyValuePairs | Where-Object { $_.Item1.Value -ceq 'StartTime' })
+if ($ledgerPid.Count -ne 1 -or $ledgerStartTime.Count -ne 1) {
+    throw 'Linux session ledger does not preserve PID and StartTime fields'
+}
+$ledgerPidVariables = @($ledgerPid[0].Item2.FindAll({
+    param($node)
+    $node -is [Management.Automation.Language.VariableExpressionAst]
+}, $true))
+$ledgerStartTimeVariables = @($ledgerStartTime[0].Item2.FindAll({
+    param($node)
+    $node -is [Management.Automation.Language.VariableExpressionAst]
+}, $true))
+if ($ledgerPidVariables.Count -ne 1 -or $ledgerPidVariables[0].VariablePath.UserPath -cne 'linuxProcessIdentifier' -or
+    $ledgerStartTimeVariables.Count -ne 1 -or $ledgerStartTimeVariables[0].VariablePath.UserPath -cne 'startTime') {
+    throw 'Linux session ledger does not preserve PID and StartTime bindings'
+}
 if (($allSource -join "`n") -match '(?m)&\s+(docker|docker\.exe)\b') { throw 'A workflow-reachable release script retains an ambient Docker invocation' }
 if (($allSource -join "`n").Contains('Invoke-ExactReleaseImageInspectProcess')) { throw 'A duplicated Docker runner remains outside the closed entrypoint' }
 foreach ($forbidden in @('ScriptBlock','Callback','Invoker','ExecutablePath','ArgumentListInput','DOCKER_CONTEXT','ReleaseDockerInvoker')) {
@@ -249,7 +310,6 @@ $legacyConditional = 'if (!(' + "'PscanNativeBoundary' -as [type]))"
 if ($production.Contains($legacyConditional)) { throw 'Production retains conditional native-type reuse' }
 $harnessSource = Get-Content -Raw -LiteralPath $PSCommandPath
 if ($harnessSource.Contains($legacyConditional)) { throw 'Harness retains conditional ambient-type reuse' }
-[void](Get-NativeBoundarySource)
 
 function Invoke-IsolatedScript([string]$ScriptPath, [string[]]$Arguments, [int]$TimeoutMilliseconds) {
     $start = [Diagnostics.ProcessStartInfo]::new()

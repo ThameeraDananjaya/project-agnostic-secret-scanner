@@ -248,10 +248,10 @@ function Get-LinuxSessionMembers([int]$Session, [hashtable]$Ledger) {
         catch [IO.FileNotFoundException] { continue }
         catch [IO.DirectoryNotFoundException] { continue }
         $close = $stat.LastIndexOf(')'); if ($close -lt 1) { throw 'Malformed Linux process identity record' }
-        $pid = [int]$stat.Substring(0, $stat.IndexOf(' ')); $fields = $stat.Substring($close + 2).Split(' ', [StringSplitOptions]::RemoveEmptyEntries)
+        $linuxProcessIdentifier = [int]$stat.Substring(0, $stat.IndexOf(' ')); $fields = $stat.Substring($close + 2).Split(' ', [StringSplitOptions]::RemoveEmptyEntries)
         if ($fields.Count -lt 20 -or [int]$fields[3] -ne $Session) { continue }
-        $startTime = [uint64]$fields[19]; $identity = "${pid}:$startTime"
-        $Ledger[$identity] = [pscustomobject]@{ PID=$pid; StartTime=$startTime }
+        $startTime = [uint64]$fields[19]; $identity = "${linuxProcessIdentifier}:$startTime"
+        $Ledger[$identity] = [pscustomobject]@{ PID=$linuxProcessIdentifier; StartTime=$startTime }
         $current.Add($Ledger[$identity])
     }
     $current.ToArray()

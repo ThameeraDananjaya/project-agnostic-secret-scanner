@@ -919,8 +919,13 @@ candidate `8fbbf7b695aa7f0c995dd0a655d40ddd7fc16fb4`, tree
 `de70410df5ec359b85d03262e46c8d2ed5f2d822`, renames only the colliding local
 binding and its two dependent uses and adds the exact-source regression. The
 complete available-host local no-Docker matrix and exact-commit source checks
-pass. This is author validation, not independent acceptance. A separate fresh
-skeptical review remains required.
+pass. Fresh independent review then rejected local acceptance because the AST
+regression detects a reserved `PID` assignment only when the assignment left
+side is directly `VariableExpressionAst`. Valid `[int]$PiD = 1` instead has a
+`ConvertExpressionAst` left side, reproduces the read-only automatic-variable
+collision, and evades the candidate predicate. Exact evidence is in
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-REVIEW-REJECTED.md`. The
+reviewer did not repair the candidate.
 
 Recovery R5 remains terminally failed and its sole tag push and workflow
 dispatch remain consumed. This correction authorizes no remote read or

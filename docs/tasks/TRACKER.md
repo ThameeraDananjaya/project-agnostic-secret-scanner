@@ -7,7 +7,7 @@
 | PSCAN-03 | Rejected and closed fail-closed; not accepted | `evidence/PSCAN-03/CLOSEOUT-REJECTED.md` |
 | PSCAN-04 | Completed and independently accepted locally | Exact activation `a21b030e1658f1f98ac4e4d001af12185d9ed311`; evidence-bearing closeout commit |
 | PSCAN-05 | Completed and independently accepted locally | Exact activation `50b4186`; corrected evidence-bearing closeout commit |
-| PSCAN-06 | Correction C2 iteration 006 is claimed and locally implemented as author candidate `8fbbf7b695aa7f0c995dd0a655d40ddd7fc16fb4`, tree `de70410df5ec359b85d03262e46c8d2ed5f2d822`; exact-commit author checks pass, but independent skeptical review and local acceptance remain open; Recovery R5 remains terminal and no Docker, network, remote, tag, workflow, signing, publication or successor action is authorized; PSCAN-06 remains open and unaccepted overall | Iteration 006 authority: `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-AUTHORITY.md`; author validation: `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-AUTHOR-VALIDATION.md` |
+| PSCAN-06 | Correction C2 iteration 006 author candidate `8fbbf7b695aa7f0c995dd0a655d40ddd7fc16fb4`, tree `de70410df5ec359b85d03262e46c8d2ed5f2d822`, is independently rejected for local acceptance: its AST regression misses valid typed case-insensitive `PID` assignment targets such as `[int]$PiD`, although the bounded production rename and available-host no-Docker matrix pass; Recovery R5 remains terminal and no repair, Docker, network, remote, tag, workflow, signing, publication or successor action is authorized; PSCAN-06 remains open and unaccepted overall | Iteration 006 authority: `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-AUTHORITY.md`; rejected review: `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-REVIEW-REJECTED.md` |
 | PSCAN-07 | Proposed; unselected; signing/publication gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-06 |
 | PSCAN-08 | Inactive; technically and legally gated | Material-gap evidence plus separate owner approval required |
 | PSCAN-09 | Completed and independently accepted locally | Activation `f486989`; accepted closeout commit |
@@ -344,3 +344,22 @@ change, workflow dispatch or rerun, signing, publication or successor work was
 performed or authorized. PSCAN-06 remains open and unaccepted overall;
 PSCAN-07 remains proposed and unselected; PSCAN-08 remains inactive and
 ineligible.
+
+Fresh independent review session `01a09003-9a4c-7862-967e-972112c9855d`
+then inspected exact candidate `8fbbf7b695aa7f0c995dd0a655d40ddd7fc16fb4`
+and reran the complete available-host no-Docker matrix. The production rename,
+path confinement, source trust, native boundary, stream, timeout, descendant,
+cleanup and hostile ambient-type checks passed. Local acceptance was rejected,
+however, because the new regression recognizes a reserved `PID` assignment
+only when the assignment left side is directly `VariableExpressionAst`.
+PowerShell parses valid `[int]$PiD = 1` with a `ConvertExpressionAst` left
+side; it reproduces the read-only automatic-variable collision while the
+candidate predicate reports zero reserved assignments. Exact evidence is in
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-REVIEW-REJECTED.md`.
+
+The reviewer did not repair the candidate. Recovery R5 remains terminally
+failed and consumed; actual-Linux, genuine-Docker, dependency, build,
+reproducibility and artifact-integrity proof remains open. PSCAN-06 remains
+open and unaccepted overall; PSCAN-07 remains proposed and unselected;
+PSCAN-08 remains inactive and ineligible. No successor is selected or
+activated.

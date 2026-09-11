@@ -89,6 +89,10 @@ fresh implementation session:
 84. `evidence/PSCAN-06/CORRECTION-C2-BUILD-ONLY-LINUX-DOCKER-PROOF-GATE-FAILURE-001.md`
 85. `evidence/PSCAN-06/CORRECTION-C2-MAIN-BRANCH-EXECUTION-RECOVERY-R1-AUTHORITY.md`
 86. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-AUTHORITY.md`
+87. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-PREFLIGHT.md`
+88. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-IMPLEMENTATION.md`
+89. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-AUTHOR-VALIDATION.md`
+90. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-REVIEW-REJECTED.md`
 
 Then verify the exact activation commit, branch and clean Git status; the
 activated allowed and forbidden paths; the absence of another selected,
@@ -373,6 +377,16 @@ local no-Docker native matrix. Read these records before review:
 2. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-IMPLEMENTATION.md`
 3. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-AUTHOR-VALIDATION.md`
 
-This author result is not local acceptance. Independent skeptical review
-remains required. Recovery R5 remains terminal, every remote and Docker gate
-remains closed, and no successor is selected or activated.
+This author result is not local acceptance. Fresh independent review rejected
+local acceptance because the AST regression misses a valid typed
+case-insensitive `PID` assignment target whose left side is
+`ConvertExpressionAst`. Read the bounded finding before any new iteration-006
+claim, repair or readiness statement:
+
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-REVIEW-REJECTED.md`
+
+The production rename and available-host no-Docker matrix passed, but the
+mandatory regression proof did not. No repair is authorized by the review.
+Recovery R5 remains terminal, actual-Linux and every genuine-Docker,
+dependency, build, reproducibility, artifact and remote gate remains open, and
+no successor is selected or activated.

@@ -13,10 +13,15 @@ the pre-fix tooling commit. Correction C2 iteration 007 candidate `230e176` is
 independently rejected for its over-broad workflow normalization. Iteration 008
 stopped with no candidate after reproducing a pre-existing 66-line Go 1.27.1
 formatting projection and Windows-only synthetic Cosign fixture failure.
-Correction C2 iteration 009 is owner-approved, unclaimed and unimplemented as
-the single-file test-only authority for the exact five-token normalization,
-mechanical formatter projection and cross-platform current-test-executable
-helper. It requires a genuinely fresh implementation session and independent
+Correction C2 iteration 009 was claimed and its two exact bounded work paths
+remain unstaged and uncommitted. A diagnostic continuation proved an inherited
+Windows case-collision fixture is unrepresentable on the current case-
+insensitive filesystems, while the test and production normalizer bytes match
+the clean materialization. The owner-approved iteration 009 continuation adds
+only `tests/unit/artifact/normalize_test.go` for a test-fixture-only repair. It
+is unclaimed and unimplemented, requires a genuinely fresh continuation
+session from the committed continuation authority while carrying the two bound
+work paths, and still requires the complete offline matrix and independent
 review.
 Recovery R6 remains unauthorized. PSCAN-07 is unselected and PSCAN-08 remains
 inactive.**

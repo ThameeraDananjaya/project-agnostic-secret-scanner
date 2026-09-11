@@ -7,7 +7,7 @@
 | PSCAN-03 | Rejected and closed fail-closed; not accepted | `evidence/PSCAN-03/CLOSEOUT-REJECTED.md` |
 | PSCAN-04 | Completed and independently accepted locally | Exact activation `a21b030e1658f1f98ac4e4d001af12185d9ed311`; evidence-bearing closeout commit |
 | PSCAN-05 | Completed and independently accepted locally | Exact activation `50b4186`; corrected evidence-bearing closeout commit |
-| PSCAN-06 | Correction C2 iteration 006 candidate `cf1679f9bca24887340fa4060f37d1ebff21f305`, tree `6cb0198c71881baff9c601c31ad6aa84217f4a49`, remains independently accepted locally; Recovery R5 remains terminal; iteration 007 candidate `230e1761f7c45d9629cecf360e7498b33d64ab6f`, tree `5d74628d76f95e150c0ea1de51b4892af2350a7d`, remains independently rejected; iteration 008 stopped with no candidate after reproducing the pre-existing formatter and Windows synthetic-Cosign fixture failures; iteration 009 is owner-approved, unclaimed and unimplemented for the bounded single-file test correction; PSCAN-06 remains open and unaccepted overall | Iteration 009 authority: `evidence/PSCAN-06/CORRECTION-C2-ITERATION-009-AUTHORITY.md`; implementation requires a genuinely fresh session and independent review; no R6, Docker, network, remote, workflow, tag, release or successor action is authorized |
+| PSCAN-06 | Correction C2 iteration 006 candidate `cf1679f9bca24887340fa4060f37d1ebff21f305`, tree `6cb0198c71881baff9c601c31ad6aa84217f4a49`, remains independently accepted locally; Recovery R5 remains terminal; iteration 007 candidate `230e1761f7c45d9629cecf360e7498b33d64ab6f`, tree `5d74628d76f95e150c0ea1de51b4892af2350a7d`, remains independently rejected; iteration 008 stopped with no candidate after reproducing the pre-existing formatter and Windows synthetic-Cosign fixture failures; iteration 009 was claimed and retains exactly two unstaged/uncommitted work paths; its owner-approved continuation adds only the inherited unit-test fixture path and is unclaimed and unimplemented; PSCAN-06 remains open and unaccepted overall | Iteration 009 continuation authority: `evidence/PSCAN-06/CORRECTION-C2-ITERATION-009-CONTINUATION-AUTHORITY.md`; a genuinely fresh continuation must carry the two exact bound work paths, apply only the test-fixture correction, rerun the complete offline matrix and stop for independent review; no R6, Docker, network, remote, workflow, tag, release or successor action is authorized |
 | PSCAN-07 | Proposed; unselected; signing/publication gates reserved | PASS-OUTCOME-SPEC-001; follows PSCAN-06 |
 | PSCAN-08 | Inactive; technically and legally gated | Material-gap evidence plus separate owner approval required |
 | PSCAN-09 | Completed and independently accepted locally | Activation `f486989`; accepted closeout commit |
@@ -575,3 +575,31 @@ records authority only. Iteration 009 is owner-approved, unclaimed, not
 implemented and not accepted. Recovery R5 remains terminal and consumed;
 Recovery R6 and all Docker, network, remote, release, spending and successor
 work remain unauthorized.
+
+Iteration 009 was then claimed in genuinely fresh implementation session
+`01a09228-1204-70b1-8b7e-1be433b2c496`. Its modified
+`tests/integration/supply-chain/release_test.go` and untracked
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-009-PREFLIGHT.md` remain exactly
+bound, unstaged and uncommitted. Diagnostic session
+`01a09285-6aaa-7033-b65a-845a6521c67d` consumed exactly one clean-
+materialization targeted run and one live targeted run; both failed
+identically at `tests/unit/artifact/normalize_test.go:507`. Clean and live
+copies of that test and `internal/artifact/normalize.go` were byte-identical,
+and Windows reported case sensitivity disabled in both roots and the temp
+root. Git blame preserves the fixture unchanged from PSCAN-04 commit
+`1f0890878518de32a55ceb8d7b97430c4f3d2f2b`.
+
+On 2026-09-12 the owner approved the narrow continuation recorded in
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-009-CONTINUATION-AUTHORITY.md`.
+It adds exactly one implementation-bearing path,
+`tests/unit/artifact/normalize_test.go`, for a test-fixture-only split of the
+case-collision and directory-symlink checks. The case-collision subtest must
+use `os.Stat` and `os.SameFile` after creating `A` and `a`, skip only when the
+two names are the same physical object, and otherwise preserve the exact
+`RejectUnsafe` assertion. `runtime.GOOS` is forbidden; the symlink assertion
+and existing availability skip remain. A genuinely fresh continuation session
+must start from the committed continuation authority while carrying exactly
+the two bound dirty paths, rerun the complete offline iteration 009 matrix and
+stop for independent review. This authority session performs no retry, Go,
+Docker, network, remote, tag, workflow, signing, publication, spending,
+subscription, R6 or successor action.

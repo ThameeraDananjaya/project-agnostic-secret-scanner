@@ -1201,3 +1201,45 @@ does not block this local test-only correction. Recovery R5 remains terminal
 and consumed; Recovery R6 and all Docker, network, remote, tag, workflow,
 signing, publication, spending and successor work remain unauthorized.
 PSCAN-06 remains open and unaccepted overall.
+
+## Correction C2 iteration 009 continuation authority
+
+Iteration 009 was claimed in genuinely fresh implementation session
+`01a09228-1204-70b1-8b7e-1be433b2c496`. Its modified
+`tests/integration/supply-chain/release_test.go` and untracked
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-009-PREFLIGHT.md` remain exactly
+bound, unstaged and uncommitted. No candidate or acceptance is recorded.
+
+Diagnostic session `01a09285-6aaa-7033-b65a-845a6521c67d` consumed exactly
+one clean-materialization targeted run and one live targeted run. Both failed
+identically at `tests/unit/artifact/normalize_test.go:507`. Clean and live
+`normalize_test.go` and `internal/artifact/normalize.go` bytes were identical;
+Windows reported case sensitivity disabled in both roots and the temp root;
+and Git blame shows that the combined fixture is unchanged from PSCAN-04
+commit `1f0890878518de32a55ceb8d7b97430c4f3d2f2b`.
+
+On 2026-09-12 the owner approved a narrow continuation that adds exactly one
+implementation-bearing path: `tests/unit/artifact/normalize_test.go`. The
+authorized change is test-fixture-only. It must split the case-collision and
+directory-symlink checks into clear subtests, stat both `A` and `a` after
+creation and use `os.SameFile`. If they identify the same physical object,
+only the unrepresentable case-collision subtest skips. If they are distinct,
+the exact `RejectUnsafe` assertion remains. `runtime.GOOS` is forbidden. The
+directory-symlink assertion and its existing availability skip remain.
+`internal/artifact/**` and every other production path remain forbidden.
+
+Exact dirty-path identities, carry-forward rules, complete offline matrix,
+acceptance obligations and exclusions are controlling in:
+
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-009-CONTINUATION-AUTHORITY.md`
+
+This authority session edits no implementation or existing iteration 009 work
+path and executes no retry. A genuinely fresh continuation session must begin
+from the committed continuation authority while carrying exactly the two
+bound unstaged/uncommitted iteration 009 paths, implement only the newly
+authorized fixture change plus the existing iteration 009 boundary, rerun the
+complete offline matrix and stop for genuinely fresh independent review.
+Recovery R5 remains terminal and consumed; Recovery R6 and all Go in this
+authority session, Docker, network, remote, tag, workflow, signing,
+publication, spending, subscription and successor actions remain
+unauthorized. PSCAN-06 remains open and unaccepted overall.

@@ -111,6 +111,8 @@ fresh implementation session:
 106. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-008-IMPLEMENTATION.md`
 107. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-008-AUTHOR-VALIDATION.md`
 108. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-009-AUTHORITY.md`
+109. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-009-PREFLIGHT.md`
+110. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-009-CONTINUATION-AUTHORITY.md`
 
 Then verify the exact activation commit, branch and clean Git status; the
 activated allowed and forbidden paths; the absence of another selected,
@@ -611,3 +613,35 @@ candidate and stop for fresh independent review. Actual Linux runtime remains
 separately gated. Recovery R5 remains terminal and consumed; Recovery R6 and
 all Docker, network, remote, tag, workflow, signing, publication, spending and
 successor gates remain closed.
+
+Iteration 009 was claimed in session
+`01a09228-1204-70b1-8b7e-1be433b2c496`, and its exact modified test path and
+untracked preflight remain unstaged and uncommitted. Diagnostic session
+`01a09285-6aaa-7033-b65a-845a6521c67d` then consumed one clean-
+materialization targeted run and one live targeted run. Both failed at
+`tests/unit/artifact/normalize_test.go:507` because Windows case-insensitive
+roots cannot represent distinct `A` and `a` directories. The test and
+production normalizer matched between clean and live roots, and the fixture is
+unchanged from PSCAN-04.
+
+The owner-approved continuation adds exactly one implementation-bearing path,
+`tests/unit/artifact/normalize_test.go`. Read the continuation authority
+completely before any new claim, edit or validation:
+
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-009-CONTINUATION-AUTHORITY.md`
+
+The change is test-fixture-only: split case-collision and directory-symlink
+checks into subtests; after creating `A` and `a`, stat both and use
+`os.SameFile`; skip only the case-collision subtest when the filesystem maps
+them to one physical object; otherwise retain the exact `RejectUnsafe`
+assertion. Do not use `runtime.GOOS`. Preserve the symlink assertion and its
+availability skip. No production change is permitted.
+
+A genuinely fresh continuation session must start from the committed
+continuation authority while carrying exactly the two authority-bound dirty
+iteration 009 paths, re-prove them before editing, use only the expanded
+iteration 009 path boundary, rerun the complete offline matrix and stop for
+fresh independent review. The authority session runs no retry or Go. Recovery
+R5 remains terminal and consumed; Recovery R6 and every Docker, network,
+remote, tag, workflow, signing, publication, spending, subscription and
+successor gate remain closed.

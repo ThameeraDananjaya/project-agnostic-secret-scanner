@@ -390,3 +390,18 @@ mandatory regression proof did not. No repair is authorized by the review.
 Recovery R5 remains terminal, actual-Linux and every genuine-Docker,
 dependency, build, reproducibility, artifact and remote gate remains open, and
 no successor is selected or activated.
+
+The same claimed implementation session subsequently refined only the
+regression under the existing iteration-006 authority. Read the append-only
+refinement and second author-validation records:
+
+1. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-REFINEMENT-001.md`
+2. `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-AUTHOR-VALIDATION-002.md`
+
+Refined author candidate `e6a767aab71db1d3f62063dded379b4701d2cb52`,
+tree `288664447272f9543de1b69b8ca28c27c6e1e9ff`, preserves the accepted
+production blob and adds typed-target-aware, adversarially self-tested AST
+coverage. Exact author checks pass. The earlier candidate and rejection remain
+immutable and the refined candidate has not been independently accepted. A
+separate fresh skeptical review is required. All Docker, network, remote,
+workflow, tag, signing, publication and successor gates remain closed.

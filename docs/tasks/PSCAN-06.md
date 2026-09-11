@@ -927,6 +927,21 @@ collision, and evades the candidate predicate. Exact evidence is in
 `evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-REVIEW-REJECTED.md`. The
 reviewer did not repair the candidate.
 
+The same claimed implementation session subsequently refined only the rejected
+source regression. Refined author candidate
+`e6a767aab71db1d3f62063dded379b4701d2cb52`, tree
+`288664447272f9543de1b69b8ca28c27c6e1e9ff`, preserves the production blob
+byte-for-byte, unwraps typed assignment-target AST wrappers, and adds bound
+untyped, typed and non-target adversarial predicate self-tests. Exact-commit
+source trust, both parsers, exact two-path confinement, the strengthened PID
+source/data-flow regression and the complete available-host no-Docker native
+matrix pass. Evidence is in
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-REFINEMENT-001.md` and
+`evidence/PSCAN-06/CORRECTION-C2-ITERATION-006-AUTHOR-VALIDATION-002.md`.
+This is author validation only. It does not overturn the prior rejection or
+claim independent acceptance; a separate fresh skeptical review remains
+required.
+
 Recovery R5 remains terminally failed and its sole tag push and workflow
 dispatch remain consumed. This correction authorizes no remote read or
 mutation, tag change, workflow dispatch or rerun, signing, publication or

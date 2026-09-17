@@ -76,6 +76,7 @@ overlap. The same condition still rejects and no policy action follows it.
 Each conflict has a distinct literal-overlap, possible-pattern-overlap,
 unknown-attachment or unsupported-pattern reason. Counts include every reason,
 including omitted rows. Every excerpt has a digest of its full UTF-8 value.
+The record also hashes the entire ordered set, including omitted records.
 
 The remaining helper path also emits bounded diagnostic context. The fixed
 parser's two streams each have an 8192-byte capture cap, ten-second capture
@@ -84,6 +85,11 @@ capture state, and the first 1024 bytes per stream escaped without decoding,
 with counts/truncation/digests. Captured byte counts are not asserted to be
 total output when capture is incomplete. Timeout, output limit, unavailable exit
 or nonzero exit still fail. Parser arguments and policy are unchanged.
+Early input-pipe closure during write or buffered close is recorded separately;
+bounded output draining and exit observation continue. Such input failure rejects
+even a zero exit. Stdin close is attempted once so a second close cannot hide the
+result. Inert tests cover write failure, close failure and both together with
+zero/nonzero exits and preserved stderr.
 
 Own-policy readback and preservation failures report bounded profile metadata
 with explicit non-conflict purposes. Inventory drift includes both changed

@@ -45,6 +45,7 @@ class Tests(unittest.TestCase):
         record = json.loads(raw)
         self.assertEqual(record['total_conflicts'], 30)
         self.assertGreater(record['records_omitted'], 0)
+        self.assertEqual(len(record['all_records_sha256']), 64)
         for item in record['records']:
             self.assertTrue(item['attachment']['truncated'])
             self.assertEqual(item['attachment']['utf8_bytes'], 6010)
@@ -67,7 +68,7 @@ class Tests(unittest.TestCase):
         self.assertTrue(excerpt['value'].startswith('\\x00\\x1b\\x5c\\xff'))
         for state, code, success in (('complete', 0, True), ('complete', 1, False),
                                       ('timeout', 0, False), ('capture-limit', 0, False), ('exit-unavailable', None, False)):
-            with patch.object(prereq, 'capture_parser', return_value={'state': state, 'exit_code': code,
+            with patch.object(prereq, 'capture_parser', return_value={'state': state, 'input_state': 'complete', 'exit_code': code,
                               'stdout': b'', 'stderr': b'inert parser error\n'}), patch('builtins.print') as output:
                 if success: prereq.parse('compile')
                 else:
@@ -76,7 +77,7 @@ class Tests(unittest.TestCase):
                 self.assertEqual(record['state'], state)
                 self.assertEqual(record['exit_code'], code)
 
-    def test_bounded_parser_capture_with_inert_pipes(self):
+    def capture_inert(self, chunks, clock, stdin=None, exit_code=0):
         class Pipe:
             def __init__(self, number): self.number = number
             def fileno(self): return self.number
@@ -88,25 +89,59 @@ class Tests(unittest.TestCase):
             def get_map(self): return self.keys
             def select(self, timeout): return [(key, 1) for key in list(self.keys.values())]
             def close(self): pass
+        kills = []
+        process = SimpleNamespace(stdin=io.BytesIO() if stdin is None else stdin, stdout=Pipe(1), stderr=Pipe(2),
+                                  wait=lambda timeout: exit_code, poll=lambda: exit_code, kill=lambda: kills.append(True))
+        with patch.object(prereq.subprocess, 'Popen', return_value=process), \
+             patch.object(prereq.selectors, 'DefaultSelector', Selector), patch.object(prereq.os, 'set_blocking'), \
+             patch.object(prereq.os, 'read', side_effect=lambda fd, count: chunks[fd].pop(0)), \
+             patch.object(prereq.time, 'monotonic', side_effect=clock):
+            result = prereq.capture_parser('compile')
+        return result, kills
+
+    def test_bounded_parser_capture_with_inert_pipes(self):
         for chunks, clock, expected in (({1: [b'ok', b''], 2: [b'err', b'']}, [0] * 8, 'complete'),
                                         ({1: [b'x' * 4096] * 3, 2: [b'']}, [0] * 8, 'capture-limit'),
                                         ({1: [], 2: []}, [0, 11], 'timeout')):
-            kills = []
-            process = SimpleNamespace(stdin=io.BytesIO(), stdout=Pipe(1), stderr=Pipe(2),
-                                      wait=lambda timeout: 0, poll=lambda: 0, kill=lambda: kills.append(True))
-            with patch.object(prereq.subprocess, 'Popen', return_value=process), \
-                 patch.object(prereq.selectors, 'DefaultSelector', Selector), patch.object(prereq.os, 'set_blocking'), \
-                 patch.object(prereq.os, 'read', side_effect=lambda fd, count: chunks[fd].pop(0)), \
-                 patch.object(prereq.time, 'monotonic', side_effect=clock):
-                result = prereq.capture_parser('compile')
+            result, kills = self.capture_inert(chunks, clock)
             self.assertEqual(result['state'], expected)
+            self.assertEqual(result['input_state'], 'complete')
             self.assertLessEqual(len(result['stdout']), 8192)
             self.assertEqual(bool(kills), expected != 'complete')
+
+    def test_early_parser_input_closure_retains_stderr_exit_and_rejects_zero(self):
+        class Input:
+            def __init__(self, write_failure, close_failure):
+                self.write_failure, self.close_failure = write_failure, close_failure
+                self.closes = 0
+            def write(self, value):
+                if self.write_failure: raise BrokenPipeError('inert early exit')
+                return len(value)
+            def close(self):
+                self.closes += 1
+                if self.close_failure: raise BrokenPipeError('inert buffered close')
+        for write_failure, close_failure in ((True, False), (False, True), (True, True)):
+            for code in (0, 3):
+                stream = Input(write_failure, close_failure)
+                result, kills = self.capture_inert({1: [b'',], 2: [b'actual inert parser error\n', b'']},
+                                                  [0] * 8, stream, code)
+                self.assertEqual(result['state'], 'complete')
+                self.assertEqual(result['input_state'], 'closed-before-input-complete')
+                self.assertEqual(result['stderr'], b'actual inert parser error\n')
+                self.assertEqual(result['exit_code'], code)
+                self.assertEqual(stream.closes, 1)
+                self.assertFalse(kills)
+                with patch.object(prereq, 'capture_parser', return_value=result), patch('builtins.print') as output:
+                    with self.assertRaises(RuntimeError): prereq.parse('compile')
+                    record = json.loads(output.call_args.args[0])
+                    self.assertEqual(record['input_state'], 'closed-before-input-complete')
+                    self.assertEqual(record['exit_code'], code)
+                    self.assertIn('actual inert parser error', record['stderr']['value'])
 
     def test_failed_policy_mutation_readback_never_establishes_ownership(self):
         own = row(prereq.NAME, prereq.TARGET, 'unconfined')
         for action in ('add', 'remove'):
-            with patch.object(prereq, 'capture_parser', return_value={'state': 'complete', 'exit_code': 1,
+            with patch.object(prereq, 'capture_parser', return_value={'state': 'complete', 'input_state': 'complete', 'exit_code': 1,
                               'stdout': b'', 'stderr': b'inert error'}), \
                  patch.object(prereq, 'inventory', return_value=[own]), patch.object(prereq, 'save') as save, \
                  patch('builtins.print') as output:

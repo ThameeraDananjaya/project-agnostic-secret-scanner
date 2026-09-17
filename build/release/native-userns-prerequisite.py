@@ -149,16 +149,17 @@ def parser_command(action):
 def parse(action):
     result = capture_parser(action)
     record = {'schema': 'pscan-native-userns-parser-v1', 'action': action,
-              'state': result['state'], 'exit_code': result['exit_code'],
+              'state': result['state'], 'input_state': result['input_state'], 'exit_code': result['exit_code'],
               'stdout': byte_excerpt(result['stdout']), 'stderr': byte_excerpt(result['stderr'])}
     print(json.dumps(record, ensure_ascii=True, sort_keys=True))
-    if (result['state'] != 'complete' or result['exit_code'] != 0) and action in ('add', 'remove'):
+    success = result['state'] == 'complete' and result['input_state'] == 'complete' and result['exit_code'] == 0
+    if not success and action in ('add', 'remove'):
         try:
             rows = [row for row in inventory() if row['name'] == NAME]
             print(conflict_record(rows, 'parser-failure-readback-not-ownership'))
         except (OSError, ValueError, RuntimeError):
             print(json.dumps({'schema': 'pscan-native-userns-readback-v1', 'state': 'unavailable-after-parser-failure'}))
-    require(result['state'] == 'complete' and result['exit_code'] == 0, 'Fixed policy parser failed: ' + action)
+    require(success, 'Fixed policy parser failed: ' + action)
 
 
 def byte_excerpt(raw):
@@ -174,11 +175,17 @@ def capture_parser(action):
                                stderr=subprocess.PIPE, env={'PATH': '/usr/sbin:/usr/bin:/bin', 'LC_ALL': 'C'})
     buffers = {'stdout': bytearray(), 'stderr': bytearray()}
     state, code = 'complete', None
+    input_state, input_close_attempted = 'complete', False
     selector = selectors.DefaultSelector()
     deadline = time.monotonic() + 10
     try:
-        process.stdin.write(POLICY)
-        process.stdin.close()
+        try: process.stdin.write(POLICY)
+        except BrokenPipeError: input_state = 'closed-before-input-complete'
+        try:
+            input_close_attempted = True
+            process.stdin.close()
+        except BrokenPipeError:
+            input_state = 'closed-before-input-complete'
         for name, pipe in (('stdout', process.stdout), ('stderr', process.stderr)):
             os.set_blocking(pipe.fileno(), False)
             selector.register(pipe, selectors.EVENT_READ, name)
@@ -199,12 +206,16 @@ def capture_parser(action):
         except subprocess.TimeoutExpired:
             state = 'exit-unavailable'
             process.kill()
-        return {'state': state, 'exit_code': code, **{name: bytes(raw) for name, raw in buffers.items()}}
+        return {'state': state, 'input_state': input_state, 'exit_code': code,
+                **{name: bytes(raw) for name, raw in buffers.items()}}
     finally:
         selector.close()
         if process.poll() is None:
             process.kill()
-        for pipe in (process.stdin, process.stdout, process.stderr): pipe.close()
+        if not input_close_attempted:
+            try: process.stdin.close()
+            except BrokenPipeError: pass
+        for pipe in (process.stdout, process.stderr): pipe.close()
 
 
 def save(name, value):
@@ -238,7 +249,8 @@ def conflict_record(conflicts, purpose='conflicts'):
                 'utf8_bytes': len(value.encode('utf-8')), 'truncated': len(value) > maximum,
                 'sha256': digest(value.encode('utf-8'))}
     record = {'schema': 'pscan-native-userns-profile-metadata-v1', 'purpose': purpose,
-              'total_records': len(conflicts), 'records': []}
+              'total_records': len(conflicts), 'records': [],
+              'all_records_sha256': digest(json.dumps(conflicts, sort_keys=True, ensure_ascii=True).encode())}
     if purpose == 'conflicts':
         record.update(schema='pscan-native-userns-conflicts-v1', total_conflicts=len(conflicts),
                       meaning='existing-or-conservatively-ambiguous-attachment')

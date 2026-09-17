@@ -63,7 +63,7 @@ class Tests(unittest.TestCase):
                 path.mkdir(parents=True)
                 for field, value in {'name': name, 'attach': attachment, 'mode': 'enforce',
                                      'sha256': hashchar * 64}.items():
-                    (path / field).write_text(value + '\n', encoding='utf-8')
+                    (path / field).write_bytes((value + '\n').encode('utf-8'))
             write_entry(root / 'profiles/p1', 'parent-a', '/opt/a', 'a')
             write_entry(root / 'profiles/p2', 'parent-b', '/opt/b', 'b')
             write_entry(root / 'profiles/p1/profiles/c1', 'shared-child', 'shared-child', 'c')

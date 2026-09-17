@@ -1,0 +1,8 @@
+      - name: Enforce complete unsigned artifact and storage admission
+        shell: bash
+        env:
+          PSCAN_STORAGE_ADMISSION: ${{ vars.PSCAN_BUILD_STORAGE_ADMISSION }}
+          PSCAN_EXPECTED_TOOLING_REVISION: ${{ github.sha }}
+        run: >-
+          python3 "$PSCAN_EXACT_TOOLING_ROOT/build/release/storage_guard.py"
+          --distribution "$RUNNER_TEMP/pscan-release-a/dist"

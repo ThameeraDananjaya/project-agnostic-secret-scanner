@@ -177,6 +177,15 @@ jobs:
         shell: pwsh
         run: '& "$env:PSCAN_EXACT_TOOLING_ROOT/build/release/compare-builds.ps1" -FirstOutputDirectory "$env:RUNNER_TEMP/pscan-release-a" -SecondOutputDirectory "$env:RUNNER_TEMP/pscan-release-b"'
 
+      - name: Enforce complete unsigned artifact and storage admission
+        shell: bash
+        env:
+          PSCAN_STORAGE_ADMISSION: ${{ vars.PSCAN_BUILD_STORAGE_ADMISSION }}
+          PSCAN_EXPECTED_TOOLING_REVISION: ${{ github.sha }}
+        run: >-
+          python3 "$PSCAN_EXACT_TOOLING_ROOT/build/release/storage_guard.py"
+          --distribution "$RUNNER_TEMP/pscan-release-a/dist"
+
       - name: Transfer exact unsigned candidate
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:

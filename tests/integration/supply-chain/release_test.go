@@ -625,7 +625,11 @@ func TestIteration007RepositoryIdentityAgreementAndPreservation(t *testing.T) {
 		t.Fatal("historical C2 workflow bytes changed")
 	}
 	newWorkflow := read(".github/workflows/release-recovery-v1.0.0-c2-r6.yml")
-	normalizedWorkflow := newWorkflow
+	guardStep := read("build/release/storage-guard-workflow-step.yml") + "\n"
+	if strings.Count(newWorkflow, guardStep) != 1 || !strings.Contains(newWorkflow, guardStep+"      - name: Transfer exact unsigned candidate\n") {
+		t.Fatal("exact storage admission must occur once immediately before artifact upload")
+	}
+	normalizedWorkflow := strings.Replace(newWorkflow, guardStep, "", 1)
 	for _, replacement := range []struct {
 		from  string
 		to    string

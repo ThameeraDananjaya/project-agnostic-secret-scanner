@@ -757,6 +757,7 @@ cp /work/tooling/contracts/release-manifest/schema-2.0.json /out/tooling-materia
 cp /work/tooling/contracts/release-manifest/schema-2.1.json /out/tooling-materialized/contracts/release-manifest/schema-2.1.json
 cp /work/tooling/contracts/release-manifest/schema-2.2.json /out/tooling-materialized/contracts/release-manifest/schema-2.2.json
 cp /work/tooling/contracts/release-manifest/schema-2.3.json /out/tooling-materialized/contracts/release-manifest/schema-2.3.json
+cp /work/tooling/contracts/release-manifest/schema-2.4.json /out/tooling-materialized/contracts/release-manifest/schema-2.4.json
 cp /work/tooling/docs/release/OFFLINE-VERIFICATION-RUNBOOK.md /out/tooling-materialized/docs/release/OFFLINE-VERIFICATION-RUNBOOK.md
 cp /work/tooling/docs/release/SCANNER-IO-REFERENCE.md /out/tooling-materialized/docs/release/SCANNER-IO-REFERENCE.md
 '@ }

@@ -19,7 +19,7 @@ try {
     if($Mode-ceq'Validation'){
         . (Join-Path $PSScriptRoot 'build-validation.ps1')
         [void](Assert-BuildValidationInvocation $revision)
-    }elseif($env:GITHUB_REF-cne'refs/tags/release-tooling-v1.0.0-c2-linux-boundary'-or![string]::IsNullOrEmpty($env:PSCAN_VALIDATION_WORKFLOW_SHA)){
+    }elseif($env:GITHUB_REF-cne'refs/tags/release-tooling-v1.0.0-c2-linux-build-v2'-or![string]::IsNullOrEmpty($env:PSCAN_VALIDATION_WORKFLOW_SHA)){
         throw 'Unsigned candidate invocation identity is invalid'
     }
     $cache=Join-Path $temporary 'pscan-acquisition'

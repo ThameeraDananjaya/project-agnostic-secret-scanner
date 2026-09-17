@@ -9,11 +9,11 @@ $saved=@{GITHUB_SHA=$env:GITHUB_SHA;GITHUB_REF=$env:GITHUB_REF;GITHUB_WORKSPACE=
 foreach($key in @('PSCAN_VALIDATION_WORKFLOW_SHA','PSCAN_VALIDATION_WORKFLOW_REF','GITHUB_ACTIONS','GITHUB_EVENT_NAME','GITHUB_REPOSITORY','GITHUB_REPOSITORY_OWNER_ID','GITHUB_RUN_ID','GITHUB_RUN_ATTEMPT')){$saved[$key]=[Environment]::GetEnvironmentVariable($key,'Process')}
 $savedExit=$global:LASTEXITCODE;$cases=0
 try {
-    $env:GITHUB_SHA='1'*40;$env:GITHUB_REF='refs/tags/release-tooling-v1.0.0-c2-linux-boundary'
+    $env:GITHUB_SHA='1'*40;$env:GITHUB_REF='refs/tags/release-tooling-v1.0.0-c2-linux-build-v2'
     $env:GITHUB_WORKSPACE=Join-Path ([IO.Path]::GetTempPath()) 'inert-repository';$env:RUNNER_TEMP=Join-Path ([IO.Path]::GetTempPath()) 'inert-runner'
     $env:GITHUB_ACTIONS='true';$env:GITHUB_EVENT_NAME='workflow_dispatch';$env:GITHUB_REPOSITORY='ThameeraDananjaya/project-agnostic-secret-scanner';$env:GITHUB_REPOSITORY_OWNER_ID='50274860';$env:GITHUB_RUN_ID='123';$env:GITHUB_RUN_ATTEMPT='1'
     foreach($modeName in @('Candidate','Validation')){
-    $env:GITHUB_REF=if($modeName-eq'Validation'){'refs/heads/main'}else{'refs/tags/release-tooling-v1.0.0-c2-linux-boundary'}
+    $env:GITHUB_REF=if($modeName-eq'Validation'){'refs/heads/main'}else{'refs/tags/release-tooling-v1.0.0-c2-linux-build-v2'}
     $env:PSCAN_VALIDATION_WORKFLOW_SHA=if($modeName-eq'Validation'){'1'*40}else{$null}
     $env:PSCAN_VALIDATION_WORKFLOW_REF='ThameeraDananjaya/project-agnostic-secret-scanner/.github/workflows/release-validate-linux.yml@refs/heads/main'
     foreach($stage in @('NativePrerequisites','ImageAdmission','ContainerCache','ContainerCRLF','Acquire','BuildA','BuildB','Compare')){
@@ -38,6 +38,18 @@ try {
         }
     }
     }
+    foreach($badRef in @('refs/tags/release-tooling-v1.0.0-c2-linux-boundary','refs/heads/main')){
+        $env:GITHUB_REF=$badRef;$env:PSCAN_VALIDATION_WORKFLOW_SHA=$null
+        $script:failure='none';$script:events=[Collections.Generic.List[string]]::new()
+        $caught='';try{& ([scriptblock]::Create($body)) -Mode Candidate -Stage BuildA -BaselinePath '/inert/baseline' -BaselineSHA256 ('a'*64)}catch{$caught=$_.Exception.Message}
+        if($caught-cne'Unsigned candidate invocation identity is invalid'-or@($script:events|Where-Object{$_-like'operation:*'}).Count){throw 'Old or mutable ref reached candidate operation'}
+        $cases++
+    }
+    $env:GITHUB_REF='refs/tags/release-tooling-v1.0.0-c2-linux-build-v2';$env:PSCAN_VALIDATION_WORKFLOW_SHA='1'*40
+    $script:events=[Collections.Generic.List[string]]::new()
+    $caught='';try{& ([scriptblock]::Create($body)) -Mode Candidate -Stage BuildA -BaselinePath '/inert/baseline' -BaselineSHA256 ('a'*64)}catch{$caught=$_.Exception.Message}
+    if($caught-cne'Unsigned candidate invocation identity is invalid'-or@($script:events|Where-Object{$_-like'operation:*'}).Count){throw 'Validation invocation reached candidate operation'}
+    $cases++
 } finally {
     foreach($key in $saved.Keys){[Environment]::SetEnvironmentVariable($key,$saved[$key],'Process')}
     $global:LASTEXITCODE=$savedExit

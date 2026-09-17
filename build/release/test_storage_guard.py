@@ -35,7 +35,7 @@ def distribution(root):
     (root / "CHECKSUMS.sha256").write_text("".join(f"{hashes[n]}  {n}\n" for n in sorted(hashes)), encoding="ascii", newline="\n")
     assets = [{"path": p.name, "size": p.stat().st_size, "sha256": hashlib.sha256(p.read_bytes()).hexdigest()}
               for p in sorted(root.iterdir())]
-    manifest = dict(manifestSchemaVersion="2.3", releaseVersion="v1.0.0",
+    manifest = dict(manifestSchemaVersion="2.4", releaseVersion="v1.0.0",
                     productSource=dict(tag="v1.0.0", commit=guard.PRODUCT, tree=guard.PRODUCT_TREE),
                     releaseTooling=dict(tag=guard.TAG, commit=REVISION, workflow=guard.WORKFLOW,
                                        workflowRef="refs/tags/" + guard.TAG, workflowSha=REVISION,
@@ -112,7 +112,7 @@ class DistributionTests(unittest.TestCase):
         result = self.check()
         self.assertEqual(result["payload_bytes"], sum(map(len, before.values())))
         self.assertEqual(result["transfer_upper_bound_bytes"], sum(map(len, before.values())) + 16 * 1024 * 1024)
-        self.assertEqual(result["files"], 33)
+        self.assertEqual(result["files"], 34)
         self.assertEqual(before, {p.name: p.read_bytes() for p in self.root.iterdir()})
 
     def test_extra_hidden_file(self):
@@ -142,6 +142,9 @@ class DistributionTests(unittest.TestCase):
     def test_manifest_identity_and_asset_matrix(self):
         path = self.root / "release-manifest.json"; original = json.loads(path.read_text())
         mutations = [lambda m: m.update(releaseVersion="v2.0.0"),
+                     lambda m: m.update(manifestSchemaVersion="2.3"),
+                     lambda m: m["releaseTooling"].update(tag="release-tooling-v1.0.0-c2-linux-boundary"),
+                     lambda m: m["buildIdentity"].update(ref="refs/tags/release-tooling-v1.0.0-c2-linux-boundary"),
                      lambda m: m.update(releaseState="signing-pending"),
                      lambda m: m.update(releaseIdentity={}),
                      lambda m: m["buildIdentity"].update(workflowSha="3"*40),

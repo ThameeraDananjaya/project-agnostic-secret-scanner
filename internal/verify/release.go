@@ -190,7 +190,7 @@ func ParseReleaseManifest(raw []byte) (ReleaseManifest, error) {
 	if json.Unmarshal(raw, &fields) != nil {
 		return ReleaseManifest{}, ErrInvalidReference
 	}
-	if manifest.ManifestSchemaVersion == "2.3" {
+	if manifest.ManifestSchemaVersion == "2.3" || manifest.ManifestSchemaVersion == "2.4" {
 		if !exactObjectFields(raw, "schemaFamily", "manifestSchemaVersion", "releaseVersion", "productSource", "releaseTooling", "runnerVersion", "goToolchainVersion", "runnerBindings", "engineBindings", "rulePack", "schemaBindings", "releaseIdentity", "compatibility", "revocation", "assets", "createdAt", "buildIdentity", "releaseState") || !exactBuildFields(raw) {
 			return ReleaseManifest{}, ErrInvalidReference
 		}
@@ -405,7 +405,7 @@ func validateReleaseManifest(m ReleaseManifest) error {
 }
 
 func validateReleaseIdentityVersion(m ReleaseManifest) error {
-	if m.ManifestSchemaVersion == "2.3" {
+	if m.ManifestSchemaVersion == "2.3" || m.ManifestSchemaVersion == "2.4" {
 		return validateUnsignedBuildIdentity(m)
 	}
 	if m.BuildIdentity != nil || m.ReleaseState != "" {
@@ -454,7 +454,7 @@ func validateReleaseIdentityVersion(m ReleaseManifest) error {
 }
 
 func checkReleasePolicy(m ReleaseManifest, p ReleaseTrustPolicy, now time.Time) error {
-	if m.ManifestSchemaVersion == "2.3" {
+	if m.ManifestSchemaVersion == "2.3" || m.ManifestSchemaVersion == "2.4" {
 		return checkSeparateSignerPolicy(m, p, now)
 	}
 	identity := m.ReleaseIdentity

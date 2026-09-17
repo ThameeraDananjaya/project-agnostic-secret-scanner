@@ -27,9 +27,10 @@ jobs:
   build:
     if: >-
       github.repository == 'ThameeraDananjaya/project-agnostic-secret-scanner' &&
-      github.ref == 'refs/tags/release-tooling-v1.0.0-c2-linux-boundary' &&
+      github.repository_owner_id == '50274860' &&
+      github.ref == 'refs/tags/release-tooling-v1.0.0-c2-linux-build-v2' &&
       github.sha == inputs.release_tooling_revision &&
-      github.workflow_ref == 'ThameeraDananjaya/project-agnostic-secret-scanner/.github/workflows/release-build-unsigned.yml@refs/tags/release-tooling-v1.0.0-c2-linux-boundary' &&
+      github.workflow_ref == 'ThameeraDananjaya/project-agnostic-secret-scanner/.github/workflows/release-build-unsigned.yml@refs/tags/release-tooling-v1.0.0-c2-linux-build-v2' &&
       github.workflow_sha == inputs.release_tooling_revision &&
       inputs.product_source_revision == 'a13c28fe7273bc8dc6545f97966a02889524eb4c' &&
       inputs.release_version == 'v1.0.0'
@@ -47,10 +48,11 @@ jobs:
           WORKFLOW_SHA: ${{ github.workflow_sha }}
         run: |
           set -euo pipefail
+          test "$GITHUB_REPOSITORY_OWNER_ID" = '50274860'
           test "$PRODUCT_SOURCE_REVISION" = 'a13c28fe7273bc8dc6545f97966a02889524eb4c'
           test "$RELEASE_TOOLING_REVISION" = "$GITHUB_SHA"
-          test "$GITHUB_REF" = 'refs/tags/release-tooling-v1.0.0-c2-linux-boundary'
-          test "$WORKFLOW_REF" = 'ThameeraDananjaya/project-agnostic-secret-scanner/.github/workflows/release-build-unsigned.yml@refs/tags/release-tooling-v1.0.0-c2-linux-boundary'
+          test "$GITHUB_REF" = 'refs/tags/release-tooling-v1.0.0-c2-linux-build-v2'
+          test "$WORKFLOW_REF" = 'ThameeraDananjaya/project-agnostic-secret-scanner/.github/workflows/release-build-unsigned.yml@refs/tags/release-tooling-v1.0.0-c2-linux-build-v2'
           test "$WORKFLOW_SHA" = "$RELEASE_TOOLING_REVISION"
 
       - name: Check out exact tooling revision without persisted credentials
@@ -108,6 +110,14 @@ jobs:
           & "$env:PSCAN_EXACT_TOOLING_ROOT/build/release/test-native-fixture-diagnostics.ps1"
           & "$env:PSCAN_EXACT_TOOLING_ROOT/build/release/test-native-profile-driver.ps1"
           & "$env:PSCAN_EXACT_TOOLING_ROOT/build/release/test-unsigned-build-driver.ps1"
+
+      - name: Prove actual local lifecycle, identity and validation gates
+        shell: pwsh
+        run: |
+          foreach ($fixture in @('test-linux-build-path.ps1','test-acquisition-source.ps1','test-container-lifecycle.ps1','test-build-validation.ps1','test-execution-profile.ps1','test-linux-cleanup.ps1')) {
+            & /opt/microsoft/powershell/7/pwsh -NoLogo -NoProfile -NonInteractive -File "$env:PSCAN_EXACT_TOOLING_ROOT/build/release/$fixture"
+            if ($LASTEXITCODE -ne 0) { throw "Local validation fixture failed: $fixture" }
+          }
 
       - name: Prove named policy and context observers using inert inputs
         shell: bash

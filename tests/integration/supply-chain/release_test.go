@@ -1,6 +1,11 @@
 package supplychain_test
 
 import (
+	"archive/tar"
+	"archive/zip"
+	"bytes"
+	"compress/gzip"
+	"context"
 	"encoding/json"
 	"errors"
 	"os"
@@ -8,6 +13,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ThameeraDananjaya/project-agnostic-secret-scanner/internal/verify"
 )
@@ -660,7 +666,7 @@ func TestIteration007RepositoryIdentityAgreementAndPreservation(t *testing.T) {
 	}
 
 	for path, required := range map[string][]string{
-		"build/release/build.ps1":                    {"release-tooling-v1.0.0-c2-linux-boundary", ".github/workflows/release-build-unsigned.yml", "manifestSchemaVersion='2.3'", "schema-release-manifest-2.1.json", "schema-release-manifest-2.2.json", "schema-release-manifest-2.3.json", "releaseIdentity=$null"},
+		"build/release/build.ps1":                    {"release-tooling-v1.0.0-c2-linux-build-v2", ".github/workflows/release-build-unsigned.yml", "manifestSchemaVersion='2.4'", "schema-release-manifest-2.1.json", "schema-release-manifest-2.2.json", "schema-release-manifest-2.3.json", "schema-release-manifest-2.4.json", "releaseIdentity=$null"},
 		"build/release/cmd/release-verifier/main.go": {"LoadSeparateSignerPolicy", "signer-policy-sha256"},
 		"internal/verify/release.go":                 {"release-tooling-v1.0.0-c2", "release-tooling-v1.0.0-c2-r6", ".github/workflows/release-recovery-v1.0.0.yml", ".github/workflows/release-recovery-v1.0.0-c2-r6.yml"},
 	} {
@@ -670,6 +676,283 @@ func TestIteration007RepositoryIdentityAgreementAndPreservation(t *testing.T) {
 				t.Fatalf("%s does not contain required identity token %q", path, token)
 			}
 		}
+	}
+}
+
+func minimumManifestV24() verify.ReleaseManifest {
+	m := minimumManifestV23()
+	m.ManifestSchemaVersion = "2.4"
+	m.ReleaseTooling.Tag = verify.UnsignedBuildTagV24
+	m.ReleaseTooling.WorkflowRef = "refs/tags/" + verify.UnsignedBuildTagV24
+	m.BuildIdentity.Ref = m.ReleaseTooling.WorkflowRef
+	return m
+}
+
+func signerPolicyV11Bytes(t *testing.T, m verify.ReleaseManifest) []byte {
+	t.Helper()
+	return bytes.Replace(signerPolicyBytes(t, m), []byte(`"pscan-separate-signer-policy-v1"`), []byte(`"pscan-separate-signer-policy-v1.1"`), 1)
+}
+
+func TestV24ContractsAreClosedAdditiveProjections(t *testing.T) {
+	root := filepath.Join("..", "..", "..")
+	for _, pair := range [][2]string{{"contracts/release-manifest/schema-2.3.json", "contracts/release-manifest/schema-2.4.json"}, {"contracts/release-signer-policy/schema-1.0.json", "contracts/release-signer-policy/schema-1.1.json"}} {
+		old, err := os.ReadFile(filepath.Join(root, pair[0]))
+		if err != nil {
+			t.Fatal(err)
+		}
+		current, err := os.ReadFile(filepath.Join(root, pair[1]))
+		if err != nil {
+			t.Fatal(err)
+		}
+		current = bytes.ReplaceAll(current, []byte(verify.UnsignedBuildTagV24), []byte(verify.UnsignedBuildTag))
+		if strings.Contains(pair[0], "release-manifest") {
+			current = bytes.ReplaceAll(current, []byte("2.4"), []byte("2.3"))
+		} else {
+			current = bytes.ReplaceAll(current, []byte("release-signer-policy:1.1"), []byte("release-signer-policy:1.0"))
+			current = bytes.ReplaceAll(current, []byte("pscan-separate-signer-policy-v1.1"), []byte("pscan-separate-signer-policy-v1"))
+		}
+		if !bytes.Equal(old, current) {
+			t.Fatalf("contract changed beyond selected identity: %s", pair[1])
+		}
+	}
+	for name, mutate := range map[string]func(*verify.ReleaseManifest){
+		"old tag":                func(m *verify.ReleaseManifest) { m.ReleaseTooling.Tag = verify.UnsignedBuildTag },
+		"old tooling ref":        func(m *verify.ReleaseManifest) { m.ReleaseTooling.WorkflowRef = "refs/tags/" + verify.UnsignedBuildTag },
+		"old build ref":          func(m *verify.ReleaseManifest) { m.BuildIdentity.Ref = "refs/tags/" + verify.UnsignedBuildTag },
+		"old version":            func(m *verify.ReleaseManifest) { m.ManifestSchemaVersion = "2.3" },
+		"unknown version":        func(m *verify.ReleaseManifest) { m.ManifestSchemaVersion = "2.5" },
+		"builder signer":         func(m *verify.ReleaseManifest) { m.ReleaseIdentity.Workflow = verify.UnsignedBuildWorkflow },
+		"wrong build sha":        func(m *verify.ReleaseManifest) { m.BuildIdentity.WorkflowSHA = strings.Repeat("b", 40) },
+		"missing build":          func(m *verify.ReleaseManifest) { m.BuildIdentity = nil },
+		"invented trusted state": func(m *verify.ReleaseManifest) { m.ReleaseState = "verified" },
+	} {
+		t.Run(name, func(t *testing.T) {
+			m := minimumManifestV24()
+			mutate(&m)
+			raw, err := json.Marshal(m)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := verify.ParseReleaseManifest(raw); err == nil {
+				t.Fatal("mixed identity admitted")
+			}
+		})
+	}
+}
+
+func TestV24PolicyVersionAndExternalTrustInputs(t *testing.T) {
+	m := minimumManifestV24()
+	candidate := t.TempDir()
+	path := filepath.Join(t.TempDir(), "inert-owner-policy.json")
+	good := signerPolicyV11Bytes(t, m)
+	load := func(raw []byte, digest, commit, tree string) error {
+		t.Helper()
+		if err := os.WriteFile(path, raw, 0600); err != nil {
+			t.Fatal(err)
+		}
+		p, err := verify.LoadSeparateSignerPolicy(path, digest, candidate, commit, tree)
+		if err == nil && (p.ManifestSchemaVersion != "2.4" || p.ReleaseToolingTag != verify.UnsignedBuildTagV24) {
+			t.Fatal("policy did not preserve closed version")
+		}
+		return err
+	}
+	if err := load(good, verify.DigestBytes(good), m.ReleaseTooling.Commit, m.ReleaseTooling.Tree); err != nil {
+		t.Fatal(err)
+	}
+	for _, raw := range [][]byte{
+		signerPolicyBytes(t, m), signerPolicyV11Bytes(t, minimumManifestV23()),
+		bytes.Replace(good, []byte("policy-v1.1"), []byte("policy-v1.2"), 1),
+		bytes.Replace(good, []byte(`"schema":`), []byte(`"schema":"duplicate","schema":`), 1),
+		bytes.Replace(good, []byte(`"schema":`), []byte(`"extra":0,"schema":`), 1),
+		bytes.ReplaceAll(good, []byte(verify.ReleaseSignerWorkflow), []byte(".github/workflows/other.yml")),
+	} {
+		if err := load(raw, verify.DigestBytes(raw), m.ReleaseTooling.Commit, m.ReleaseTooling.Tree); err == nil {
+			t.Fatal("mixed or broadened policy admitted")
+		}
+	}
+	for _, args := range [][3]string{{strings.Repeat("b", 64), m.ReleaseTooling.Commit, m.ReleaseTooling.Tree}, {verify.DigestBytes(good), strings.Repeat("b", 40), m.ReleaseTooling.Tree}, {verify.DigestBytes(good), m.ReleaseTooling.Commit, strings.Repeat("b", 40)}} {
+		if err := load(good, args[0], args[1], args[2]); err == nil {
+			t.Fatal("unbound policy admitted")
+		}
+	}
+	local := filepath.Join(candidate, "policy.json")
+	if err := os.WriteFile(local, good, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := verify.LoadSeparateSignerPolicy(local, verify.DigestBytes(good), candidate, m.ReleaseTooling.Commit, m.ReleaseTooling.Tree); err == nil {
+		t.Fatal("candidate-local policy admitted")
+	}
+}
+
+// This probe is deliberately inert. Success tests the verifier's control flow,
+// never a real signature, certificate, OIDC identity or release trust claim.
+type inertV24Signature struct {
+	calls  int
+	reject bool
+}
+
+func (p *inertV24Signature) VerifyManifest(context.Context, string, string, verify.ReleaseIdentity) error {
+	p.calls++
+	if p.reject {
+		return errors.New("inert signature rejection")
+	}
+	return nil
+}
+
+func TestV24OuterManifestFinalizationPreservesArchivesAndVerificationGates(t *testing.T) {
+	m := minimumManifestV24()
+	root := t.TempDir()
+	write := func(name string, raw []byte) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(root, name), raw, 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for i := range m.Assets {
+		a := &m.Assets[i]
+		raw := []byte("x")
+		if a.Path == "revocations.json" {
+			raw = []byte(`{"schemaFamily":"global-scanner-revocation-snapshot","schemaVersion":"1.0","capturedAt":"` + m.CreatedAt + `","records":[]}`)
+		}
+		if a.Path == "checkpoint.json" {
+			raw = []byte(`{"schemaFamily":"global-scanner-revocation-checkpoint","schemaVersion":"1.0","sequence":0,"digest":null,"capturedAt":"` + m.CreatedAt + `","discoveryLocation":"` + m.Revocation.DiscoveryLocation + `"}`)
+		}
+		a.Size = int64(len(raw))
+		a.SHA256 = verify.DigestBytes(raw)
+		write(a.Path, raw)
+	}
+	archives := map[string][]byte{}
+	var linux, windows bytes.Buffer
+	gz := gzip.NewWriter(&linux)
+	tw := tar.NewWriter(gz)
+	if err := tw.WriteHeader(&tar.Header{Name: "pscan", Mode: 0755, Size: 1}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tw.Write([]byte("x")); err != nil {
+		t.Fatal(err)
+	}
+	if err := tw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := gz.Close(); err != nil {
+		t.Fatal(err)
+	}
+	zw := zip.NewWriter(&windows)
+	entry, err := zw.Create("pscan.exe")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := entry.Write([]byte("x")); err != nil {
+		t.Fatal(err)
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	archives["inert-linux.tar.gz"] = linux.Bytes()
+	archives["inert-windows.zip"] = windows.Bytes()
+	for name, raw := range archives {
+		write(name, raw)
+		m.Assets = append(m.Assets, verify.ReleaseAsset{Path: name, Kind: "documentation", OS: "none", Arch: "none", Size: int64(len(raw)), SHA256: verify.DigestBytes(raw)})
+	}
+	policyRaw := signerPolicyV11Bytes(t, m)
+	policyPath := filepath.Join(t.TempDir(), "inert-policy.json")
+	if err := os.WriteFile(policyPath, policyRaw, 0600); err != nil {
+		t.Fatal(err)
+	}
+	policy, err := verify.LoadSeparateSignerPolicy(policyPath, verify.DigestBytes(policyRaw), root, m.ReleaseTooling.Commit, m.ReleaseTooling.Tree)
+	if err != nil {
+		t.Fatal(err)
+	}
+	write("bundle.json", []byte("inert fixture; not a signature"))
+	storeManifest := func(candidate verify.ReleaseManifest) []byte {
+		t.Helper()
+		raw, err := json.Marshal(candidate)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := verify.ParseReleaseManifest(raw); err != nil {
+			t.Fatal(err)
+		}
+		write("release-manifest.json", raw)
+		return raw
+	}
+	now, err := time.Parse(time.RFC3339, m.CreatedAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	check := func(p verify.ReleaseTrustPolicy, signature *inertV24Signature) error {
+		t.Helper()
+		_, err := verify.VerifyRelease(t.Context(), verify.ReleaseVerificationRequest{Directory: root, ManifestPath: "release-manifest.json", BundlePath: "bundle.json", Policy: p, Signature: signature, Now: now})
+		return err
+	}
+	unsigned := m
+	unsigned.ReleaseState = "unsigned-candidate"
+	unsigned.ReleaseIdentity = verify.ReleaseIdentity{}
+	unsignedRaw := storeManifest(unsigned)
+	if !bytes.Contains(unsignedRaw, []byte(`"releaseIdentity":null`)) {
+		t.Fatal("unsigned signer is not literal null")
+	}
+	probe := &inertV24Signature{}
+	if err := check(policy, probe); err == nil || probe.calls != 0 {
+		t.Fatal("unsigned candidate reached signature or gained trust")
+	}
+	var missingSigner map[string]json.RawMessage
+	if err := json.Unmarshal(unsignedRaw, &missingSigner); err != nil {
+		t.Fatal(err)
+	}
+	delete(missingSigner, "releaseIdentity")
+	missingRaw, err := json.Marshal(missingSigner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, bad := range [][]byte{bytes.Replace(unsignedRaw, []byte(`"releaseIdentity":null`), []byte(`"releaseIdentity":{}`), 1), missingRaw} {
+		if _, err := verify.ParseReleaseManifest(bad); err == nil {
+			t.Fatal("missing or non-null unsigned signer admitted")
+		}
+	}
+	finalRaw := storeManifest(m)
+	if bytes.Equal(unsignedRaw, finalRaw) {
+		t.Fatal("outer manifest was not finalized")
+	}
+	for name, before := range archives {
+		after, err := os.ReadFile(filepath.Join(root, name))
+		if err != nil || !bytes.Equal(before, after) {
+			t.Fatalf("archive changed during outer finalization: %s", name)
+		}
+	}
+	probe = &inertV24Signature{}
+	if err := check(policy, probe); err != nil || probe.calls != 1 {
+		t.Fatalf("inert future-finalization control flow failed: %v calls=%d", err, probe.calls)
+	}
+	for _, mutate := range []func(*verify.ReleaseTrustPolicy){func(p *verify.ReleaseTrustPolicy) { p.ManifestSchemaVersion = "2.3" }, func(p *verify.ReleaseTrustPolicy) { p.WorkflowSHA = strings.Repeat("b", 40) }, func(p *verify.ReleaseTrustPolicy) { p.ReleaseToolingTree = strings.Repeat("b", 40) }} {
+		p := policy
+		mutate(&p)
+		probe = &inertV24Signature{}
+		if err := check(p, probe); err == nil || probe.calls != 0 {
+			t.Fatal("wrong policy reached signature")
+		}
+	}
+	if err := check(policy, &inertV24Signature{reject: true}); !errors.Is(err, verify.ErrInvalidSignature) {
+		t.Fatalf("signature failure ignored: %v", err)
+	}
+	write("inert-windows.zip", []byte("tampered"))
+	if err := check(policy, &inertV24Signature{}); err == nil {
+		t.Fatal("tampered archive admitted")
+	}
+	write("inert-windows.zip", archives["inert-windows.zip"])
+	// Rebind the invalid checkpoint to prove the revocation semantic check runs
+	// independently of the asset hash check.
+	badCheckpoint := []byte(`{"schemaFamily":"global-scanner-revocation-checkpoint","schemaVersion":"1.0","sequence":1,"digest":null,"capturedAt":"` + m.CreatedAt + `","discoveryLocation":"` + m.Revocation.DiscoveryLocation + `"}`)
+	write("checkpoint.json", badCheckpoint)
+	for i := range m.Assets {
+		if m.Assets[i].Path == "checkpoint.json" {
+			m.Assets[i].Size = int64(len(badCheckpoint))
+			m.Assets[i].SHA256 = verify.DigestBytes(badCheckpoint)
+		}
+	}
+	storeManifest(m)
+	if err := check(policy, &inertV24Signature{}); err == nil {
+		t.Fatal("invalid revocation checkpoint admitted")
 	}
 }
 

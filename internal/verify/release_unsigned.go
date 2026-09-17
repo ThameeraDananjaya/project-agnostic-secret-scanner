@@ -10,6 +10,7 @@ import (
 
 const (
 	UnsignedBuildTag      = "release-tooling-v1.0.0-c2-linux-boundary"
+	UnsignedBuildTagV24   = "release-tooling-v1.0.0-c2-linux-build-v2"
 	UnsignedBuildWorkflow = ".github/workflows/release-build-unsigned.yml"
 	ReleaseSignerWorkflow = ".github/workflows/release-sign.yml"
 	ReleaseSignerRef      = "refs/tags/release-signing-v1.0.0-c2-linux-boundary"
@@ -31,7 +32,7 @@ type BuildIdentity struct {
 // serialized again. Nonzero conflicting signer fields are never normalized away.
 func (m ReleaseManifest) MarshalJSON() ([]byte, error) {
 	type plainManifest ReleaseManifest
-	if m.ManifestSchemaVersion == "2.3" && m.ReleaseState == "unsigned-candidate" && m.ReleaseIdentity == (ReleaseIdentity{}) {
+	if (m.ManifestSchemaVersion == "2.3" || m.ManifestSchemaVersion == "2.4") && m.ReleaseState == "unsigned-candidate" && m.ReleaseIdentity == (ReleaseIdentity{}) {
 		return json.Marshal(struct {
 			plainManifest
 			Signer any `json:"releaseIdentity"`
@@ -45,9 +46,17 @@ func validateUnsignedBuildIdentity(m ReleaseManifest) error {
 		return ErrInvalidReference
 	}
 	p, t, b := m.ProductSource, m.ReleaseTooling, m.BuildIdentity
+	buildTag := UnsignedBuildTag
+	switch m.ManifestSchemaVersion {
+	case "2.3":
+	case "2.4":
+		buildTag = UnsignedBuildTagV24
+	default:
+		return ErrInvalidReference
+	}
 	if *p != (ProductSourceIdentity{Tag: "v1.0.0", Commit: "a13c28fe7273bc8dc6545f97966a02889524eb4c", Tree: "217b711ddea51fd0ea7e808edd2e27fdecef8427"}) ||
-		t.Tag != UnsignedBuildTag || !gitOIDPattern.MatchString(t.Commit) || !gitOIDPattern.MatchString(t.Tree) ||
-		t.Workflow != UnsignedBuildWorkflow || t.WorkflowRef != "refs/tags/"+UnsignedBuildTag || t.WorkflowSHA != t.Commit || t.Trigger != "workflow_dispatch" ||
+		t.Tag != buildTag || !gitOIDPattern.MatchString(t.Commit) || !gitOIDPattern.MatchString(t.Tree) ||
+		t.Workflow != UnsignedBuildWorkflow || t.WorkflowRef != "refs/tags/"+buildTag || t.WorkflowSHA != t.Commit || t.Trigger != "workflow_dispatch" ||
 		b.Repository != releaseRepository || b.RepositoryOwnerID != 50274860 || b.Workflow != t.Workflow || b.Ref != t.WorkflowRef || b.WorkflowSHA != t.Commit || b.Trigger != t.Trigger {
 		return ErrInvalidReference
 	}
@@ -78,7 +87,7 @@ func checkSeparateSignerPolicy(m ReleaseManifest, p ReleaseTrustPolicy, now time
 		return ErrInvalidReference
 	}
 	t, product, s := m.ReleaseTooling, m.ProductSource, m.ReleaseIdentity
-	if p.ManifestSchemaVersion != "2.3" || p.ReleaseVersion != m.ReleaseVersion || p.ProductSourceTag != product.Tag || p.ProductSourceCommit != product.Commit || p.ProductSourceTree != product.Tree ||
+	if p.ManifestSchemaVersion != m.ManifestSchemaVersion || p.ReleaseVersion != m.ReleaseVersion || p.ProductSourceTag != product.Tag || p.ProductSourceCommit != product.Commit || p.ProductSourceTree != product.Tree ||
 		p.ReleaseToolingTag != t.Tag || p.ReleaseToolingCommit != t.Commit || p.ReleaseToolingTree != t.Tree ||
 		p.Repository != s.Repository || p.RepositoryOwnerID != s.RepositoryOwnerID || p.Workflow != s.Workflow || p.Ref != s.Ref || p.WorkflowSHA != s.WorkflowSHA || p.Trigger != s.Trigger || p.OIDCIssuer != s.OIDCIssuer || p.CertificateIdentity != s.CertificateIdentity {
 		return ErrBindingMismatch
@@ -160,14 +169,23 @@ func LoadSeparateSignerPolicy(path, expectedDigest, candidateDirectory, buildCom
 	}
 	d := json.NewDecoder(bytes.NewReader(raw))
 	d.DisallowUnknownFields()
-	if d.Decode(&record) != nil || ensureJSONEOF(d) != nil || record.Schema != "pscan-separate-signer-policy-v1" {
+	if d.Decode(&record) != nil || ensureJSONEOF(d) != nil {
 		return empty, ErrInvalidReference
 	}
-	m := ReleaseManifest{ManifestSchemaVersion: "2.3", ReleaseVersion: "v1.0.0", ProductSource: &record.Product, ReleaseTooling: &record.Tooling, BuildIdentity: &record.Build, ReleaseState: "signing-pending", ReleaseIdentity: record.Signer}
+	version := ""
+	switch record.Schema {
+	case "pscan-separate-signer-policy-v1":
+		version = "2.3"
+	case "pscan-separate-signer-policy-v1.1":
+		version = "2.4"
+	default:
+		return empty, ErrInvalidReference
+	}
+	m := ReleaseManifest{ManifestSchemaVersion: version, ReleaseVersion: "v1.0.0", ProductSource: &record.Product, ReleaseTooling: &record.Tooling, BuildIdentity: &record.Build, ReleaseState: "signing-pending", ReleaseIdentity: record.Signer}
 	if validateUnsignedBuildIdentity(m) != nil || record.Tooling.Commit != buildCommit || record.Tooling.Tree != buildTree {
 		return empty, ErrBindingMismatch
 	}
 	s := record.Signer
 	return ReleaseTrustPolicy{Repository: s.Repository, RepositoryOwnerID: s.RepositoryOwnerID, Workflow: s.Workflow, Ref: s.Ref, WorkflowSHA: s.WorkflowSHA, Trigger: s.Trigger, OIDCIssuer: s.OIDCIssuer, CertificateIdentity: s.CertificateIdentity,
-		ReleaseVersion: "v1.0.0", ManifestSchemaVersion: "2.3", ProductSourceTag: record.Product.Tag, ProductSourceCommit: record.Product.Commit, ProductSourceTree: record.Product.Tree, ReleaseToolingTag: UnsignedBuildTag, ReleaseToolingCommit: buildCommit, ReleaseToolingTree: buildTree}, nil
+		ReleaseVersion: "v1.0.0", ManifestSchemaVersion: version, ProductSourceTag: record.Product.Tag, ProductSourceCommit: record.Product.Commit, ProductSourceTree: record.Product.Tree, ReleaseToolingTag: record.Tooling.Tag, ReleaseToolingCommit: buildCommit, ReleaseToolingTree: buildTree}, nil
 }

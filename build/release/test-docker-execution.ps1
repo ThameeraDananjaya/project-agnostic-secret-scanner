@@ -67,7 +67,7 @@ function Invoke-CleanNativeFixture {
     [void](New-Item -ItemType Directory -Path $temporaryRoot)
     try {
         if ($IsLinux) {
-            foreach ($functionName in @('Get-LinuxSessionMembers','Test-LinuxMemberAlive','Get-LinuxBoundarySnapshot','New-LinuxBoundaryStartInfo','Get-LinuxGateAction','Test-LinuxInitReaped','Invoke-LinuxPinnedCleanup','Invoke-LinuxSessionBoundary')) {
+            foreach ($functionName in @('Get-LinuxProcStatErrorInfo','Read-LinuxProcStat','Get-LinuxSessionMembers','Test-LinuxMemberAlive','Get-LinuxBoundarySnapshot','New-LinuxBoundaryStartInfo','Get-LinuxGateAction','Test-LinuxInitReaped','Invoke-LinuxPinnedCleanup','Invoke-LinuxSessionBoundary')) {
                 $definition = $parsed.Ast.Find({
                     param($node)
                     $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -ceq $functionName

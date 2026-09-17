@@ -328,17 +328,42 @@ function Get-BoundDockerExecutable {
     return $path
 }
 
+function Get-LinuxProcStatErrorInfo([Exception]$Failure) {
+    $leaf=$Failure;$wrappers=0
+    while($null-ne$leaf-and$leaf.GetType()-eq[Management.Automation.MethodInvocationException]-and$wrappers-lt4){$leaf=$leaf.InnerException;$wrappers++}
+    $kind='unknown';$errno=$null;$absent=$false
+    if($null-ne$leaf-and$null-eq$leaf.InnerException){
+        if($leaf.GetType()-eq[IO.IOException]){$kind='io';$errno=$leaf.HResult;$absent=$errno-eq3}
+        elseif($leaf.GetType()-eq[IO.FileNotFoundException]){$kind='file-not-found';$errno=$leaf.HResult;$absent=$errno-eq-2147024894}
+        elseif($leaf.GetType()-eq[IO.DirectoryNotFoundException]){$kind='directory-not-found';$errno=$leaf.HResult;$absent=$errno-eq-2147024893}
+        elseif($leaf.GetType()-eq[UnauthorizedAccessException]){$kind='access-denied';$errno=$leaf.HResult}
+    }
+    [pscustomobject]@{Absent=$absent;Kind=$kind;Code=$errno;Wrappers=$wrappers}
+}
+
+function Read-LinuxProcStat([ValidateRange(1,2147483647)][int]$Identifier,[ValidateSet('enumeration','snapshot','liveness','reaping')][string]$Observer) {
+    # Only this fixed numeric /proc stat read classifies departure. Never use
+    # message matching, or apply ESRCH classification to namespace/pidfd I/O.
+    try { return [IO.File]::ReadAllText("/proc/$Identifier/stat") }
+    catch {
+        $info=Get-LinuxProcStatErrorInfo $_.Exception
+        if($info.Absent){return $null}
+        throw [IO.IOException]::new("Linux proc stat read failed: observer=$Observer pid=$Identifier kind=$($info.Kind) code=$($info.Code) wrappers=$($info.Wrappers)",$_.Exception)
+    }
+}
+
 function Get-LinuxSessionMembers([int]$Session, [hashtable]$Ledger) {
     $current = [Collections.Generic.List[object]]::new()
     foreach ($directory in Get-ChildItem -LiteralPath /proc -Directory -ErrorAction Stop) {
         if ($directory.Name -notmatch '^\d+$') { continue }
-        try { $stat = [IO.File]::ReadAllText((Join-Path $directory.FullName 'stat')) }
-        catch [IO.FileNotFoundException] { continue }
-        catch [IO.DirectoryNotFoundException] { continue }
+        $stat=Read-LinuxProcStat ([int]$directory.Name) enumeration
+        if($null-eq$stat){continue}
         $close = $stat.LastIndexOf(')'); if ($close -lt 1) { throw 'Malformed Linux process identity record' }
         $linuxProcessIdentifier = [int]$stat.Substring(0, $stat.IndexOf(' ')); $fields = $stat.Substring($close + 2).Split(' ', [StringSplitOptions]::RemoveEmptyEntries)
-        if ($fields.Count -lt 20 -or [int]$fields[3] -ne $Session) { continue }
+        if($linuxProcessIdentifier-ne[int]$directory.Name-or$fields.Count-lt20){throw 'Malformed or changed Linux process identity record'}
+        if ([int]$fields[3] -ne $Session) { continue }
         $startTime = [uint64]$fields[19]; $identity = "${linuxProcessIdentifier}:$startTime"
+        foreach($prior in $Ledger.Values){if($prior.PID-eq$linuxProcessIdentifier-and$prior.StartTime-ne$startTime){throw 'Linux session member identity changed'}}
         $Ledger[$identity] = [pscustomobject]@{ PID=$linuxProcessIdentifier; StartTime=$startTime }
         $current.Add($Ledger[$identity])
     }
@@ -346,21 +371,23 @@ function Get-LinuxSessionMembers([int]$Session, [hashtable]$Ledger) {
 }
 
 function Test-LinuxMemberAlive($Member) {
-    try { $stat = [IO.File]::ReadAllText("/proc/$($Member.PID)/stat") }
-    catch [IO.FileNotFoundException] { return $false }
-    catch [IO.DirectoryNotFoundException] { return $false }
-    $close = $stat.LastIndexOf(')'); if ($close -lt 1) { return $false }
+    $stat=Read-LinuxProcStat $Member.PID liveness
+    if($null-eq$stat){return $false}
+    $close = $stat.LastIndexOf(')'); if ($close -lt 1) { throw 'Malformed Linux member record' }
     $fields = $stat.Substring($close + 2).Split(' ', [StringSplitOptions]::RemoveEmptyEntries)
-    $fields.Count -ge 20 -and [uint64]$fields[19] -eq $Member.StartTime
+    if($fields.Count-lt20-or$stat.Substring(0,$stat.IndexOf(' '))-cne[string]$Member.PID){throw 'Malformed or changed Linux member identity'}
+    if([uint64]$fields[19]-ne$Member.StartTime){throw 'Linux member identity changed'}
+    return $true
 }
 
 function Get-LinuxBoundarySnapshot([int]$Identifier) {
     try {
-        $text=[IO.File]::ReadAllText("/proc/$Identifier/stat")
+        $text=Read-LinuxProcStat $Identifier snapshot
+        if($null-eq$text){return $null}
         $close=$text.LastIndexOf(')')
         if($close-lt 1){throw 'Malformed Linux boundary process record'}
         $fields=$text.Substring($close+2).Split(' ',[StringSplitOptions]::RemoveEmptyEntries)
-        if($fields.Count-lt 20){throw 'Incomplete Linux boundary process record'}
+        if($fields.Count-lt 20-or$text.Substring(0,$text.IndexOf(' '))-cne[string]$Identifier){throw 'Incomplete or changed Linux boundary process record'}
         $pidNamespace=[string]((Get-Item -LiteralPath "/proc/$Identifier/ns/pid" -Force -ErrorAction Stop).Target)
         $userNamespace=[string]((Get-Item -LiteralPath "/proc/$Identifier/ns/user" -Force -ErrorAction Stop).Target)
         $mountNamespace=[string]((Get-Item -LiteralPath "/proc/$Identifier/ns/mnt" -Force -ErrorAction Stop).Target)
@@ -406,9 +433,8 @@ function Test-LinuxInitReaped($Init,$InitHandle) {
     if (![PscanNativeBoundary]::LinuxExited($InitHandle)) { return $false }
     # Exited pidfd / missing namespace link alone can still describe a zombie.
     # Preserve its supervisor until the original process record is absent.
-    try { $stat=[IO.File]::ReadAllText("/proc/$($Init.PID)/stat") }
-    catch [IO.FileNotFoundException] { return $true }
-    catch [IO.DirectoryNotFoundException] { return $true }
+    $stat=Read-LinuxProcStat $Init.PID reaping
+    if($null-eq$stat){return $true}
     $close=$stat.LastIndexOf(')');$space=$stat.IndexOf(' ')
     if($close-lt 1-or$space-lt 1){throw 'Malformed init reaping identity'}
     $fields=$stat.Substring($close+2).Split(' ',[StringSplitOptions]::RemoveEmptyEntries)

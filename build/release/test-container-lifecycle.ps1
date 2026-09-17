@@ -52,6 +52,8 @@ function Invoke-HeldDockerCall([string[]]$Arguments,$Context) {
                 'host-network' {$record.HostConfig.NetworkMode='host'}
                 'host-pid' {$record.HostConfig.PidMode='host'}
                 'memory' {$record.HostConfig.Memory=268435456}
+                'malformed-memory' {$record.HostConfig.Memory='134217728'}
+                'scalar-cap-drop' {$record.HostConfig.CapDrop='ALL'}
                 'cpu' {$record.HostConfig.NanoCpus=2000000000}
                 'process-limit' {$record.HostConfig.PidsLimit=128}
                 'wrong-user' {$record.Config.User='0:0'}
@@ -96,7 +98,7 @@ function Invoke-HeldDockerCall([string[]]$Arguments,$Context) {
 }
 $cases=0
 foreach($scenario in @('success','nonzero','fail-inspect','fail-create','fail-created-inspect','fail-start','fail-exit-inspect','fail-rm','fail-absence',
-    'foreign-id','foreign-name','foreign-label','wrong-image','privileged','writable-root','extra-cap','missing-cap-drop','missing-nnp','host-network','host-pid','memory','cpu','process-limit','wrong-user','workdir','extra-command','wrong-bind','bind-override','wrong-tmpfs','restart','running-before-start','oom','still-running','exit-mismatch','malformed-exit','duplicate-json','malformed-create','stdout-total','deadline','exhaust-cleanup','absence-nonempty')) {
+    'foreign-id','foreign-name','foreign-label','wrong-image','privileged','writable-root','extra-cap','missing-cap-drop','missing-nnp','host-network','host-pid','memory','malformed-memory','scalar-cap-drop','cpu','process-limit','wrong-user','workdir','extra-command','wrong-bind','bind-override','wrong-tmpfs','restart','running-before-start','oom','still-running','exit-mismatch','malformed-exit','duplicate-json','malformed-create','stdout-total','deadline','exhaust-cleanup','absence-nonempty')) {
     $script:scenario=$scenario;$script:events=[Collections.Generic.List[string]]::new();$script:started=$false;$script:removed=$false;$script:lateCreated=$false
     $script:ownedName='';$script:ownedToken=''
     $operationMs=if($scenario-eq'deadline'){150}else{15000};$cleanupMs=if($scenario-eq'exhaust-cleanup'){50}else{2000}
@@ -110,10 +112,13 @@ foreach($scenario in @('success','nonzero','fail-inspect','fail-create','fail-cr
 }
 # Exercise the actual shared capture counters, independent streams and immutable
 # cleanup start; these are not modeled by the protocol I/O fixture.
+$withoutMount=Record 'created';$withoutMount.HostConfig.Mounts=$null
+$mountOffset=$vector.IndexOf('--mount');$noMountVector=$vector[0..($mountOffset-1)]+$vector[($mountOffset+2)..($vector.Count-1)]
+Assert-ContainerConfiguration $withoutMount $noMountVector $image $imageID
 $budget=[PscanOperationBudget]::new(15000,100,8)
 $first=[PscanNativeBoundary]::CaptureShared([IO.MemoryStream]::new([byte[]]@(1,2,3,4,5)),131072,$budget,$false).GetAwaiter().GetResult()
 $second=[PscanNativeBoundary]::CaptureShared([IO.MemoryStream]::new([byte[]]@(1,2,3,4,5,6,7,8)),131072,$budget,$true).GetAwaiter().GetResult()
 $rejected=$false;try{[void][PscanNativeBoundary]::CaptureShared([IO.MemoryStream]::new([byte[]]@(1,2,3,4)),131072,$budget,$false).GetAwaiter().GetResult()}catch{$rejected=$true}
 if(!$rejected-or$first.Length-ne 5-or$second.Length-ne 8){throw 'Actual per-stream aggregate capture failed'}
 $budget.BeginCleanup();Start-Sleep -Milliseconds 120;$budget.BeginCleanup();if($budget.Remaining-ne 0){throw 'Cleanup deadline was renewed'}
-Write-Output "Container lifecycle inert PASS scenarios=$cases shared-capture=PASS shared-cleanup-clock=PASS Docker-calls=0 daemon-runtime-proof=UNAVAILABLE"
+Write-Output "Container lifecycle inert PASS scenarios=$cases omitted-empty-mounts=PASS shared-capture=PASS shared-cleanup-clock=PASS Docker-calls=0 daemon-runtime-proof=UNAVAILABLE"

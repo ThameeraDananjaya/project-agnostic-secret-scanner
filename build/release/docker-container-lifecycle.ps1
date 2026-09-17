@@ -33,6 +33,7 @@ function Assert-ContainerConfiguration($Object,[string[]]$RunArguments,[string]$
         return $RunArguments[$locations[0]+1]
     }
     function SameList($Actual,$Expected,[string]$Label) {
+        if($Actual-isnot[array]){throw "$Label is not an array"}
         $a=@($Actual); $e=@($Expected)
         if ($a.Count-ne$e.Count) { throw "$Label count differs" }
         for($i=0;$i-lt$a.Count;$i++){if($a[$i]-cne$e[$i]){throw "$Label differs"}}
@@ -42,6 +43,10 @@ function Assert-ContainerConfiguration($Object,[string[]]$RunArguments,[string]$
         return [long]$Matches[1]*$(if($Matches[2]-ceq'm'){1048576}else{1073741824})
     }
     $config=$Object.Config; $hostConfig=$Object.HostConfig
+    foreach($field in @('Memory','MemorySwap','PidsLimit','NanoCpus')){
+        if($hostConfig[$field]-isnot[int]-and$hostConfig[$field]-isnot[long]){throw 'Malformed container numeric resource field'}
+    }
+    if($hostConfig.RestartPolicy.MaximumRetryCount-isnot[int]-and$hostConfig.RestartPolicy.MaximumRetryCount-isnot[long]){throw 'Malformed container restart count'}
     if ($Object.Image-cne$ImageID-or$config.Image-cne$Image-or$hostConfig.Privileged-isnot[bool]-or$hostConfig.Privileged-or
         $hostConfig.ReadonlyRootfs-isnot[bool]-or!$hostConfig.ReadonlyRootfs-or$hostConfig.AutoRemove-isnot[bool]-or$hostConfig.AutoRemove-or
         $hostConfig.PublishAllPorts-isnot[bool]-or$hostConfig.PublishAllPorts-or
@@ -65,7 +70,11 @@ function Assert-ContainerConfiguration($Object,[string[]]$RunArguments,[string]$
     $tmpfs=(Value '--tmpfs').Split(':',2)
     if ($hostConfig.Tmpfs.Count-ne 1-or$hostConfig.Tmpfs[$tmpfs[0]]-cne$tmpfs[1]) { throw 'Created container tmpfs differs' }
     $mounts=@(for($i=0;$i-lt$imageIndex;$i++){if($RunArguments[$i]-ceq'--mount'){$RunArguments[$i+1]}})
-    if (@($hostConfig.Mounts).Count-ne$mounts.Count) { throw 'Created container bind mount count differs' }
+    # Docker omits the optional Mounts field when the fixed parser operation has
+    # no binds. An absent field is zero mounts, not a one-element null array.
+    $actualMounts=if($null-eq$hostConfig.Mounts){[object[]]::new(0)}else{$hostConfig.Mounts}
+    if($null-ne$hostConfig.Mounts-and$hostConfig.Mounts-isnot[array]){throw 'Created container mounts are not an array'}
+    if (@($actualMounts).Count-ne$mounts.Count) { throw 'Created container bind mount count differs' }
     for($i=0;$i-lt$mounts.Count;$i++) {
         if ($mounts[$i]-cnotmatch'^type=bind,src=(.+),dst=([^,]+)(,readonly)?$') { throw 'Unsupported fixed bind syntax' }
         $source=$Matches[1];$target=$Matches[2];$readOnly=$Matches[3]-ceq',readonly';$mount=$hostConfig.Mounts[$i]

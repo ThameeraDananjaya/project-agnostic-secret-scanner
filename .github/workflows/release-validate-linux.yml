@@ -117,7 +117,7 @@ jobs:
       - name: Prove actual local lifecycle, identity and validation gates
         shell: pwsh
         run: |
-          foreach ($fixture in @('test-linux-build-path.ps1','test-acquisition-source.ps1','test-container-lifecycle.ps1','test-build-validation.ps1','test-execution-profile.ps1')) {
+          foreach ($fixture in @('test-linux-build-path.ps1','test-acquisition-source.ps1','test-container-lifecycle.ps1','test-build-validation.ps1','test-execution-profile.ps1','test-linux-cleanup.ps1')) {
             & /opt/microsoft/powershell/7/pwsh -NoLogo -NoProfile -NonInteractive -File "$env:PSCAN_EXACT_TOOLING_ROOT/build/release/$fixture"
             if ($LASTEXITCODE -ne 0) { throw "Local validation fixture failed: $fixture" }
           }

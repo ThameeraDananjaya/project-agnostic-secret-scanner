@@ -22,7 +22,8 @@ function ConvertTo-PscanNativeFixtureDiagnostic($Result, $CaseName) {
     }
     $record = [ordered]@{ schema='pscan-native-fixture-diagnostic-v2'; case=$null; caseState='invalid' }
     $knownCases=@('stdout-131071','stdout-131072','stderr-131071','stderr-131072',
-        'immediate','both','split','nonzero','invalid-utf8','incomplete-utf8')
+        'immediate','both','split','nonzero','invalid-utf8','incomplete-utf8',
+        'stdout','stderr','hang','child','grandchild','hold-child','hold-grandchild','detach')
     if ($CaseName -is [string] -and $CaseName.Length -le 64 -and $knownCases -ccontains $CaseName) {
         $record.case=$CaseName; $record.caseState='present'
     }
@@ -37,8 +38,31 @@ function ConvertTo-PscanNativeFixtureDiagnostic($Result, $CaseName) {
                 'PID-namespace init did not stop at the pre-execution gate','PID-namespace init resume failed',
                 'stream overflow or read failure','timeout or incomplete lifecycle')
             $reason = $terminal.value -creplace '; cleanup uncertainty$', ''
+            $reason = $reason -creplace '^(root-pin|init-discovery|init-stopping|running): ', ''
             if ($known -ccontains $reason) { $record.terminalReason=$terminal.value }
             else { $record.terminalState='unrecognized-without-content' }
+        }
+    }
+    $cleanup=Field 'CleanupDetails'
+    $record.cleanupState=$cleanup.state;$record.cleanup=$null
+    if($cleanup.state-eq'present'){
+        $details=$cleanup.value
+        if($null-eq$details){$record.cleanupState='unavailable'}
+        elseif($details-isnot[pscustomobject]){$record.cleanupState='invalid-type'}
+        else{
+            $safe=[ordered]@{};$valid=$true
+            $names=@('Proved','FailureStage','DeadlineExpired','InitReaped','RootExited','MembersEmpty','NamespaceGone','StreamsClosed')
+            if(@($details.PSObject.Properties).Count-ne$names.Count){$valid=$false}
+            foreach($name in $names){
+                $property=$details.PSObject.Properties[$name]
+                if($null-eq$property-or$property.MemberType-ne[Management.Automation.PSMemberTypes]::NoteProperty){$valid=$false;continue}
+                $value=$property.Value
+                if($name-ceq'FailureStage'){
+                    if($null-ne$value-and($value-isnot[string]-or$value-cnotin@('close-gate','signal-init','signal-root','inspect-init','inspect-root','inspect-members','inspect-namespace','inspect-streams'))){$valid=$false}
+                }elseif($null-ne$value-and$value-isnot[bool]){$valid=$false}
+                $safe[$name]=$value
+            }
+            if($valid){$record.cleanup=$safe}else{$record.cleanupState='invalid-fields'}
         }
     }
     foreach ($name in @('ExitCode','ContainmentEmpty')) {

@@ -81,6 +81,18 @@ $r=Format (Fixture) 'DO-NOT-LOG-THIS-SECRET'
 Assert ($r.caseState -eq 'invalid' -and $r.case -eq $null) 'closed case-name set'
 
 # Validate integration syntax without executing the native fixture or production boundary.
+$value=Fixture;$value.Terminal='running: timeout or incomplete lifecycle; cleanup uncertainty'
+$value|Add-Member -NotePropertyName CleanupDetails -NotePropertyValue ([pscustomobject]@{Proved=$false;FailureStage='inspect-init';DeadlineExpired=$true;InitReaped=$false;RootExited=$false;MembersEmpty=$null;NamespaceGone=$null;StreamsClosed=$true})
+$r=Format $value 'hold-child'
+Assert ($r.case-ceq'hold-child'-and$r.terminalReason-ceq$value.Terminal-and$r.cleanup.FailureStage-ceq'inspect-init'-and$r.cleanup.InitReaped-ceq$false) 'terminal descendant phase and bounded cleanup facts retained'
+$value.StdErr=[byte[]]::new(256);$r=Format $value 'hold-grandchild'
+Assert ($r.stderr.excerptSourceBytes-eq256) 'cleanup facts and worst-case stderr remain bounded'
+$value.CleanupDetails.FailureStage='DO-NOT-LOG-THIS-SECRET';$r=Format $value 'hold-child'
+Assert ($r.cleanupState-ceq'invalid-fields'-and$null-eq$r.cleanup) 'unknown cleanup content omitted'
+$value.CleanupDetails.PSObject.Properties.Remove('Proved')
+$value.CleanupDetails|Add-Member -MemberType ScriptProperty -Name Proved -Value {throw 'must not evaluate'}
+$r=Format $value 'hold-child'
+Assert ($r.cleanupState-ceq'invalid-fields') 'cleanup property getters not executed'
 foreach ($name in @('native-fixture-diagnostics.ps1','test-native-fixture-diagnostics.ps1','test-docker-execution.ps1')) {
     $tokens=$null; $parseErrors=$null
     [void][Management.Automation.Language.Parser]::ParseFile((Join-Path $PSScriptRoot $name),[ref]$tokens,[ref]$parseErrors)

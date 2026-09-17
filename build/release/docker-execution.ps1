@@ -401,6 +401,52 @@ function Get-LinuxGateAction($Snapshot,$Original,[int]$Supervisor,[string]$Outer
     return 'Release'
 }
 
+function Test-LinuxInitReaped($Init,$InitHandle) {
+    if ($null-eq$Init-or$null-eq$InitHandle) { return $false }
+    if (![PscanNativeBoundary]::LinuxExited($InitHandle)) { return $false }
+    # Exited pidfd / missing namespace link alone can still describe a zombie.
+    # Preserve its supervisor until the original process record is absent.
+    try { $stat=[IO.File]::ReadAllText("/proc/$($Init.PID)/stat") }
+    catch [IO.FileNotFoundException] { return $true }
+    catch [IO.DirectoryNotFoundException] { return $true }
+    $close=$stat.LastIndexOf(')');$space=$stat.IndexOf(' ')
+    if($close-lt 1-or$space-lt 1){throw 'Malformed init reaping identity'}
+    $fields=$stat.Substring($close+2).Split(' ',[StringSplitOptions]::RemoveEmptyEntries)
+    if($fields.Count-lt 20-or$stat.Substring(0,$space)-cne[string]$Init.PID-or
+        $fields[19]-notmatch'^[0-9]+$'-or[uint64]$fields[19]-ne$Init.StartTime){throw 'Init identity changed before reaping observation'}
+    return $false
+}
+
+function Invoke-LinuxPinnedCleanup($Init,$InitHandle,$RootHandle,$Process,$StdOutTask,$StdErrTask,[int]$Session,[hashtable]$Ledger,$Budget,[bool]$InitialUncertainty) {
+    $Budget.BeginCleanup() # CAS preserves the original terminal deadline.
+    $uncertain=$InitialUncertainty;$failure=if($uncertain){'close-gate'}else{$null}
+    $initReaped=$null;$rootExited=$null;$membersEmpty=$null;$streamsClosed=$null;$namespaceGone=$null
+    $proved=$false;$rootSignalled=$false;$stage='signal-init'
+    try {
+        if($null-ne$InitHandle-and$Budget.Remaining-gt 0){[void][PscanNativeBoundary]::LinuxSignal($InitHandle,9)}
+        elseif($null-eq$InitHandle-and$null-ne$RootHandle-and$Budget.Remaining-gt 0){
+            # Before init admission there is no invented namespace-closure proof.
+            $stage='signal-root';[void][PscanNativeBoundary]::LinuxSignal($RootHandle,9);$rootSignalled=$true
+        }
+    } catch {$uncertain=$true;if($null-eq$failure){$failure=$stage}}
+    while($Budget.Remaining-gt 0){
+        try {
+            $stage='inspect-init';$initReaped=Test-LinuxInitReaped $Init $InitHandle
+            $stage='inspect-root';$rootExited=$Process.HasExited-and$null-ne$RootHandle-and[PscanNativeBoundary]::LinuxExited($RootHandle)
+            if($initReaped-and!$rootExited-and!$rootSignalled-and$null-ne$RootHandle-and$Budget.Remaining-gt 0){
+                $stage='signal-root';[void][PscanNativeBoundary]::LinuxSignal($RootHandle,9);$rootSignalled=$true
+            }
+            $stage='inspect-members';$membersEmpty=@(Get-LinuxSessionMembers -Session $Session -Ledger $Ledger).Count-eq 0
+            $stage='inspect-namespace';$namespaceGone=$null-ne$Init-and$initReaped-and!(Test-Path -LiteralPath "/proc/$($Init.PID)/ns/pid" -ErrorAction Stop)
+            $stage='inspect-streams';$streamsClosed=$null-ne$StdOutTask-and$null-ne$StdErrTask-and$StdOutTask.IsCompleted-and$StdErrTask.IsCompleted
+            if($initReaped-and$rootExited-and$membersEmpty-and$namespaceGone-and$streamsClosed-and$Budget.Remaining-gt 0){$proved=!$uncertain;break}
+        } catch {$uncertain=$true;if($null-eq$failure){$failure=$stage}}
+        Start-Sleep -Milliseconds 2
+    }
+    [pscustomobject]@{Proved=$proved;FailureStage=$failure;DeadlineExpired=($Budget.Remaining-le 0);
+        InitReaped=$initReaped;RootExited=$rootExited;MembersEmpty=$membersEmpty;NamespaceGone=$namespaceGone;StreamsClosed=$streamsClosed}
+}
+
 function Invoke-LinuxSessionBoundary([string]$ExecutableReference,[string[]]$Arguments,[Collections.Generic.Dictionary[string,string]]$Environment,[string]$WorkingDirectory, $SharedBudget=$null) {
     if ($null-eq$SharedBudget) { $SharedBudget=[PscanOperationBudget]::new($dockerBudgetMilliseconds,$cleanupGraceMilliseconds,$dockerOutputLimit) }
     if ($SharedBudget.Remaining-le 0) { throw 'Shared Docker deadline exhausted before Linux process creation' }
@@ -424,6 +470,7 @@ function Invoke-LinuxSessionBoundary([string]$ExecutableReference,[string[]]$Arg
     $handles=@{};$ledger=@{};$init=$null;$initHandle=$null;$rootHandle=$null
     $namespaceIdentity=$null;$resumed=$false;$stdinClosed=$false;$started=$false;$terminal=$null
     $stdoutTask=$null;$stderrTask=$null;$session=0;$phase='root-pin';$cleanupUncertain=$false
+    $cleanupDetails=$null
     $watch=[Diagnostics.Stopwatch]::StartNew()
 
     function Pin-Member($member) {
@@ -499,37 +546,15 @@ function Invoke-LinuxSessionBoundary([string]$ExecutableReference,[string[]]$Arg
         if($terminal-and$started){
             $SharedBudget.BeginCleanup()
             try {Close-Gate;$stdinClosed=$true} catch {$cleanupUncertain=$true}
-            # First terminate pinned namespace init: its death terminates detached
-            # descendants. Never direct a signal at a numeric PID or process group.
-            foreach($handle in @($initHandle,$rootHandle)){
-                if($null-ne$handle-and$SharedBudget.Remaining-gt 0){
-                    try{[void][PscanNativeBoundary]::LinuxSignal($handle,9)}catch{$cleanupUncertain=$true}
-                }
-            }
-            while($SharedBudget.Remaining-gt 0){
-                try {
-                    $members=@(Get-LinuxSessionMembers -Session $session -Ledger $ledger)
-                    foreach($member in $members){
-                        if($SharedBudget.Remaining-le 0){break}
-                        $snapshot=Get-LinuxBoundarySnapshot $member.PID
-                        if($null-ne$snapshot-and$snapshot.StartTime-eq$member.StartTime-and$snapshot.Session-eq$session){
-                            $handle=Pin-Member $snapshot
-                            [void][PscanNativeBoundary]::LinuxSignal($handle,9)
-                        }
-                    }
-                    $namespaceGone=$null-ne$initHandle-and[PscanNativeBoundary]::LinuxExited($initHandle)-and!(Test-Path -LiteralPath "/proc/$($init.PID)/ns/pid")
-                    if($process.HasExited-and$members.Count-eq 0-and$namespaceGone-and$stdoutTask.IsCompleted-and$stderrTask.IsCompleted){break}
-                } catch {$cleanupUncertain=$true}
-                Start-Sleep -Milliseconds 2
-            }
-            try {
-                if(!$process.HasExited-or@(Get-LinuxSessionMembers -Session $session -Ledger $ledger).Count-ne 0-or$null-eq$initHandle-or![PscanNativeBoundary]::LinuxExited($initHandle)-or(Test-Path -LiteralPath "/proc/$($init.PID)/ns/pid")-or!$stdoutTask.IsCompleted-or!$stderrTask.IsCompleted){$cleanupUncertain=$true}
-            } catch {$cleanupUncertain=$true}
-            if($cleanupUncertain){$terminal+='; cleanup uncertainty'}
+            # Namespace-init death kills all namespace descendants, including
+            # detached sessions. Preserve the exact supervisor to reap it; never
+            # reacquire/signal numeric descendants racing with their own exit.
+            $cleanupDetails=Invoke-LinuxPinnedCleanup $init $initHandle $rootHandle $process $stdoutTask $stderrTask $session $ledger $SharedBudget $cleanupUncertain
+            if(!$cleanupDetails.Proved){$terminal+='; cleanup uncertainty'}
         }
         $stdout=if($null-ne$stdoutTask-and$stdoutTask.IsCompletedSuccessfully){$stdoutTask.Result}else{[byte[]]::new(0)}
         $stderr=if($null-ne$stderrTask-and$stderrTask.IsCompletedSuccessfully){$stderrTask.Result}else{[byte[]]::new(0)}
-        [pscustomobject]@{ExitCode=$(if($started-and$process.HasExited){$process.ExitCode}else{199});StdOut=$stdout;StdErr=$stderr;Terminal=$terminal;ObservedMembers=@($ledger.Keys)+@($namespaceIdentity);ContainmentEmpty=(!$terminal)}
+        [pscustomobject]@{ExitCode=$(if($started-and$process.HasExited){$process.ExitCode}else{199});StdOut=$stdout;StdErr=$stderr;Terminal=$terminal;ObservedMembers=@($ledger.Keys)+@($namespaceIdentity);ContainmentEmpty=(!$terminal);CleanupDetails=$cleanupDetails}
     } finally {
         try{Close-Gate}catch{}
         foreach($handle in $handles.Values){$handle.Dispose()}

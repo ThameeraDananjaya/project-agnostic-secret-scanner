@@ -17,11 +17,14 @@ NOW = 1_800_000_000
 
 
 def admission():
-    return dict(schema="pscan-build-storage-admission-v1", repository=guard.REPOSITORY,
+    return dict(schema="pscan-build-storage-admission-v2", repository=guard.REPOSITORY,
                 owner_id=50274860, tooling_revision=REVISION, issued_epoch=NOW,
-                expires_epoch=NOW + 3600, capacity_bytes=500_000_000,
-                occupied_upper_bound_bytes=0, reserved_other_bytes=100_000_000,
-                net_cost_ceiling_usd=0, stop_usage=True, storage_headroom_verified=True,
+                expires_epoch=NOW + 3600,
+                included_storage_gib_hours_micros=guard.MAX_INCLUDED_GIB_HOURS_MICROS,
+                accrued_storage_gib_hours_micros=125099, artifact_retention_days=1,
+                net_cost_ceiling_usd=0, net_storage_cost_usd=0, actions_stop_usage=True,
+                packages_stop_usage=True, storage_billing_verified=True,
+                actions_budget_usd=0, packages_budget_usd=0,
                 evidence_sha256="2" * 64)
 
 
@@ -41,12 +44,12 @@ def distribution(root):
 
 
 class AdmissionTests(unittest.TestCase):
-    def test_valid_and_exact_headroom(self):
+    def test_valid_and_exact_billing_allowance(self):
         record = admission()
-        record["reserved_other_bytes"] = record["capacity_bytes"] - guard.MAX_TRANSFER
+        record["accrued_storage_gib_hours_micros"] = record["included_storage_gib_hours_micros"] - guard.TRANSFER_GIB_HOURS_MICROS
         self.assertEqual(guard.validate_admission(json.dumps(record), REVISION, NOW), record)
-        record["reserved_other_bytes"] += 1
-        with self.assertRaisesRegex(guard.Rejected, "INSUFFICIENT_HEADROOM"):
+        record["accrued_storage_gib_hours_micros"] += 1
+        with self.assertRaisesRegex(guard.Rejected, "INSUFFICIENT_INCLUDED_USAGE"):
             guard.validate_admission(json.dumps(record), REVISION, NOW)
 
     def test_every_missing_field_and_null(self):
@@ -71,13 +74,20 @@ class AdmissionTests(unittest.TestCase):
         changes = [("tooling_revision", "3" * 40), ("owner_id", 1), ("repository", "wrong"),
                    ("schema", "wrong"), ("issued_epoch", NOW + 1), ("issued_epoch", NOW - 3601),
                    ("expires_epoch", NOW - 1), ("expires_epoch", NOW + 3601),
-                   ("capacity_bytes", 500_000_001), ("capacity_bytes", 0),
-                   ("occupied_upper_bound_bytes", -1), ("reserved_other_bytes", -1),
-                   ("net_cost_ceiling_usd", 1), ("stop_usage", False), ("stop_usage", "true"),
-                   ("storage_headroom_verified", False), ("storage_headroom_verified", 1),
+                   ("included_storage_gib_hours_micros", guard.MAX_INCLUDED_GIB_HOURS_MICROS + 1),
+                   ("included_storage_gib_hours_micros", 0), ("accrued_storage_gib_hours_micros", -1),
+                   ("accrued_storage_gib_hours_micros", guard.MAX_INCLUDED_GIB_HOURS_MICROS + 1),
+                   ("net_cost_ceiling_usd", 1), ("net_storage_cost_usd", 1),
+                   ("actions_budget_usd", 1), ("packages_budget_usd", 1),
+                   ("actions_stop_usage", False), ("actions_stop_usage", "true"),
+                   ("packages_stop_usage", False), ("packages_stop_usage", 1),
+                   ("artifact_retention_days", 0), ("artifact_retention_days", 2),
+                   ("storage_billing_verified", False), ("storage_billing_verified", 1),
                    ("evidence_sha256", "0" * 64), ("evidence_sha256", "G" * 64)]
-        changes += [(key, True) for key in ("owner_id", "issued_epoch", "expires_epoch", "capacity_bytes",
-                                           "occupied_upper_bound_bytes", "reserved_other_bytes", "net_cost_ceiling_usd")]
+        changes += [(key, True) for key in ("owner_id", "issued_epoch", "expires_epoch",
+                                           "included_storage_gib_hours_micros", "accrued_storage_gib_hours_micros",
+                                           "net_cost_ceiling_usd", "net_storage_cost_usd", "artifact_retention_days",
+                                           "actions_budget_usd", "packages_budget_usd")]
         for key, value in changes:
             with self.subTest(key=key, value=value):
                 record = admission(); record[key] = value

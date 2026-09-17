@@ -1,9 +1,9 @@
 """Fail closed before the single unsigned artifact upload. No provider access.
 
 The repository administrator issues the revision-bound admission record only
-after independently verifying the account storage and zero-spend controls.
+after independently verifying accrued storage and zero-spend controls.
 This program verifies that record and the actual complete distribution; it
-does not treat supplied capacity numbers as independent provider evidence.
+does not promise provider upload capacity or treat the record as provider proof.
 """
 import argparse
 import hashlib
@@ -23,6 +23,8 @@ WORKFLOW = ".github/workflows/release-recovery-v1.0.0-c2-r6.yml"
 MAX_PAYLOAD = 240 * 1024 * 1024
 ENVELOPE_RESERVE = 16 * 1024 * 1024
 MAX_TRANSFER = MAX_PAYLOAD + ENVELOPE_RESERVE
+TRANSFER_GIB_HOURS_MICROS = 6_000_000  # 0.25 GiB at configured one-day retention
+MAX_INCLUDED_GIB_HOURS_MICROS = 500_000_000 * (28 * 24) * 1_000_000 // (2 ** 30)
 MAX_RECORD_BYTES = 8192
 FILES = frozenset("""
 scanner-runner-linux-amd64 scanner-runner-windows-amd64.exe
@@ -43,8 +45,10 @@ release-manifest.json
 """.split())
 RECORD_FIELDS = frozenset("""
 schema repository owner_id tooling_revision issued_epoch expires_epoch
-capacity_bytes occupied_upper_bound_bytes reserved_other_bytes
-net_cost_ceiling_usd stop_usage storage_headroom_verified evidence_sha256
+included_storage_gib_hours_micros accrued_storage_gib_hours_micros
+net_cost_ceiling_usd net_storage_cost_usd actions_stop_usage packages_stop_usage
+actions_budget_usd packages_budget_usd
+storage_billing_verified artifact_retention_days evidence_sha256
 """.split())
 
 
@@ -79,10 +83,11 @@ def validate_admission(raw, revision, now):
     require(re.fullmatch(r"[0-9a-f]{40}", revision or ""), "TOOLING_REVISION")
     record = parse_json(raw)
     require(isinstance(record, dict) and set(record) == RECORD_FIELDS, "ADMISSION_FIELDS")
-    require(record["schema"] == "pscan-build-storage-admission-v1", "ADMISSION_SCHEMA")
+    require(record["schema"] == "pscan-build-storage-admission-v2", "ADMISSION_SCHEMA")
     require(record["repository"] == REPOSITORY, "ADMISSION_REPOSITORY")
-    for key in ("owner_id", "issued_epoch", "expires_epoch", "capacity_bytes",
-                "occupied_upper_bound_bytes", "reserved_other_bytes", "net_cost_ceiling_usd"):
+    for key in ("owner_id", "issued_epoch", "expires_epoch", "included_storage_gib_hours_micros",
+                "accrued_storage_gib_hours_micros", "net_cost_ceiling_usd",
+                "net_storage_cost_usd", "artifact_retention_days", "actions_budget_usd", "packages_budget_usd"):
         require(type(record[key]) is int, "ADMISSION_INTEGER:" + key)
     require(record["owner_id"] == 50274860 and record["tooling_revision"] == revision,
             "ADMISSION_IDENTITY")
@@ -90,16 +95,20 @@ def validate_admission(raw, revision, now):
             now <= record["expires_epoch"] and
             0 < record["expires_epoch"] - record["issued_epoch"] <= 3600,
             "ADMISSION_FRESHNESS")
-    require(record["net_cost_ceiling_usd"] == 0 and record["stop_usage"] is True and
-            record["storage_headroom_verified"] is True, "ADMISSION_ZERO_SPEND_PROOF")
+    require(record["net_cost_ceiling_usd"] == 0 and record["net_storage_cost_usd"] == 0 and
+            record["actions_budget_usd"] == 0 and record["packages_budget_usd"] == 0 and
+            record["actions_stop_usage"] is True and record["packages_stop_usage"] is True and
+            record["storage_billing_verified"] is True and record["artifact_retention_days"] == 1,
+            "ADMISSION_ZERO_SPEND_PROOF")
     require(isinstance(record["evidence_sha256"], str) and
             re.fullmatch(r"[0-9a-f]{64}", record["evidence_sha256"]) and
             record["evidence_sha256"] != "0" * 64, "ADMISSION_EVIDENCE_DIGEST")
-    require(0 < record["capacity_bytes"] <= 500_000_000 and
-            0 <= record["occupied_upper_bound_bytes"] <= record["capacity_bytes"] and
-            0 <= record["reserved_other_bytes"] <= record["capacity_bytes"], "ADMISSION_CAPACITY")
-    headroom = record["capacity_bytes"] - record["occupied_upper_bound_bytes"] - record["reserved_other_bytes"]
-    require(headroom >= MAX_TRANSFER, "ADMISSION_INSUFFICIENT_HEADROOM")
+    included = record["included_storage_gib_hours_micros"]
+    accrued = record["accrued_storage_gib_hours_micros"]
+    require(0 < included <= MAX_INCLUDED_GIB_HOURS_MICROS and 0 <= accrued <= included,
+            "ADMISSION_BILLING_ALLOWANCE")
+    require(included - accrued >= TRANSFER_GIB_HOURS_MICROS,
+            "ADMISSION_INSUFFICIENT_INCLUDED_USAGE")
     return record
 
 

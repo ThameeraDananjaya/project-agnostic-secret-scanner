@@ -27,30 +27,44 @@ arbitrary uploader implementations. No compression saving is assumed.
 
 `PSCAN_BUILD_STORAGE_ADMISSION` is a repository administrator-controlled JSON
 variable, not a secret and not consuming-project data. A build executor may
-issue it only after independently verifying account controls and a conservative
-shared-storage balance. The guard cannot establish the truth of an externally
-supplied storage measurement; an unsupported receipt must never be issued.
+issue it only after independently verifying account controls and precise accrued
+storage billing. The guard cannot establish the truth of an externally supplied
+measurement; an unsupported receipt must never be issued. It does not guarantee
+that the provider will accept the upload or assert exact instantaneous free bytes.
 
 The exact required fields are defined by `RECORD_FIELDS` in
 `build/release/storage_guard.py`. They bind schema, repository/owner, exact
-tooling revision, evidence digest, issue/expiry epochs, included capacity,
-occupied upper bound and other reserved bytes, zero-spend ceiling and explicit
-Stop usage/headroom proof booleans. Numbers must be integers, not JSON booleans.
+tooling revision, evidence digest, issue/expiry epochs, included and accrued
+GiB-hours in integer millionths, zero net storage cost and spending ceiling,
+one-day artifact retention, and explicit account-scoped Actions and Packages
+USD 0 Stop usage verification. Numbers must be integers, not JSON booleans.
 Unknown/duplicate fields, stale/future records, absent proof and conflicting
 identity fail. Record lifetime and maximum age are one hour. Freshness is
-checked again after hashing. Capacity cannot exceed a conservative 500,000,000
-bytes, and proven headroom must accommodate the whole 256 MiB reservation.
+checked again after hashing. Included billing allowance cannot exceed the
+conservative 500,000,000-byte allowance over a 28-day month, rounded down to
+integer millionths of GiB-hours. Accrued usage is rounded up. Included allowance
+less accrued usage must accommodate 6 GiB-hours: 256 MiB over the configured
+24-hour retention. This is billing arithmetic, not an instantaneous byte bound.
 
 Account observations, unrelated account object identifiers and credentials
-remain outside the product source. Only an admitted account-level capacity
+remain outside the product source. Only an admitted account-level billing
 record may cross into the build. The current source does not create a record,
 change account settings, grant credential scope, or contact a provider.
 
-Budgets with Stop usage must remain USD 0. A rounded display or a partial package
-inventory cannot justify setting `storage_headroom_verified=true`. Concurrent
-consumption and the applicable billed storage model must be covered by the
-external admission evidence. An absent record stops the transfer even if both
-builds otherwise pass.
+Both account-scoped product budgets with Stop usage must remain USD 0. A rounded
+display or partial package inventory is not precise accrued billing evidence.
+Stop usage is the provider control that prevents additional metered spending;
+the receipt does not assert that concurrent future activity cannot occur. An
+account quota rejection is a build-transfer failure, not evidence that a charge
+was incurred. An absent record stops transfer even if both builds otherwise pass.
+
+Primary basis: [Actions billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions)
+defines shared hourly storage accrual and binary GiB units;
+[budgets](https://docs.github.com/en/billing/concepts/budgets-and-alerts)
+defines metered Stop usage and warns that first-cycle budgets exclude previous
+usage. Precise current-period accrued/net usage is therefore checked alongside
+the existing budgets. These controls do not erase pre-existing charges or waive
+the obligation to report the actual provider run and billing outcome.
 
 ## Validation and preservation
 

@@ -1,7 +1,10 @@
 """Inert prerequisite admission/lifecycle tests; never run a host utility."""
 import importlib.util
+import io
+import json
 from pathlib import Path
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
@@ -19,6 +22,12 @@ class Tests(unittest.TestCase):
         self.block = patch.object(prereq.subprocess, 'run', side_effect=AssertionError('Host execution forbidden'))
         self.block.start()
         self.addCleanup(self.block.stop)
+        self.popen_block = patch.object(prereq.subprocess, 'Popen', side_effect=AssertionError('Host execution forbidden'))
+        self.popen_block.start()
+        self.addCleanup(self.popen_block.stop)
+        self.quiet = patch('builtins.print')
+        self.quiet.start()
+        self.addCleanup(self.quiet.stop)
 
     def test_conflicts_and_unknowns_reject(self):
         for attachment in ('/usr/bin/unshare', '/usr/bin/*', '/**', '<unknown>', '', '/usr/bin/unsh?re',
@@ -26,7 +35,98 @@ class Tests(unittest.TestCase):
                            '/**/not-unshare', '{broken', '/usr/bin/unshare\n'):
             with self.subTest(attachment=attachment):
                 self.assertTrue(prereq.possible_attachment(attachment, 'existing'))
-                with self.assertRaises(RuntimeError): prereq.admit_inventory([row(attachment=attachment)])
+                with patch('builtins.print'), self.assertRaises(RuntimeError):
+                    prereq.admit_inventory([row(attachment=attachment)])
+
+    def test_conflict_diagnostics_are_bounded_explicit_and_do_not_admit(self):
+        rows = [row(name='p' + str(n), attachment='/usr/bin/*' + '\u2603' * 2000) for n in range(30)]
+        raw = prereq.conflict_record(rows)
+        self.assertLessEqual(len(raw.encode()), 16384)
+        record = json.loads(raw)
+        self.assertEqual(record['total_conflicts'], 30)
+        self.assertGreater(record['records_omitted'], 0)
+        for item in record['records']:
+            self.assertTrue(item['attachment']['truncated'])
+            self.assertEqual(item['attachment']['utf8_bytes'], 6010)
+            self.assertEqual(item['depth'], 0)
+        with patch('builtins.print') as output, self.assertRaisesRegex(RuntimeError, 'Existing or ambiguous'):
+            prereq.admit_inventory([row(attachment='/usr/bin/*')])
+        self.assertEqual(json.loads(output.call_args.args[0])['total_conflicts'], 1)
+
+    def test_attachment_reason_distinguishes_evidence_without_allowing_unknowns(self):
+        for value, reason in (('/usr/bin/unshare', 'literal-overlap'), ('/usr/bin/*', 'possible-pattern-overlap'),
+                              ('<unknown>', 'unknown-attachment'), ('@{bin}/unshare', 'unsupported-pattern')):
+            self.assertEqual(prereq.attachment_reason(value, 'existing'), reason)
+            self.assertTrue(prereq.possible_attachment(value, 'existing'))
+
+    def test_parser_diagnostics_preserve_exit_and_capture_failures(self):
+        excerpt = prereq.byte_excerpt(bytes([0, 27, 92, 255]) + b'x' * 1100)
+        self.assertEqual(excerpt['captured_bytes'], 1104)
+        self.assertEqual(excerpt['excerpt_bytes'], 1024)
+        self.assertTrue(excerpt['truncated'])
+        self.assertTrue(excerpt['value'].startswith('\\x00\\x1b\\x5c\\xff'))
+        for state, code, success in (('complete', 0, True), ('complete', 1, False),
+                                      ('timeout', 0, False), ('capture-limit', 0, False), ('exit-unavailable', None, False)):
+            with patch.object(prereq, 'capture_parser', return_value={'state': state, 'exit_code': code,
+                              'stdout': b'', 'stderr': b'inert parser error\n'}), patch('builtins.print') as output:
+                if success: prereq.parse('compile')
+                else:
+                    with self.assertRaises(RuntimeError): prereq.parse('compile')
+                record = json.loads(output.call_args.args[0])
+                self.assertEqual(record['state'], state)
+                self.assertEqual(record['exit_code'], code)
+
+    def test_bounded_parser_capture_with_inert_pipes(self):
+        class Pipe:
+            def __init__(self, number): self.number = number
+            def fileno(self): return self.number
+            def close(self): pass
+        class Selector:
+            def __init__(self): self.keys = {}
+            def register(self, pipe, events, name): self.keys[pipe.number] = SimpleNamespace(fileobj=pipe, data=name)
+            def unregister(self, pipe): del self.keys[pipe.number]
+            def get_map(self): return self.keys
+            def select(self, timeout): return [(key, 1) for key in list(self.keys.values())]
+            def close(self): pass
+        for chunks, clock, expected in (({1: [b'ok', b''], 2: [b'err', b'']}, [0] * 8, 'complete'),
+                                        ({1: [b'x' * 4096] * 3, 2: [b'']}, [0] * 8, 'capture-limit'),
+                                        ({1: [], 2: []}, [0, 11], 'timeout')):
+            kills = []
+            process = SimpleNamespace(stdin=io.BytesIO(), stdout=Pipe(1), stderr=Pipe(2),
+                                      wait=lambda timeout: 0, poll=lambda: 0, kill=lambda: kills.append(True))
+            with patch.object(prereq.subprocess, 'Popen', return_value=process), \
+                 patch.object(prereq.selectors, 'DefaultSelector', Selector), patch.object(prereq.os, 'set_blocking'), \
+                 patch.object(prereq.os, 'read', side_effect=lambda fd, count: chunks[fd].pop(0)), \
+                 patch.object(prereq.time, 'monotonic', side_effect=clock):
+                result = prereq.capture_parser('compile')
+            self.assertEqual(result['state'], expected)
+            self.assertLessEqual(len(result['stdout']), 8192)
+            self.assertEqual(bool(kills), expected != 'complete')
+
+    def test_failed_policy_mutation_readback_never_establishes_ownership(self):
+        own = row(prereq.NAME, prereq.TARGET, 'unconfined')
+        for action in ('add', 'remove'):
+            with patch.object(prereq, 'capture_parser', return_value={'state': 'complete', 'exit_code': 1,
+                              'stdout': b'', 'stderr': b'inert error'}), \
+                 patch.object(prereq, 'inventory', return_value=[own]), patch.object(prereq, 'save') as save, \
+                 patch('builtins.print') as output:
+                with self.assertRaises(RuntimeError): prereq.parse(action)
+                save.assert_not_called()
+                self.assertEqual(json.loads(output.call_args.args[0])['purpose'], 'parser-failure-readback-not-ownership')
+
+    def test_drift_reports_do_not_change_preservation_decisions(self):
+        original = row()
+        changed = dict(original, lineage=['other', 'existing'])
+        with patch('builtins.print') as output:
+            self.assertTrue(prereq.same_inventory([original], [original], 'inert'))
+            output.assert_not_called()
+            self.assertFalse(prereq.same_inventory([changed], [original], 'inert'))
+            self.assertEqual(output.call_count, 2)
+            for call in output.call_args_list:
+                record = json.loads(call.args[0])
+                self.assertEqual(record['changes']['total_records'], 1)
+                self.assertNotIn('total_conflicts', record['changes'])
+                self.assertLess(len(call.args[0].encode()), 32768)
 
     def test_provably_disjoint_literals_prefixes_and_plain_unattached(self):
         for attachment, name in (('/usr/bin/other', 'existing'), ('/opt/vendor/**', 'existing'),

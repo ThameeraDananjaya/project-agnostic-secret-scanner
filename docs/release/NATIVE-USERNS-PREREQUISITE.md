@@ -65,6 +65,34 @@ check. A synthetic nested-filesystem test covers the correction. Inventory
 directory symlinks and metadata control bytes reject; names retain whitespace
 exactly rather than being trimmed into potentially different identities.
 
+Run 35242686984 passed hierarchical inventory and stopped at the conservative
+attachment gate, again before any compile/load. The conflict was not identified
+in its log. Rejection now emits one ASCII-escaped JSON record, at most 16 KiB,
+with total conflict count and up to 16 bounded name/attachment excerpts, explicit
+length/truncation/omission fields, hierarchy depth, identity digest, mode and
+policy digest. It does not emit whole profile bodies or ancestry names. Its
+meaning explicitly includes conservative ambiguity; it does not prove actual
+overlap. The same condition still rejects and no policy action follows it.
+Each conflict has a distinct literal-overlap, possible-pattern-overlap,
+unknown-attachment or unsupported-pattern reason. Counts include every reason,
+including omitted rows. Every excerpt has a digest of its full UTF-8 value.
+
+The remaining helper path also emits bounded diagnostic context. The fixed
+parser's two streams each have an 8192-byte capture cap, ten-second capture
+deadline and two-second exit allowance. JSON records include action, exit code,
+capture state, and the first 1024 bytes per stream escaped without decoding,
+with counts/truncation/digests. Captured byte counts are not asserted to be
+total output when capture is incomplete. Timeout, output limit, unavailable exit
+or nonzero exit still fail. Parser arguments and policy are unchanged.
+
+Own-policy readback and preservation failures report bounded profile metadata
+with explicit non-conflict purposes. Inventory drift includes both changed
+before/after records, with hierarchy identity digests and omission counts; host
+drift includes only the fixed globals and executable/ABI identities. Wrapped
+metadata records stay below 32 KiB. No environment, entire profile body or
+unrelated command output is collected. These diagnostics do not admit a host,
+repair drift, retry an operation or establish successful cleanup.
+
 Compile the tiny fixed policy without loading it. Require an unchanged host and
 inventory, exclusively create root-owned mode-0700 state under
 `/run/pscan-native-userns-prerequisite`, then add exactly one policy. Parser

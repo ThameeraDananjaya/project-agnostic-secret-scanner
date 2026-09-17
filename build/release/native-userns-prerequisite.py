@@ -4,9 +4,11 @@ import json
 import os
 from pathlib import Path
 import re
+import selectors
 import stat
 import subprocess
 import sys
+import time
 
 NAME = 'pscan-native-diagnostic-unshare'
 TARGET = '/usr/bin/unshare'
@@ -42,19 +44,19 @@ def trusted(path, directory=False):
     for parent in reversed(path.parents):
         info = parent.lstat()
         require(stat.S_ISDIR(info.st_mode) and info.st_uid == 0 and not info.st_mode & 0o022,
-                'Untrusted parent directory')
+                'Untrusted parent directory: ' + str(parent))
     info = path.lstat()
     require((stat.S_ISDIR(info.st_mode) if directory else stat.S_ISREG(info.st_mode))
-            and info.st_uid == 0 and not info.st_mode & 0o022, 'Untrusted path')
+            and info.st_uid == 0 and not info.st_mode & 0o022, 'Untrusted path: ' + str(path))
     return info
 
 
-def possible_attachment(attachment, name):
+def attachment_reason(attachment, name):
     """Conservative: admit only provably disjoint literal prefixes, never guess regexes."""
     if attachment == name and re.fullmatch(r'[A-Za-z0-9_.-]+', name):
-        return False  # kernel emits a plain unattached name when it has no xmatch
+        return 'unattached'  # kernel emits a plain unattached name when it has no xmatch
     if not attachment or len(attachment) > 4096 or any(c in attachment for c in ('\\', '@', '<', '>', '\n')):
-        return True
+        return 'unknown-attachment' if not attachment or attachment == '<unknown>' else 'unsupported-pattern'
     variants = [attachment]
     for _ in range(16):
         expanded = []
@@ -68,20 +70,24 @@ def possible_attachment(attachment, name):
             else:
                 expanded.append(value)
         if len(expanded) > 64:
-            return True
+            return 'unsupported-pattern'
         variants = expanded
         if not changed:
             break
     for value in variants:
         if not value.startswith('/') or any(c in value for c in '{}'):
-            return True
+            return 'unsupported-pattern'
         prefix = re.split(r'[*?\[]', value, maxsplit=1)[0]
         if prefix == value:
             if value == TARGET:
-                return True
+                return 'literal-overlap'
         elif TARGET.startswith(prefix):
-            return True
-    return False
+            return 'possible-pattern-overlap'
+    return 'disjoint'
+
+
+def possible_attachment(attachment, name):
+    return attachment_reason(attachment, name) not in ('unattached', 'disjoint')
 
 
 def inventory():
@@ -119,6 +125,8 @@ def inventory():
 
 def host():
     flags = {path: read(path, 32).decode('ascii').strip() for path in GLOBALS}
+    if flags != GLOBALS:
+        print(json.dumps({'schema': 'pscan-native-userns-global-flags-v1', 'expected': GLOBALS, 'actual': flags}, sort_keys=True))
     require(flags == GLOBALS, 'Required global protections unavailable')
     files = {}
     for path in (TARGET, PARSER, '/etc/apparmor.d/abi/4.0'):
@@ -139,11 +147,64 @@ def parser_command(action):
 
 
 def parse(action):
-    # Fixed trusted utility and tiny fixed source. No inherited stdin or shell.
-    result = subprocess.run(parser_command(action), input=POLICY, stdout=subprocess.DEVNULL,
-                            stderr=subprocess.DEVNULL, timeout=10, check=False,
-                            env={'PATH': '/usr/sbin:/usr/bin:/bin', 'LC_ALL': 'C'})
-    require(result.returncode == 0, 'Fixed policy parser failed: ' + action)
+    result = capture_parser(action)
+    record = {'schema': 'pscan-native-userns-parser-v1', 'action': action,
+              'state': result['state'], 'exit_code': result['exit_code'],
+              'stdout': byte_excerpt(result['stdout']), 'stderr': byte_excerpt(result['stderr'])}
+    print(json.dumps(record, ensure_ascii=True, sort_keys=True))
+    if (result['state'] != 'complete' or result['exit_code'] != 0) and action in ('add', 'remove'):
+        try:
+            rows = [row for row in inventory() if row['name'] == NAME]
+            print(conflict_record(rows, 'parser-failure-readback-not-ownership'))
+        except (OSError, ValueError, RuntimeError):
+            print(json.dumps({'schema': 'pscan-native-userns-readback-v1', 'state': 'unavailable-after-parser-failure'}))
+    require(result['state'] == 'complete' and result['exit_code'] == 0, 'Fixed policy parser failed: ' + action)
+
+
+def byte_excerpt(raw):
+    part = raw[:1024]
+    return {'captured_bytes': len(raw), 'excerpt_bytes': len(part), 'truncated': len(part) < len(raw),
+            'encoding': 'escaped-bytes', 'sha256_of_captured': digest(raw),
+            'value': ''.join(chr(b) if 32 <= b <= 126 and b != 92 else '\\x%02x' % b for b in part)}
+
+
+def capture_parser(action):
+    # Fixed trusted parser, fixed tiny policy; no shell, environment inheritance or retry.
+    process = subprocess.Popen(parser_command(action), stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE, env={'PATH': '/usr/sbin:/usr/bin:/bin', 'LC_ALL': 'C'})
+    buffers = {'stdout': bytearray(), 'stderr': bytearray()}
+    state, code = 'complete', None
+    selector = selectors.DefaultSelector()
+    deadline = time.monotonic() + 10
+    try:
+        process.stdin.write(POLICY)
+        process.stdin.close()
+        for name, pipe in (('stdout', process.stdout), ('stderr', process.stderr)):
+            os.set_blocking(pipe.fileno(), False)
+            selector.register(pipe, selectors.EVENT_READ, name)
+        while selector.get_map():
+            if time.monotonic() >= deadline:
+                state = 'timeout'; break
+            for key, _ in selector.select(0.05):
+                block = os.read(key.fileobj.fileno(), 4096)
+                if not block:
+                    selector.unregister(key.fileobj)
+                elif len(buffers[key.data]) + len(block) > 8192:
+                    state = 'capture-limit'; break
+                else:
+                    buffers[key.data].extend(block)
+            if state != 'complete': break
+        if state != 'complete': process.kill()
+        try: code = process.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            state = 'exit-unavailable'
+            process.kill()
+        return {'state': state, 'exit_code': code, **{name: bytes(raw) for name, raw in buffers.items()}}
+    finally:
+        selector.close()
+        if process.poll() is None:
+            process.kill()
+        for pipe in (process.stdin, process.stdout, process.stderr): pipe.close()
 
 
 def save(name, value):
@@ -164,12 +225,45 @@ def load(name):
 
 def admit_inventory(rows):
     require(not any(row['name'] == NAME for row in rows), 'Reserved profile name already exists')
-    require(not any(possible_attachment(row['attach'], row['name']) for row in rows),
-            'Existing or ambiguous executable attachment')
+    conflicts = [row for row in rows if possible_attachment(row['attach'], row['name'])]
+    if conflicts:
+        print(conflict_record(conflicts))
+        raise RuntimeError('Existing or ambiguous executable attachment')
+
+
+def conflict_record(conflicts, purpose='conflicts'):
+    """Bounded evidence only; does not classify a conservative hit as actual overlap."""
+    def excerpt(value, maximum):
+        return {'value': value[:maximum], 'characters': len(value),
+                'utf8_bytes': len(value.encode('utf-8')), 'truncated': len(value) > maximum,
+                'sha256': digest(value.encode('utf-8'))}
+    record = {'schema': 'pscan-native-userns-profile-metadata-v1', 'purpose': purpose,
+              'total_records': len(conflicts), 'records': []}
+    if purpose == 'conflicts':
+        record.update(schema='pscan-native-userns-conflicts-v1', total_conflicts=len(conflicts),
+                      meaning='existing-or-conservatively-ambiguous-attachment')
+        reasons = [attachment_reason(row['attach'], row['name']) for row in conflicts]
+        record['reason_counts'] = {reason: reasons.count(reason) for reason in sorted(set(reasons))}
+    for row in conflicts[:16]:
+        record['records'].append({'name': excerpt(row['name'], 128), 'attachment': excerpt(row['attach'], 512),
+                                  'depth': len(row['lineage']) - 1,
+                                  'identity_sha256': digest(json.dumps(row['lineage'], ensure_ascii=True).encode()),
+                                  'mode': row['mode'], 'policy_sha256': row['sha256'],
+                                  'reason': attachment_reason(row['attach'], row['name'])})
+        if purpose != 'conflicts': record['records'][-1].pop('reason')
+    while True:
+        record['records_omitted'] = len(conflicts) - len(record['records'])
+        raw = json.dumps(record, ensure_ascii=True, sort_keys=True, separators=(',', ':'))
+        if len(raw.encode('ascii')) <= 16384:
+            return raw
+        record['records'].pop()
 
 
 def own_row(rows):
     own = [row for row in rows if row['name'] == NAME]
+    if own:
+        print(json.dumps({'schema': 'pscan-native-userns-readback-v1',
+                          'own_records': json.loads(conflict_record(own, 'own-policy-readback'))}, sort_keys=True))
     require(len(own) == 1 and own[0]['lineage'] == [NAME]
             and own[0]['attach'] == TARGET and own[0]['mode'] == 'unconfined',
             'Loaded profile readback mismatch')
@@ -178,6 +272,26 @@ def own_row(rows):
 
 def others(rows):
     return [row for row in rows if row['name'] != NAME]
+
+
+def same_inventory(actual, expected, phase):
+    if actual == expected: return True
+    old = {tuple(row['lineage']): row for row in expected}
+    new = {tuple(row['lineage']): row for row in actual}
+    changed_before = [old[key] for key in old if old[key] != new.get(key)]
+    changed_after = [new[key] for key in new if new[key] != old.get(key)]
+    for side, rows in (('before', changed_before), ('after', changed_after)):
+        print(json.dumps({'schema': 'pscan-native-userns-inventory-drift-v1', 'phase': phase,
+                          'side': side, 'changes': json.loads(conflict_record(rows, 'inventory-drift'))}, sort_keys=True))
+    return False
+
+
+def same_host(actual, expected, phase):
+    if actual == expected: return True
+    # These objects contain only the fixed globals and executable/ABI metadata.
+    print(json.dumps({'schema': 'pscan-native-userns-host-drift-v1', 'phase': phase,
+                      'before': expected, 'after': actual}, sort_keys=True))
+    return False
 
 
 def emit(phase, state, rows):
@@ -194,7 +308,8 @@ def install(source_hash):
     baseline = inventory()
     admit_inventory(baseline)
     parse('compile')
-    require(host() == baseline_host and inventory() == baseline, 'Host changed during preflight')
+    require(same_host(host(), baseline_host, 'preflight') and same_inventory(inventory(), baseline, 'preflight'),
+            'Host changed during preflight')
     trusted(STATE.parent, directory=True)
     STATE.mkdir(mode=0o700)
     state = {'source_sha256': source_hash, 'policy_sha256': digest(POLICY),
@@ -206,7 +321,8 @@ def install(source_hash):
     current = inventory()
     own = own_row(current)
     save('loaded.json', own)
-    require(others(current) == baseline and host() == baseline_host, 'Host changed during policy addition')
+    require(same_inventory(others(current), baseline, 'after-add') and same_host(host(), baseline_host, 'after-add'),
+            'Host changed during policy addition')
     emit('installed', state, current)
 
 
@@ -217,14 +333,15 @@ def cleanup(source_hash):
     state = load('baseline.json')
     require(state['source_sha256'] == source_hash and state['policy_sha256'] == digest(POLICY),
             'Cleanup source does not match setup')
-    require(host() == state['host'], 'Host changed before cleanup')
+    require(same_host(host(), state['host'], 'before-cleanup'), 'Host changed before cleanup')
     current = inventory()
-    require(others(current) == state['profiles'], 'Unrelated policy changed before cleanup')
+    require(same_inventory(others(current), state['profiles'], 'before-cleanup'), 'Unrelated policy changed before cleanup')
     if any(row['name'] == NAME for row in current):
         # Only a successful captured add owns this exact kernel policy hash.
         require(own_row(current) == load('loaded.json'), 'Owned policy changed or load ownership uncertain')
         parse('remove')
-    require(inventory() == state['profiles'] and host() == state['host'], 'Cleanup readback mismatch')
+    require(same_inventory(inventory(), state['profiles'], 'after-remove')
+            and same_host(host(), state['host'], 'after-remove'), 'Cleanup readback mismatch')
     emit('removed', state, state['profiles'])
     # Delete exact own files only, and only after verified removal/preservation.
     allowed = {'baseline.json', 'add-started.json', 'loaded.json'}

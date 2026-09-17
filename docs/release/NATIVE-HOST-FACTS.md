@@ -1,8 +1,9 @@
 # Read-only host facts for the fixed native fixture
 
-The dedicated manual diagnostic records allowlisted facts before and after the
-unchanged CleanNative fixture. Its `finally` block collects the after snapshot
-even if the fixture fails. The existing terminal exception remains a failure.
+The facts collector supports before/after snapshots around the unchanged
+CleanNative fixture; earlier diagnostic revisions used a finally snapshot even
+on failure. The current dedicated manual workflow performs only a read-only
+named-profile compatibility snapshot, with no fixture or policy helper invocation.
 The production boundary, namespace arguments, limits and cleanup are unchanged.
 
 `native-host-facts.py` records the calling PowerShell process's effective UID/GID,
@@ -29,6 +30,15 @@ cap produces an explicit incomplete/unavailable result. There is no sudo fallbac
 No profile, sysctl, permission, kernel setting or package is changed. This report
 does not preselect AppArmor as the cause or authorize a correction. Its purpose
 is to provide actual facts for a source-supported host prerequisite decision.
+
+The compatibility snapshot additionally records the exact 0/1 value or explicit
+unavailability of apparmor_restrict_unprivileged_unconfined, and lstat metadata
+for the fixed /usr/bin/aa-exec selector and /opt/microsoft/powershell/7/pwsh
+candidate. Symlink, regular-file, owner, mode and identity fields are availability
+facts only. They do not prove parent-path trust, file capabilities, source hashes,
+actual selection, unchanged credentials, namespace support or fixture success.
+The selector is not invoked. Existing caller UID/GID, capability, namespace-map
+and current-profile facts accompany this snapshot. No privileged fallback runs.
 
 `test-native-host-facts.py` validates the bounded parsers and full before/after
 records with inert providers. Subprocess creation is blocked during the record

@@ -5,6 +5,7 @@ import io
 import json
 from pathlib import Path
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
@@ -17,6 +18,17 @@ def present(value): return {'state': 'present', 'value': value}
 
 
 class ParserTests(unittest.TestCase):
+    def test_file_availability_distinguishes_missing_unreadable_and_symlink(self):
+        for error, state in ((FileNotFoundError(), 'missing'), (PermissionError(), 'unreadable'), (OSError(), 'stat-error')):
+            with patch.object(facts.os, 'lstat', side_effect=error):
+                self.assertEqual(facts.file_metadata('/inert'), facts.unavailable(state))
+        for mode, regular, symlink in ((0o100755, True, False), (0o120777, False, True)):
+            info = SimpleNamespace(st_mode=mode, st_uid=0, st_gid=0, st_size=123, st_dev=1, st_ino=2)
+            with patch.object(facts.os, 'lstat', return_value=info):
+                result = facts.file_metadata('/inert')
+            self.assertEqual(result['regular_file'], regular)
+            self.assertEqual(result['symlink'], symlink)
+            self.assertNotIn('trusted', result)
     def test_status_only_allowlisted_fields(self):
         result = facts.parse_status(present('Name:\tDO-NOT-LOG\nUid:\t1001 1002 1003 1004\nGid:\t20 21 22 23\nCapEff:\t0000000000000000\nNoNewPrivs:\t1\nSeccomp:\t2\nSecret:\tDO-NOT-LOG'))
         self.assertEqual(set(result), set(facts.STATUS_FIELDS))
@@ -96,6 +108,7 @@ class ParserTests(unittest.TestCase):
             with patch.object(facts.sys, 'platform', 'linux'), patch.object(facts.sys, 'argv', ['probe', '--phase', phase, '--since', '299']), \
                  patch.object(facts.time, 'time', return_value=300), patch.object(facts.os, 'getppid', return_value=123), \
                  patch.object(facts, 'bounded_read', side_effect=fake_read), patch.object(facts, 'query', side_effect=fake_query), \
+                 patch.object(facts, 'file_metadata', return_value=facts.unavailable('inert-not-probed')), \
                  patch.dict(facts.os.environ, {'ImageOS': 'ubuntu24', 'ImageVersion': '20260907.300.1', 'SECRET': 'DO-NOT-LOG'}, clear=True), \
                  patch.object(facts.subprocess, 'Popen', side_effect=AssertionError('Native execution forbidden in inert tests')), \
                  contextlib.redirect_stdout(output):
@@ -105,6 +118,7 @@ class ParserTests(unittest.TestCase):
             self.assertNotIn('DO-NOT-LOG', output.getvalue())
             self.assertEqual(record['phase'], phase)
             self.assertEqual(record['apparmor']['userns_restriction']['state'], 'unreadable')
+            self.assertEqual(record['named_profile_compatibility']['unprivileged_unconfined_restriction']['state'], 'unreadable')
         self.assertEqual(sum(args[0].endswith('journalctl') for args in calls), 1)
         self.assertTrue(all(args[0] in ('/usr/bin/unshare', '/usr/bin/journalctl') for args in calls))
 

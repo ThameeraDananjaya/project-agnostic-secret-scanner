@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import re
 import selectors
+import stat
 import subprocess
 import sys
 import time
@@ -18,6 +19,19 @@ AUDIT_FIELDS = ('apparmor', 'operation', 'profile', 'pid', 'comm', 'capability',
 
 def unavailable(state):
     return {'state': state, 'value': None}
+
+
+def file_metadata(path):
+    """Availability facts only, not executable trust or selection admission."""
+    try:
+        info = os.lstat(path)
+        return {'state': 'present', 'regular_file': stat.S_ISREG(info.st_mode),
+                'symlink': stat.S_ISLNK(info.st_mode), 'uid': info.st_uid, 'gid': info.st_gid,
+                'mode': stat.S_IMODE(info.st_mode), 'bytes': info.st_size,
+                'device': info.st_dev, 'inode': info.st_ino}
+    except FileNotFoundError: return unavailable('missing')
+    except PermissionError: return unavailable('unreadable')
+    except OSError: return unavailable('stat-error')
 
 
 def bounded_read(path, maximum=4096):
@@ -186,6 +200,11 @@ def main():
                  'enabled': validated(bounded_read('/sys/module/apparmor/parameters/enabled', 16), r'[YN]'),
                  'userns_restriction': validated(bounded_read('/proc/sys/kernel/apparmor_restrict_unprivileged_userns', 16), r'[01]'),
                  'current_profile': validated(bounded_read(root + '/attr/current', 512), r'[A-Za-z0-9_./(): -]{1,256}')},
+             'named_profile_compatibility': {
+                 'unprivileged_unconfined_restriction': validated(bounded_read('/proc/sys/kernel/apparmor_restrict_unprivileged_unconfined', 16), r'[01]'),
+                 'selector': file_metadata('/usr/bin/aa-exec'),
+                 'canonical_powershell_candidate': file_metadata('/opt/microsoft/powershell/7/pwsh'),
+                 'meaning': 'availability-and-context-only-not-executable-admission'},
              'unprivileged_userns_clone': validated(bounded_read('/proc/sys/kernel/unprivileged_userns_clone', 32), r'[01]'),
              'max_user_namespaces': validated(bounded_read('/proc/sys/user/max_user_namespaces', 32), r'[0-9]{1,10}')}
     if args.phase == 'after':

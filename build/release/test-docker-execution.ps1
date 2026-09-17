@@ -44,6 +44,12 @@ function Assert-NoNewBoundaryDirectory([string[]]$Before, [string]$Name) {
     if ($new.Count -ne 0) { throw "$Name reached Docker-boundary directory creation: $($new[0])" }
 }
 
+function Get-LinuxFixtureMarkerPaths([string]$Mode,[string]$PidFile) {
+    if($Mode-notin@('child','grandchild','hold-child','hold-grandchild','detach')){throw 'Unknown descendant fixture mode'}
+    if($Mode.EndsWith('grandchild')){return @($PidFile,($PidFile+'.child'),($PidFile+'.child.ready'))}
+    return @($PidFile,($PidFile+'.ready'))
+}
+
 function Invoke-CleanNativeFixture {
     . (Join-Path $PSScriptRoot 'native-fixture-diagnostics.ps1')
     if ($null -ne ('PscanNativeBoundary' -as [type])) { throw 'Clean fixture process began with the native boundary already loaded' }
@@ -102,7 +108,7 @@ default{throw 'unknown fixture mode'}}
                 else{LinuxTerminal $r $mode}
                 $namespaces=@($r.ObservedMembers|Where-Object{$_-match'^pid:\[[0-9]+\]$'})
                 if($namespaces.Count-ne 1){throw "$mode namespace identity was not proved"}
-                $paths=if($mode.EndsWith('grandchild')){@($pidFile,$pidFile+'.child',$pidFile+'.child.ready')}else{@($pidFile,$pidFile+'.ready')}
+                $paths=@(Get-LinuxFixtureMarkerPaths $mode $pidFile)
                 $markers=@(foreach($path in $paths){
                     if(!(Test-Path -LiteralPath $path -PathType Leaf)-or(Get-Item -LiteralPath $path).Length-gt 2048){throw "$mode descendant marker missing or oversized"}
                     $record=[IO.File]::ReadAllText($path)|ConvertFrom-Json

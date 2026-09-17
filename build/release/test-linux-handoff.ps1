@@ -77,4 +77,17 @@ foreach($pair in @(@(1,8),@(1,32),@(0,1),@(1,0),@(2,1))){
     Reject {$poll.Invoke($null,@([int]$pair[0],[short]$pair[1],[int]0))}
 }
 Reject {$poll.Invoke($null,@([int]-1,[short]0,[int]4))}
+$fixtureTree=[Management.Automation.Language.Parser]::ParseFile((Join-Path $PSScriptRoot 'test-docker-execution.ps1'),[ref]$tokens,[ref]$errors)
+if($errors.Count){throw 'Native fixture source does not parse'}
+$markerFunction=$fixtureTree.Find({param($n)$n-is[Management.Automation.Language.FunctionDefinitionAst]-and$n.Name-ceq'Get-LinuxFixtureMarkerPaths'},$true)
+if($null-eq$markerFunction){throw 'Missing actual fixture path builder'}
+. ([scriptblock]::Create($markerFunction.Extent.Text))
+foreach($mode in @('child','grandchild','hold-child','hold-grandchild','detach')){
+    $base='/inert directory/descendant.pid'
+    $actual=@(Get-LinuxFixtureMarkerPaths $mode $base)
+    $expected=if($mode.EndsWith('grandchild')){@('/inert directory/descendant.pid','/inert directory/descendant.pid.child','/inert directory/descendant.pid.child.ready')}else{@('/inert directory/descendant.pid','/inert directory/descendant.pid.ready')}
+    Check ($actual.Count-eq$expected.Count) 'Marker paths contain an extra literal suffix'
+    for($i=0;$i-lt$expected.Count;$i++){Check ($actual[$i]-ceq$expected[$i]) 'Marker path concatenation or order is wrong'}
+}
+Reject {Get-LinuxFixtureMarkerPaths 'unknown' '/inert/base'}
 Write-Output "Linux handoff inert PASS assertions=$script:assertions native-process-calls=0 Linux-runtime-proof=UNAVAILABLE"

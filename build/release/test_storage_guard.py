@@ -35,7 +35,7 @@ def distribution(root):
     (root / "CHECKSUMS.sha256").write_text("".join(f"{hashes[n]}  {n}\n" for n in sorted(hashes)), encoding="ascii", newline="\n")
     assets = [{"path": p.name, "size": p.stat().st_size, "sha256": hashlib.sha256(p.read_bytes()).hexdigest()}
               for p in sorted(root.iterdir())]
-    manifest = dict(manifestSchemaVersion="2.4", releaseVersion="v1.0.0",
+    manifest = dict(manifestSchemaVersion="2.5", releaseVersion="v1.0.0",
                     productSource=dict(tag="v1.0.0", commit=guard.PRODUCT, tree=guard.PRODUCT_TREE),
                     releaseTooling=dict(tag=guard.TAG, commit=REVISION, workflow=guard.WORKFLOW,
                                        workflowRef="refs/tags/" + guard.TAG, workflowSha=REVISION,
@@ -112,7 +112,7 @@ class DistributionTests(unittest.TestCase):
         result = self.check()
         self.assertEqual(result["payload_bytes"], sum(map(len, before.values())))
         self.assertEqual(result["transfer_upper_bound_bytes"], sum(map(len, before.values())) + 16 * 1024 * 1024)
-        self.assertEqual(result["files"], 34)
+        self.assertEqual(result["files"], 35)
         self.assertEqual(before, {p.name: p.read_bytes() for p in self.root.iterdir()})
 
     def test_extra_hidden_file(self):

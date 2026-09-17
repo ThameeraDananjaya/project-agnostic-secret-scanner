@@ -28,9 +28,9 @@ jobs:
     if: >-
       github.repository == 'ThameeraDananjaya/project-agnostic-secret-scanner' &&
       github.repository_owner_id == '50274860' &&
-      github.ref == 'refs/tags/release-tooling-v1.0.0-c2-linux-build-v2' &&
+      github.ref == 'refs/tags/release-tooling-v1.0.0-c2-sbom-v1' &&
       github.sha == inputs.release_tooling_revision &&
-      github.workflow_ref == 'ThameeraDananjaya/project-agnostic-secret-scanner/.github/workflows/release-build-unsigned.yml@refs/tags/release-tooling-v1.0.0-c2-linux-build-v2' &&
+      github.workflow_ref == 'ThameeraDananjaya/project-agnostic-secret-scanner/.github/workflows/release-build-unsigned.yml@refs/tags/release-tooling-v1.0.0-c2-sbom-v1' &&
       github.workflow_sha == inputs.release_tooling_revision &&
       inputs.product_source_revision == 'a13c28fe7273bc8dc6545f97966a02889524eb4c' &&
       inputs.release_version == 'v1.0.0'
@@ -51,8 +51,8 @@ jobs:
           test "$GITHUB_REPOSITORY_OWNER_ID" = '50274860'
           test "$PRODUCT_SOURCE_REVISION" = 'a13c28fe7273bc8dc6545f97966a02889524eb4c'
           test "$RELEASE_TOOLING_REVISION" = "$GITHUB_SHA"
-          test "$GITHUB_REF" = 'refs/tags/release-tooling-v1.0.0-c2-linux-build-v2'
-          test "$WORKFLOW_REF" = 'ThameeraDananjaya/project-agnostic-secret-scanner/.github/workflows/release-build-unsigned.yml@refs/tags/release-tooling-v1.0.0-c2-linux-build-v2'
+          test "$GITHUB_REF" = 'refs/tags/release-tooling-v1.0.0-c2-sbom-v1'
+          test "$WORKFLOW_REF" = 'ThameeraDananjaya/project-agnostic-secret-scanner/.github/workflows/release-build-unsigned.yml@refs/tags/release-tooling-v1.0.0-c2-sbom-v1'
           test "$WORKFLOW_SHA" = "$RELEASE_TOOLING_REVISION"
 
       - name: Check out exact tooling revision without persisted credentials

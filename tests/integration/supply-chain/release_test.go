@@ -666,7 +666,7 @@ func TestIteration007RepositoryIdentityAgreementAndPreservation(t *testing.T) {
 	}
 
 	for path, required := range map[string][]string{
-		"build/release/build.ps1":                    {"release-tooling-v1.0.0-c2-linux-build-v2", ".github/workflows/release-build-unsigned.yml", "manifestSchemaVersion='2.4'", "schema-release-manifest-2.1.json", "schema-release-manifest-2.2.json", "schema-release-manifest-2.3.json", "schema-release-manifest-2.4.json", "releaseIdentity=$null"},
+		"build/release/build.ps1":                    {"release-tooling-v1.0.0-c2-sbom-v1", ".github/workflows/release-build-unsigned.yml", "manifestSchemaVersion='2.5'", "schema-release-manifest-2.1.json", "schema-release-manifest-2.2.json", "schema-release-manifest-2.3.json", "schema-release-manifest-2.4.json", "schema-release-manifest-2.5.json", "releaseIdentity=$null"},
 		"build/release/cmd/release-verifier/main.go": {"LoadSeparateSignerPolicy", "signer-policy-sha256"},
 		"internal/verify/release.go":                 {"release-tooling-v1.0.0-c2", "release-tooling-v1.0.0-c2-r6", ".github/workflows/release-recovery-v1.0.0.yml", ".github/workflows/release-recovery-v1.0.0-c2-r6.yml"},
 	} {
@@ -800,7 +800,12 @@ func (p *inertV24Signature) VerifyManifest(context.Context, string, string, veri
 }
 
 func TestV24OuterManifestFinalizationPreservesArchivesAndVerificationGates(t *testing.T) {
-	m := minimumManifestV24()
+	exerciseOuterManifestFinalization(t, minimumManifestV24(), signerPolicyV11Bytes)
+}
+
+// Both historical 2.4 and additive 2.5 run the complete same archive, unsigned,
+// signature-error, policy, integrity and revocation controls with inert seams.
+func exerciseOuterManifestFinalization(t *testing.T, m verify.ReleaseManifest, policyBytes func(*testing.T, verify.ReleaseManifest) []byte) {
 	root := t.TempDir()
 	write := func(name string, raw []byte) {
 		t.Helper()
@@ -854,7 +859,7 @@ func TestV24OuterManifestFinalizationPreservesArchivesAndVerificationGates(t *te
 		write(name, raw)
 		m.Assets = append(m.Assets, verify.ReleaseAsset{Path: name, Kind: "documentation", OS: "none", Arch: "none", Size: int64(len(raw)), SHA256: verify.DigestBytes(raw)})
 	}
-	policyRaw := signerPolicyV11Bytes(t, m)
+	policyRaw := policyBytes(t, m)
 	policyPath := filepath.Join(t.TempDir(), "inert-policy.json")
 	if err := os.WriteFile(policyPath, policyRaw, 0600); err != nil {
 		t.Fatal(err)

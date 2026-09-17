@@ -1,0 +1,338 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:project-agnostic-secret-scanner:release-signer-policy:1.2",
+  "title": "Independently pinned separate signer policy",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "productSource",
+    "releaseTooling",
+    "buildIdentity",
+    "signer"
+  ],
+  "properties": {
+    "schema": {
+      "const": "pscan-separate-signer-policy-v1.2"
+    },
+    "productSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tag",
+        "commit",
+        "tree"
+      ],
+      "properties": {
+        "tag": {
+          "type": "string",
+          "const": "v1.0.0"
+        },
+        "commit": {
+          "type": "string",
+          "const": "a13c28fe7273bc8dc6545f97966a02889524eb4c"
+        },
+        "tree": {
+          "type": "string",
+          "const": "217b711ddea51fd0ea7e808edd2e27fdecef8427"
+        }
+      }
+    },
+    "releaseTooling": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tag",
+        "commit",
+        "tree",
+        "workflow",
+        "workflowRef",
+        "workflowSha",
+        "trigger"
+      ],
+      "properties": {
+        "tag": {
+          "type": "string",
+          "const": "release-tooling-v1.0.0-c2-sbom-v1"
+        },
+        "commit": {
+          "$ref": "#/$defs/gitOid"
+        },
+        "tree": {
+          "$ref": "#/$defs/gitOid"
+        },
+        "workflow": {
+          "type": "string",
+          "const": ".github/workflows/release-build-unsigned.yml"
+        },
+        "workflowRef": {
+          "type": "string",
+          "const": "refs/tags/release-tooling-v1.0.0-c2-sbom-v1"
+        },
+        "workflowSha": {
+          "$ref": "#/$defs/gitOid"
+        },
+        "trigger": {
+          "type": "string",
+          "const": "workflow_dispatch"
+        }
+      }
+    },
+    "buildIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repository",
+        "repositoryOwnerId",
+        "workflow",
+        "ref",
+        "workflowSha",
+        "trigger"
+      ],
+      "properties": {
+        "repository": {
+          "type": "string",
+          "const": "ThameeraDananjaya/project-agnostic-secret-scanner"
+        },
+        "repositoryOwnerId": {
+          "type": "integer",
+          "const": 50274860
+        },
+        "workflow": {
+          "type": "string",
+          "const": ".github/workflows/release-build-unsigned.yml"
+        },
+        "ref": {
+          "type": "string",
+          "const": "refs/tags/release-tooling-v1.0.0-c2-sbom-v1"
+        },
+        "workflowSha": {
+          "$ref": "#/$defs/gitOid"
+        },
+        "trigger": {
+          "type": "string",
+          "const": "workflow_dispatch"
+        }
+      }
+    },
+    "signer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repository",
+        "repositoryOwnerId",
+        "workflow",
+        "ref",
+        "workflowSha",
+        "trigger",
+        "oidcIssuer",
+        "certificateIdentity"
+      ],
+      "properties": {
+        "repository": {
+          "type": "string",
+          "const": "ThameeraDananjaya/project-agnostic-secret-scanner"
+        },
+        "repositoryOwnerId": {
+          "type": "integer",
+          "const": 50274860
+        },
+        "workflow": {
+          "type": "string",
+          "const": ".github/workflows/release-sign.yml"
+        },
+        "ref": {
+          "type": "string",
+          "const": "refs/tags/release-signing-v1.0.0-c2-linux-boundary"
+        },
+        "workflowSha": {
+          "$ref": "#/$defs/gitOid"
+        },
+        "trigger": {
+          "type": "string",
+          "const": "workflow_dispatch"
+        },
+        "oidcIssuer": {
+          "type": "string",
+          "const": "https://token.actions.githubusercontent.com"
+        },
+        "certificateIdentity": {
+          "type": "string",
+          "const": "https://github.com/ThameeraDananjaya/project-agnostic-secret-scanner/.github/workflows/release-sign.yml@refs/tags/release-signing-v1.0.0-c2-linux-boundary"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "gitOid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "schemaVersion": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$"
+    },
+    "token": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:+-]{0,127}$"
+    },
+    "path": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._+/-]{0,255}$"
+    },
+    "namedDigest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/path"
+        },
+        "sha256": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
+    "engineBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version",
+        "sourceRevision",
+        "os",
+        "arch",
+        "path",
+        "sha256"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "const": "gitleaks"
+        },
+        "version": {
+          "type": "string",
+          "const": "8.30.1"
+        },
+        "sourceRevision": {
+          "type": "string",
+          "const": "83d9cd684c87d95d656c1458ef04895a7f1cbd8e"
+        },
+        "os": {
+          "type": "string",
+          "enum": [
+            "linux",
+            "windows"
+          ]
+        },
+        "arch": {
+          "type": "string",
+          "const": "amd64"
+        },
+        "path": {
+          "$ref": "#/$defs/path"
+        },
+        "sha256": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
+    "asset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "kind",
+        "os",
+        "arch",
+        "size",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/path"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "platform-bundle",
+            "runner",
+            "engine",
+            "verifier",
+            "rules",
+            "schema",
+            "checksums",
+            "licence",
+            "licence-manifest",
+            "sbom",
+            "test-summary",
+            "limitations",
+            "compatibility",
+            "revocation-snapshot",
+            "revocation-checkpoint",
+            "documentation"
+          ]
+        },
+        "os": {
+          "type": "string",
+          "enum": [
+            "none",
+            "windows",
+            "linux"
+          ]
+        },
+        "arch": {
+          "type": "string",
+          "enum": [
+            "none",
+            "amd64"
+          ]
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1073741824
+        },
+        "sha256": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
+    "platformDigest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "os",
+        "arch",
+        "path",
+        "sha256"
+      ],
+      "properties": {
+        "os": {
+          "type": "string",
+          "enum": [
+            "linux",
+            "windows"
+          ]
+        },
+        "arch": {
+          "type": "string",
+          "const": "amd64"
+        },
+        "path": {
+          "$ref": "#/$defs/path"
+        },
+        "sha256": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    }
+  }
+}

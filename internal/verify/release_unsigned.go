@@ -11,6 +11,7 @@ import (
 const (
 	UnsignedBuildTag      = "release-tooling-v1.0.0-c2-linux-boundary"
 	UnsignedBuildTagV24   = "release-tooling-v1.0.0-c2-linux-build-v2"
+	UnsignedBuildTagV25   = "release-tooling-v1.0.0-c2-sbom-v1"
 	UnsignedBuildWorkflow = ".github/workflows/release-build-unsigned.yml"
 	ReleaseSignerWorkflow = ".github/workflows/release-sign.yml"
 	ReleaseSignerRef      = "refs/tags/release-signing-v1.0.0-c2-linux-boundary"
@@ -32,7 +33,7 @@ type BuildIdentity struct {
 // serialized again. Nonzero conflicting signer fields are never normalized away.
 func (m ReleaseManifest) MarshalJSON() ([]byte, error) {
 	type plainManifest ReleaseManifest
-	if (m.ManifestSchemaVersion == "2.3" || m.ManifestSchemaVersion == "2.4") && m.ReleaseState == "unsigned-candidate" && m.ReleaseIdentity == (ReleaseIdentity{}) {
+	if (m.ManifestSchemaVersion == "2.3" || m.ManifestSchemaVersion == "2.4" || m.ManifestSchemaVersion == "2.5") && m.ReleaseState == "unsigned-candidate" && m.ReleaseIdentity == (ReleaseIdentity{}) {
 		return json.Marshal(struct {
 			plainManifest
 			Signer any `json:"releaseIdentity"`
@@ -51,6 +52,8 @@ func validateUnsignedBuildIdentity(m ReleaseManifest) error {
 	case "2.3":
 	case "2.4":
 		buildTag = UnsignedBuildTagV24
+	case "2.5":
+		buildTag = UnsignedBuildTagV25
 	default:
 		return ErrInvalidReference
 	}
@@ -178,6 +181,8 @@ func LoadSeparateSignerPolicy(path, expectedDigest, candidateDirectory, buildCom
 		version = "2.3"
 	case "pscan-separate-signer-policy-v1.1":
 		version = "2.4"
+	case "pscan-separate-signer-policy-v1.2":
+		version = "2.5"
 	default:
 		return empty, ErrInvalidReference
 	}

@@ -552,8 +552,15 @@ function Invoke-LinuxSessionBoundary([string]$ExecutableReference,[string[]]$Arg
             $cleanupDetails=Invoke-LinuxPinnedCleanup $init $initHandle $rootHandle $process $stdoutTask $stderrTask $session $ledger $SharedBudget $cleanupUncertain
             if(!$cleanupDetails.Proved){$terminal+='; cleanup uncertainty'}
         }
-        $stdout=if($null-ne$stdoutTask-and$stdoutTask.IsCompletedSuccessfully){$stdoutTask.Result}else{[byte[]]::new(0)}
-        $stderr=if($null-ne$stderrTask-and$stderrTask.IsCompletedSuccessfully){$stderrTask.Result}else{[byte[]]::new(0)}
+        # Assign array members directly: a PowerShell statement pipeline would
+        # enumerate empty/single-byte buffers into null/scalar values.
+        $stdout=[byte[]]::new(0);$stderr=[byte[]]::new(0)
+        $captureComplete=$null-ne$stdoutTask-and$null-ne$stderrTask-and$stdoutTask.IsCompletedSuccessfully-and$stderrTask.IsCompletedSuccessfully
+        if($null-ne$stdoutTask-and$stdoutTask.IsCompletedSuccessfully){$stdout=$stdoutTask.Result}
+        if($null-ne$stderrTask-and$stderrTask.IsCompletedSuccessfully){$stderr=$stderrTask.Result}
+        if(!$captureComplete-or$stdout-isnot[byte[]]-or$stderr-isnot[byte[]]){
+            if(!$terminal){$terminal='capture evidence unavailable'}
+        }
         [pscustomobject]@{ExitCode=$(if($started-and$process.HasExited){$process.ExitCode}else{199});StdOut=$stdout;StdErr=$stderr;Terminal=$terminal;ObservedMembers=@($ledger.Keys)+@($namespaceIdentity);ContainmentEmpty=(!$terminal);CleanupDetails=$cleanupDetails}
     } finally {
         try{Close-Gate}catch{}
@@ -574,6 +581,7 @@ function Invoke-HeldDockerCall([string[]]$Arguments,$Context) {
     $Context.Observed += $result.ObservedMembers.Count
     if ($result.Terminal-or!$result.ContainmentEmpty) { throw "Docker protocol native containment failed: $($result.Terminal)" }
     if ($Context.Budget.Remaining-le 0) { throw 'Shared Docker deadline exhausted after protocol call' }
+    if($result.StdOut-isnot[byte[]]-or$result.StdErr-isnot[byte[]]){throw 'Docker protocol capture buffers are not byte arrays'}
     $utf8=[Text.UTF8Encoding]::new($false,$true)
     return [pscustomobject]@{ExitCode=$result.ExitCode;StdOut=$utf8.GetString($result.StdOut);StdErr=$utf8.GetString($result.StdErr)}
 }

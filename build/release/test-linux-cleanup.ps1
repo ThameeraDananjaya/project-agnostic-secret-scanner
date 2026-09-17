@@ -102,4 +102,75 @@ try {
     if(!$resolved.StartsWith($temp,[StringComparison]::OrdinalIgnoreCase)-or![IO.Path]::GetFileName($resolved).StartsWith('pscan-cleanup-')){throw 'Unsafe test cleanup'}
     [IO.Directory]::Delete($resolved,$true)
 }
-Write-Output "Linux pinned cleanup inert PASS cases=$cases scenarios=19 actual-controller=PASS actual-stat-parser=PASS shared-clock=PASS Linux-runtime-proof=UNAVAILABLE"
+# Execute the actual Linux result-construction tail with real Task<byte[]>.
+# Only process/capture I/O is inert. The complete held-call function below keeps
+# production containment, deadline, type validation and strict UTF-8 decoding.
+$boundary=$tree.Find({param($n)$n-is[Management.Automation.Language.FunctionDefinitionAst]-and$n.Name-ceq'Invoke-LinuxSessionBoundary'},$true)
+$captureStart=$boundary.Find({param($n)$n-is[Management.Automation.Language.AssignmentStatementAst]-and$n.Left.Extent.Text-ceq'$stdout'-and$n.Right.Extent.Text-ceq'[byte[]]::new(0)'},$true)
+$captureTry=$boundary.Body.EndBlock.Statements|Where-Object{$_-is[Management.Automation.Language.TryStatementAst]-and$null-ne$_.Finally-and$_.Body.Extent.StartOffset-lt$captureStart.Extent.StartOffset-and$_.Body.Extent.EndOffset-gt$captureStart.Extent.EndOffset}
+if($null-eq$captureStart-or@($captureTry).Count-ne1){throw 'Actual capture construction missing or ambiguous'}
+$tail=$tree.Extent.Text.Substring($captureStart.Extent.StartOffset,$captureTry.Body.Extent.EndOffset-1-$captureStart.Extent.StartOffset)
+$assemble=[scriptblock]::Create(@'
+param($stdoutTask,$stderrTask,$terminal=$null)
+$started=$true;$process=[pscustomobject]@{HasExited=$true;ExitCode=7}
+$ledger=@{};$namespaceIdentity='pid:[222]';$cleanupDetails=$null
+'@ + "`n" + $tail)
+$held=$tree.Find({param($n)$n-is[Management.Automation.Language.FunctionDefinitionAst]-and$n.Name-ceq'Invoke-HeldDockerCall'},$true)
+$nativeDispatch=$held.Body.EndBlock.Statements|Where-Object{$_-is[Management.Automation.Language.IfStatementAst]-and$_.Clauses[0].Item1.Extent.Text-ceq'$IsWindows'}
+if(@($nativeDispatch).Count-ne1){throw 'Actual native dispatch missing or ambiguous'}
+. ([scriptblock]::Create($held.Extent.Text.Replace($nativeDispatch.Extent.Text,'$result=$script:captureResult')))
+function Decode($Result){$script:captureResult=$Result;Invoke-HeldDockerCall @('inert') @{Budget=[PscanOperationBudget]::new(15000,2000,131072);Calls=0;Observed=0}}
+function Completed($Bytes){[Threading.Tasks.Task]::FromResult[byte[]]($Bytes)}
+$captureChecksBefore=$cases
+foreach($pair in @(
+    @{Out=[byte[]]::new(0);Err=[byte[]]::new(0);TextOut='';TextErr=''},
+    @{Out=[byte[]]::new(0);Err=[byte[]]@(65);TextOut='';TextErr='A'},
+    @{Out=[byte[]]@(65);Err=[byte[]]::new(0);TextOut='A';TextErr=''},
+    @{Out=[byte[]]@(65);Err=[byte[]]@(226,130,172);TextOut='A';TextErr=[char]0x20ac},
+    @{Out=[byte[]]@(226,130,172);Err=[byte[]]@(65,66);TextOut=[char]0x20ac;TextErr='AB'}
+)){
+    $result=& $assemble (Completed $pair.Out) (Completed $pair.Err)
+    Check ($result.StdOut-is[byte[]]-and$result.StdErr-is[byte[]]) 'Actual construction lost buffer type'
+    Check ([object]::ReferenceEquals($result.StdOut,$pair.Out)-and[object]::ReferenceEquals($result.StdErr,$pair.Err)) 'Actual construction changed captured buffers'
+    $decoded=Decode $result
+    Check ($decoded.StdOut-ceq$pair.TextOut-and$decoded.StdErr-ceq$pair.TextErr-and$decoded.ExitCode-eq7) 'Actual decoder changed stream or exit evidence'
+}
+foreach($bytes in @([byte[]]@(195,40),[byte[]]@(226,130))){
+    foreach($side in @('stdout','stderr')){
+        $out=[byte[]]::new(0);$err=[byte[]]::new(0)
+        if($side-ceq'stdout'){$out=$bytes}else{$err=$bytes}
+        $result=& $assemble (Completed $out) (Completed $err)
+        $rejected=$false;try{[void](Decode $result)}catch{$rejected=$_.Exception.ToString().Contains('DecoderFallbackException')}
+        Check $rejected 'Actual decoder accepted malformed/incomplete UTF-8'
+    }
+}
+foreach($invalid in @(@{Value=$null},@{Value=[byte]65},@{Value=[object[]]@(65)},@{Value=[int[]]@(65)},@{Value='A'},@{Value=[object[]]::new(0)},@{Value=@{}})){
+    foreach($side in @('stdout','stderr')){
+        $good=Completed ([byte[]]::new(0));$bad=[pscustomobject]@{IsCompletedSuccessfully=$true;Result=$invalid.Value}
+        $outTask=$good;$errTask=$good
+        if($side-ceq'stdout'){$outTask=$bad}else{$errTask=$bad}
+        $result=& $assemble $outTask $errTask
+        Check ($result.Terminal-ceq'capture evidence unavailable'-and!$result.ContainmentEmpty) 'Invalid capture construction was accepted as empty'
+        # Independently exercise the production decoder type gate even if a
+        # malformed result claims successful containment.
+        $result.Terminal=$null;$result.ContainmentEmpty=$true
+        $rejected=$false;try{[void](Decode $result)}catch{$rejected=$_.Exception.Message-ceq'Docker protocol capture buffers are not byte arrays'}
+        Check $rejected 'Actual decoder coerced invalid capture type'
+    }
+}
+$pending=[Threading.Tasks.TaskCompletionSource[byte[]]]::new()
+$faulted=[Threading.Tasks.TaskCompletionSource[byte[]]]::new();$faulted.SetException([IO.IOException]::new('inert capture failure'))
+$cancelled=[Threading.Tasks.TaskCompletionSource[byte[]]]::new();$cancelled.SetCanceled()
+foreach($taskCase in @(@{Task=$null},@{Task=$pending.Task},@{Task=$faulted.Task},@{Task=$cancelled.Task})){
+    foreach($side in @('stdout','stderr')){
+        $outTask=Completed ([byte[]]::new(0));$errTask=$outTask
+        if($side-ceq'stdout'){$outTask=$taskCase.Task}else{$errTask=$taskCase.Task}
+        $result=& $assemble $outTask $errTask
+        Check ($result.StdOut-is[byte[]]-and$result.StdErr-is[byte[]]-and$result.Terminal-ceq'capture evidence unavailable'-and!$result.ContainmentEmpty) 'Incomplete capture did not remain terminal'
+        $rejected=$false;try{[void](Decode $result)}catch{$rejected=$_.Exception.Message.StartsWith('Docker protocol native containment failed:')}
+        Check $rejected 'Actual held call decoded uncompleted capture'
+        $prior=& $assemble $outTask $errTask 'running: stream overflow or read failure; cleanup uncertainty'
+        Check ($prior.Terminal-ceq'running: stream overflow or read failure; cleanup uncertainty') 'Capture construction replaced existing terminal evidence'
+    }
+}
+Write-Output "Linux pinned cleanup inert PASS cases=$cases scenarios=19 capture-checks=$($cases-$captureChecksBefore) actual-controller=PASS actual-stat-parser=PASS actual-capture-construction=PASS actual-strict-decoder=PASS shared-clock=PASS Linux-runtime-proof=UNAVAILABLE"

@@ -87,26 +87,34 @@ def possible_attachment(attachment, name):
 def inventory():
     # AppArmor's policy symlink is the documented kernel introspection interface.
     # Child namespaces are not part of this supported disposable-host profile.
-    require(not list((POLICY_ROOT / 'namespaces').iterdir()), 'Nested policy namespace unsupported')
+    namespaces = POLICY_ROOT / 'namespaces'
+    require(namespaces.is_dir() and not namespaces.is_symlink(), 'Unexpected namespace inventory path')
+    require(not list(namespaces.iterdir()), 'Nested policy namespace unsupported')
     rows = []
 
-    def visit(root, depth=0):
-        require(depth <= 8, 'Profile nesting bound exceeded')
+    def visit(root, ancestry=()):
+        require(len(ancestry) <= 8, 'Profile nesting bound exceeded')
+        require(root.is_dir() and not root.is_symlink(), 'Unexpected profile inventory path')
         for entry in sorted(root.iterdir()):
             require(entry.is_dir() and not entry.is_symlink(), 'Unexpected profile entry')
-            row = {field: read(entry / field).decode('utf-8', errors='strict').strip()
+            row = {field: read(entry / field).decode('utf-8', errors='strict').removesuffix('\n')
                    for field in ('name', 'attach', 'mode', 'sha256')}
+            require(all(not any(ord(char) < 32 or ord(char) == 127 for char in value)
+                        for value in row.values()), 'Unsupported profile metadata control byte')
             require(re.fullmatch(r'[0-9a-f]{64}', row['sha256']) is not None, 'Profile digest unavailable')
             require(row['mode'] in ('enforce', 'complain', 'kill', 'unconfined'), 'Unsupported profile mode')
+            require(bool(row['name']), 'Empty profile identity')
+            # Kernel name is base.name, not a globally unique hierarchical name.
+            row['lineage'] = [*ancestry, row['name']]
             rows.append(row)
             require(len(rows) <= 1024, 'Profile count bound exceeded')
             children = entry / 'profiles'
             if children.exists():
-                visit(children, depth + 1)
+                visit(children, tuple(row['lineage']))
 
     visit(POLICY_ROOT / 'profiles')
-    require(len({row['name'] for row in rows}) == len(rows), 'Ambiguous profile identity')
-    return sorted(rows, key=lambda row: row['name'])
+    require(len({tuple(row['lineage']) for row in rows}) == len(rows), 'Ambiguous profile identity')
+    return sorted(rows, key=lambda row: tuple(row['lineage']))
 
 
 def host():
@@ -162,7 +170,8 @@ def admit_inventory(rows):
 
 def own_row(rows):
     own = [row for row in rows if row['name'] == NAME]
-    require(len(own) == 1 and own[0]['attach'] == TARGET and own[0]['mode'] == 'unconfined',
+    require(len(own) == 1 and own[0]['lineage'] == [NAME]
+            and own[0]['attach'] == TARGET and own[0]['mode'] == 'unconfined',
             'Loaded profile readback mismatch')
     return own[0]
 

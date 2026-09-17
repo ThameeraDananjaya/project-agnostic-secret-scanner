@@ -52,6 +52,19 @@ checker expands bounded brace alternatives and proves disjoint literal prefixes;
 unknown or more complex potentially matching expressions reject. This may reject
 a harmless existing profile. It never replaces or overrides one to make progress.
 
+The kernel's `name` file reports `profile->base.name`, which is local to its
+parent. Inventory identity therefore retains the entire ordered list of ancestor
+names plus the current name. Repeated child names under different parents remain
+distinct; duplicate names under the same ancestry reject. Metadata and digests
+for every child remain in preservation comparisons. Our own profile must be at
+the root. Run 35241975107 stopped before any compile/load at the original
+globally unique short-name check; cleanup reported `not-installed`. Its actual
+duplicate topology was not logged, so ancestry as the cause is an inference.
+The kernel's local-name semantics independently establish the defect in that
+check. A synthetic nested-filesystem test covers the correction. Inventory
+directory symlinks and metadata control bytes reject; names retain whitespace
+exactly rather than being trimmed into potentially different identities.
+
 Compile the tiny fixed policy without loading it. Require an unchanged host and
 inventory, exclusively create root-owned mode-0700 state under
 `/run/pscan-native-userns-prerequisite`, then add exactly one policy. Parser

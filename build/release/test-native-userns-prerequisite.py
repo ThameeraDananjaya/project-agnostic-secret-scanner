@@ -1,6 +1,7 @@
 """Inert prerequisite admission/lifecycle tests; never run a host utility."""
 import importlib.util
 from pathlib import Path
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -10,7 +11,7 @@ spec.loader.exec_module(prereq)
 
 
 def row(name='existing', attachment='/usr/bin/other', mode='enforce', digest='a' * 64):
-    return {'name': name, 'attach': attachment, 'mode': mode, 'sha256': digest}
+    return {'name': name, 'attach': attachment, 'mode': mode, 'sha256': digest, 'lineage': [name]}
 
 
 class Tests(unittest.TestCase):
@@ -49,8 +50,34 @@ class Tests(unittest.TestCase):
     def test_readback_requires_exact_name_attachment_mode(self):
         own = row(prereq.NAME, prereq.TARGET, 'unconfined')
         self.assertEqual(prereq.own_row([row(), own]), own)
-        for rows in ([], [own, own], [row(prereq.NAME)], [row(prereq.NAME, prereq.TARGET, 'complain')]):
+        for rows in ([], [own, own], [row(prereq.NAME)], [row(prereq.NAME, prereq.TARGET, 'complain')],
+                     [dict(own, lineage=['other', prereq.NAME])]):
             with self.assertRaises(RuntimeError): prereq.own_row(rows)
+
+    def test_kernel_short_names_preserve_parent_identity_and_all_metadata(self):
+        # Synthetic files only: same child name under two distinct parents is valid.
+        with tempfile.TemporaryDirectory(prefix='pscan-inert-policy-') as directory:
+            root = Path(directory)
+            (root / 'namespaces').mkdir()
+            def write_entry(path, name, attachment, hashchar):
+                path.mkdir(parents=True)
+                for field, value in {'name': name, 'attach': attachment, 'mode': 'enforce',
+                                     'sha256': hashchar * 64}.items():
+                    (path / field).write_text(value + '\n', encoding='utf-8')
+            write_entry(root / 'profiles/p1', 'parent-a', '/opt/a', 'a')
+            write_entry(root / 'profiles/p2', 'parent-b', '/opt/b', 'b')
+            write_entry(root / 'profiles/p1/profiles/c1', 'shared-child', 'shared-child', 'c')
+            write_entry(root / 'profiles/p2/profiles/c2', 'shared-child', 'shared-child', 'd')
+            with patch.object(prereq, 'POLICY_ROOT', root):
+                rows = prereq.inventory()
+                self.assertEqual([r['lineage'] for r in rows], [
+                    ['parent-a'], ['parent-a', 'shared-child'], ['parent-b'], ['parent-b', 'shared-child']])
+                self.assertEqual([r['sha256'] for r in rows], [c * 64 for c in 'acbd'])
+                prereq.admit_inventory(rows)
+                # Same name in the same ancestry really is ambiguous.
+                write_entry(root / 'profiles/p1/profiles/c3', 'shared-child', 'shared-child', 'e')
+                with self.assertRaisesRegex(RuntimeError, 'Ambiguous profile identity'):
+                    prereq.inventory()
 
     def install_fixture(self, inventories, fail_action=None):
         calls, saved = [], {}
@@ -123,6 +150,7 @@ class Tests(unittest.TestCase):
                                         ([row(), own], dict(own, sha256='c' * 64), {}),
                                         ([row(), own], own, {'source': 'c' * 64}),
                                         ([row(), own], own, {'host_changed': True}),
+                                        ([dict(row(), lineage=['changed-parent', 'existing']), own], own, {}),
                                         ([own], own, {})):
             self.assertEqual(self.cleanup_fixture(current, stored, **kwargs), ([], False))
 

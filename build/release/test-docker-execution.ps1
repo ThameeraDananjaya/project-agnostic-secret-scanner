@@ -45,6 +45,7 @@ function Assert-NoNewBoundaryDirectory([string[]]$Before, [string]$Name) {
 }
 
 function Invoke-CleanNativeFixture {
+    . (Join-Path $PSScriptRoot 'native-fixture-diagnostics.ps1')
     if ($null -ne ('PscanNativeBoundary' -as [type])) { throw 'Clean fixture process began with the native boundary already loaded' }
     $parsed = Get-NativeBoundarySource
     $compiled = @(Add-Type -TypeDefinition $parsed.Source -Language CSharp -PassThru)
@@ -81,7 +82,7 @@ default{throw 'unknown fixture mode'}}
             $environment=[Collections.Generic.Dictionary[string,string]]::new([StringComparer]::Ordinal);$environment.Add('HOME',$temporaryRoot);$environment.Add('TMPDIR',$temporaryRoot);$environment.Add('LANG','C.UTF-8')
             $reference="/proc/$PID/fd/$($identity.SafeFileHandle.DangerousGetHandle().ToInt64())"
             function RunLinux([string]$mode,[int]$count=0,[string]$pidFile=''){$a=@('-NoProfile','-NonInteractive','-File',$fixture,'-Mode',$mode,'-Count',[string]$count);if($pidFile){$a+=@('-PidFile',$pidFile)};Invoke-LinuxSessionBoundary -ExecutableReference $reference -Arguments $a -Environment $environment -WorkingDirectory $temporaryRoot}
-            function LinuxSuccess($r,[string]$name){if($r.Terminal-or!$r.ContainmentEmpty){throw "$name returned terminal lifecycle evidence"}}
+            function LinuxSuccess($r,[string]$name){if($r.Terminal-or!$r.ContainmentEmpty){[Console]::Error.WriteLine((ConvertTo-PscanNativeFixtureDiagnostic -Result $r -CaseName $name));throw "$name returned terminal lifecycle evidence"}}
             function LinuxTerminal($r,[string]$name){if(!$r.Terminal){throw "$name did not return terminal evidence"};if($r.Terminal.Contains('cleanup uncertainty')){throw "$name left uncertain containment"}}
             foreach($n in @(131071,131072)){$r=RunLinux stdout $n;LinuxSuccess $r "stdout-$n";if($r.StdOut.Length-ne$n){throw 'stdout limit mismatch'};$r=RunLinux stderr $n;LinuxSuccess $r "stderr-$n";if($r.StdErr.Length-ne$n){throw 'stderr limit mismatch'}}
             $r=RunLinux immediate;LinuxSuccess $r immediate;$r=RunLinux both 131072;LinuxSuccess $r both;$utf8=[Text.UTF8Encoding]::new($false,$true);$r=RunLinux split-utf8;LinuxSuccess $r split;if($utf8.GetString($r.StdOut)-cne '€'){throw 'split UTF-8 mismatch'};$r=RunLinux nonzero;LinuxSuccess $r nonzero;if($r.ExitCode-ne 7){throw 'nonzero mismatch'}

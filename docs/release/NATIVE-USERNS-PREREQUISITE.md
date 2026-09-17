@@ -3,7 +3,9 @@
 This diagnostic-only candidate creates the fixed root-level **unattached**
 AppArmor profile `pscan-native-diagnostic`, ABI4, unconfined mode, with the sole
 `userns,` permission. It does not configure the release build workflow or alter
-production Docker execution. Runtime success remains unproved.
+production Docker operations. Actual named-profile setup, selection and removal
+passed in run35248154638; its native fixture failed. The separate launch/lifecycle
+correction and its remaining runtime proof are in LINUX-HELD-INODE-HANDOFF.md.
 
 ## Evidence and change of design
 
@@ -67,7 +69,7 @@ PowerShell driver. Before native compilation, the driver requires identical
 credentials, capabilities, security fields, namespaces, executable observation
 and source hashes, with the sole exact label
 `pscan-native-diagnostic (unconfined)`. Stacked, mixed, missing or unknown labels
-reject. The driver runs the unchanged CleanNative fixture, retains its original
+reject. The driver runs the fixed CleanNative fixture, retains its original
 failure, and checks context plus bounded host facts afterward.
 
 Profile permission may be inherited by descendants and may be selected by other

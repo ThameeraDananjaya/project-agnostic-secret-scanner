@@ -55,7 +55,7 @@ function Invoke-CleanNativeFixture {
     [void](New-Item -ItemType Directory -Path $temporaryRoot)
     try {
         if ($IsLinux) {
-            foreach ($functionName in @('Get-LinuxSessionMembers','Test-LinuxMemberAlive','Invoke-LinuxSessionBoundary')) {
+            foreach ($functionName in @('Get-LinuxSessionMembers','Test-LinuxMemberAlive','Get-LinuxBoundarySnapshot','New-LinuxBoundaryStartInfo','Get-LinuxGateAction','Invoke-LinuxSessionBoundary')) {
                 $definition = $parsed.Ast.Find({
                     param($node)
                     $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -ceq $functionName
@@ -70,13 +70,21 @@ function Invoke-CleanNativeFixture {
 param([string]$Mode,[int]$Count=0,[string]$PidFile='')
 $out=[Console]::OpenStandardOutput();$err=[Console]::OpenStandardError()
 function Bytes($stream,[byte]$value,[int]$count){$chunk=[byte[]]::new(1024);[Array]::Fill($chunk,$value);for($left=$count;$left-gt 0;$left-=$n){$n=[Math]::Min($left,$chunk.Length);$stream.Write($chunk,0,$n);$stream.Flush()}}
-switch($Mode){
+function Marker([string]$Path,[int]$Identifier,[string]$Role){
+ $text=[IO.File]::ReadAllText("/proc/$Identifier/stat");$close=$text.LastIndexOf(')');$fields=$text.Substring($close+2).Split(' ',[StringSplitOptions]::RemoveEmptyEntries)
+ $ns=[string]((Get-Item -LiteralPath "/proc/$Identifier/ns/pid" -Force).Target)
+ $value=@{PID=$Identifier;StartTime=[uint64]$fields[19];Session=[int]$fields[3];Namespace=$ns;Role=$Role}|ConvertTo-Json -Compress
+ [IO.File]::WriteAllText($Path+'.tmp',$value);[IO.File]::Move($Path+'.tmp',$Path)
+}
+function WaitMarker([string]$Path){$clock=[Diagnostics.Stopwatch]::StartNew();while(!(Test-Path -LiteralPath $Path)){if($clock.ElapsedMilliseconds-ge 10000){throw 'Synthetic descendant readiness missing'};Start-Sleep -Milliseconds 5}}
+$hold=$Mode.StartsWith('hold-');$fixtureMode=$Mode.Replace('hold-','')
+switch($fixtureMode){
 'stdout'{Bytes $out 97 $Count}'stderr'{Bytes $err 98 $Count}'both'{for($left=$Count;$left-gt 0;$left-=$n){$n=[Math]::Min(1024,$left);Bytes $out 97 $n;Bytes $err 98 $n}}
 'split-utf8'{$out.WriteByte(0xE2);$out.WriteByte(0x82);$out.Flush();Start-Sleep -Milliseconds 25;$out.WriteByte(0xAC);$out.Flush()}
-'invalid-utf8'{$out.WriteByte(0xC3);$out.WriteByte(0x28);$out.Flush()}'incomplete-utf8'{$out.WriteByte(0xE2);$out.WriteByte(0x82);$out.Flush()}'immediate'{}'nonzero'{exit 7}'hang'{Start-Sleep -Seconds 30}
-'child'{$p=Start-Process -FilePath (Get-Process -Id $PID).Path -ArgumentList @('-NoProfile','-NonInteractive','-File',$PSCommandPath,'-Mode','hang') -PassThru -NoNewWindow;Set-Content $PidFile $p.Id}
-'detach'{$p=Start-Process -FilePath /usr/bin/setsid -ArgumentList @((Get-Process -Id $PID).Path,'-NoProfile','-NonInteractive','-File',$PSCommandPath,'-Mode','hang') -PassThru -NoNewWindow;Set-Content $PidFile $p.Id;Start-Sleep -Seconds 30}
-'grandchild'{$childFile=$PidFile+'.child';$p=Start-Process -FilePath (Get-Process -Id $PID).Path -ArgumentList @('-NoProfile','-NonInteractive','-File',$PSCommandPath,'-Mode','child','-PidFile',$childFile) -PassThru -NoNewWindow;Set-Content $PidFile $p.Id;Start-Sleep -Milliseconds 500}
+'invalid-utf8'{$out.WriteByte(0xC3);$out.WriteByte(0x28);$out.Flush()}'incomplete-utf8'{$out.WriteByte(0xE2);$out.WriteByte(0x82);$out.Flush()}'immediate'{}'nonzero'{exit 7}'hang'{if($PidFile){Marker $PidFile $PID 'ready'};Start-Sleep -Seconds 30}
+ 'child'{$ready=$PidFile+'.ready';$p=Start-Process -FilePath (Get-Process -Id $PID).Path -ArgumentList @('-NoProfile','-NonInteractive','-File',$PSCommandPath,'-Mode','hang','-PidFile',$ready) -PassThru -NoNewWindow;Marker $PidFile $p.Id 'child';WaitMarker $ready;if($hold){Start-Sleep -Seconds 30}}
+'detach'{$ready=$PidFile+'.ready';$p=Start-Process -FilePath /usr/bin/setsid -ArgumentList @((Get-Process -Id $PID).Path,'-NoProfile','-NonInteractive','-File',$PSCommandPath,'-Mode','hang','-PidFile',$ready) -PassThru -NoNewWindow;Marker $PidFile $p.Id 'detach';WaitMarker $ready;Start-Sleep -Seconds 30}
+'grandchild'{$childFile=$PidFile+'.child';$p=Start-Process -FilePath (Get-Process -Id $PID).Path -ArgumentList @('-NoProfile','-NonInteractive','-File',$PSCommandPath,'-Mode','hold-child','-PidFile',$childFile) -PassThru -NoNewWindow;Marker $PidFile $p.Id 'grandchild';WaitMarker ($childFile+'.ready');if($hold){Start-Sleep -Seconds 30}}
 default{throw 'unknown fixture mode'}}
 '@
             $environment=[Collections.Generic.Dictionary[string,string]]::new([StringComparer]::Ordinal);$environment.Add('HOME',$temporaryRoot);$environment.Add('TMPDIR',$temporaryRoot);$environment.Add('LANG','C.UTF-8')
@@ -88,7 +96,33 @@ default{throw 'unknown fixture mode'}}
             $r=RunLinux immediate;LinuxSuccess $r immediate;$r=RunLinux both 131072;LinuxSuccess $r both;$utf8=[Text.UTF8Encoding]::new($false,$true);$r=RunLinux split-utf8;LinuxSuccess $r split;if($utf8.GetString($r.StdOut)-cne '€'){throw 'split UTF-8 mismatch'};$r=RunLinux nonzero;LinuxSuccess $r nonzero;if($r.ExitCode-ne 7){throw 'nonzero mismatch'}
             foreach($case in @(@{M='stdout';C=131073},@{M='stderr';C=131073},@{M='both';C=131073},@{M='hang';C=0})){LinuxTerminal (RunLinux $case.M $case.C) $case.M}
             foreach($mode in @('invalid-utf8','incomplete-utf8')){$r=RunLinux $mode;LinuxSuccess $r $mode;$failed=$false;try{[void]$utf8.GetString($r.StdOut)}catch{$failed=$true};if(!$failed){throw "$mode unexpectedly decoded"}}
-            foreach($mode in @('child','detach','grandchild')){$pidFile=Join-Path $temporaryRoot "$mode.pid";$r=RunLinux $mode 0 $pidFile;LinuxTerminal $r $mode;foreach($path in @($pidFile,$pidFile+'.child')){if(Test-Path $path){$id=[int](Get-Content -Raw $path);if(Test-Path "/proc/$id"){throw "$mode left live member $id"}}}}
+            foreach($mode in @('child','grandchild','hold-child','hold-grandchild','detach')){
+                $pidFile=Join-Path $temporaryRoot "$mode.pid";$r=RunLinux $mode 0 $pidFile
+                if($mode-in@('child','grandchild')){LinuxSuccess $r $mode;if($r.ExitCode-ne 0){throw "$mode root exit failed"}}
+                else{LinuxTerminal $r $mode}
+                $namespaces=@($r.ObservedMembers|Where-Object{$_-match'^pid:\[[0-9]+\]$'})
+                if($namespaces.Count-ne 1){throw "$mode namespace identity was not proved"}
+                $paths=if($mode.EndsWith('grandchild')){@($pidFile,$pidFile+'.child',$pidFile+'.child.ready')}else{@($pidFile,$pidFile+'.ready')}
+                $markers=@(foreach($path in $paths){
+                    if(!(Test-Path -LiteralPath $path -PathType Leaf)-or(Get-Item -LiteralPath $path).Length-gt 2048){throw "$mode descendant marker missing or oversized"}
+                    $record=[IO.File]::ReadAllText($path)|ConvertFrom-Json
+                    if($record.PID-le 1-or$record.StartTime-le 0-or$record.Namespace-cne$namespaces[0]){throw "$mode descendant identity is not namespace-bound"}
+                    $record
+                })
+                $ready=$markers[-1];$spawned=$markers[-2]
+                if($ready.Role-cne'ready'-or$ready.PID-ne$spawned.PID-or$ready.StartTime-ne$spawned.StartTime){throw "$mode intended descendant did not become ready"}
+                if($mode-eq'detach'-and$ready.Session-ne$ready.PID){throw 'Detached descendant did not establish a new session'}
+                # Namespace-local IDs are never interpreted as host PIDs. The
+                # boundary pins init and proves its death, which kernel-terminates
+                # every namespace descendant, including detached sessions. Also
+                # reject any surviving exact host identity in the observed ledger.
+                foreach($entry in $r.ObservedMembers){
+                    if($entry-match'^([0-9]+):([0-9]+)$'){
+                        $member=[pscustomobject]@{PID=[int]$Matches[1];StartTime=[uint64]$Matches[2]}
+                        if(Test-LinuxMemberAlive $member){throw "$mode left an observed host process alive"}
+                    }
+                }
+            }
             $identity.Dispose()
             $containment = 'LINUX-PID-NS'; $replacementRace = 'NOT-APPLICABLE'
         } elseif ($IsWindows) {

@@ -1,10 +1,11 @@
 # Read-only host facts for the fixed native fixture
 
-The facts collector supports before/after snapshots around the unchanged
+The facts collector supports before/after snapshots around the fixed
 CleanNative fixture, including a finally snapshot on failure. Compatibility
 revision abe622b used only a before snapshot without fixture or policy execution.
 The named-profile workflow now uses both snapshots around the fixed fixture.
-The production boundary, namespace arguments, limits and cleanup are unchanged.
+The collector changes no namespace arguments, limits or cleanup. The separate
+Linux launch correction is described in LINUX-HELD-INODE-HANDOFF.md.
 
 `native-host-facts.py` records the calling PowerShell process's effective UID/GID,
 numeric UID/GID maps, capability masks, NoNewPrivs/Seccomp fields and current

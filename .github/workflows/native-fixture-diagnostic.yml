@@ -60,6 +60,7 @@ jobs:
         run: |
           & "$env:PSCAN_EXACT_DIAGNOSTIC_ROOT/build/release/test-native-fixture-diagnostics.ps1"
           & "$env:PSCAN_EXACT_DIAGNOSTIC_ROOT/build/release/test-native-profile-driver.ps1"
+          & "$env:PSCAN_EXACT_DIAGNOSTIC_ROOT/build/release/test-linux-handoff.ps1"
 
       - name: Validate scoped prerequisite using inert providers
         shell: bash

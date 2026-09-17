@@ -99,6 +99,54 @@ public static class PscanNativeBoundary {
     [DllImport("kernel32.dll", SetLastError=true)] static extern bool QueryInformationJobObject(IntPtr job, int infoClass, IntPtr info, uint length, out uint returned);
     [DllImport("kernel32.dll", SetLastError=true)] static extern bool CloseHandle(IntPtr handle);
 
+    [StructLayout(LayoutKind.Sequential)] struct LinuxPollFd { public int fd; public short events; public short revents; }
+    [DllImport("libc", EntryPoint="syscall", SetLastError=true)] static extern long PidOpen(long number, int pid, uint flags);
+    [DllImport("libc", EntryPoint="syscall", SetLastError=true)] static extern long PidSignal(long number, SafeFileHandle fd, int signal, IntPtr info, uint flags);
+    [DllImport("libc", EntryPoint="poll", SetLastError=true)] static extern int PidPoll(ref LinuxPollFd fd, UIntPtr count, int timeout);
+
+    static void LinuxHost() {
+        // The release contract's Linux native host and assets are amd64. Do not
+        // guess syscall numbers on an unadmitted architecture or emulate pidfds.
+        if (!OperatingSystem.IsLinux() || RuntimeInformation.ProcessArchitecture != Architecture.X64)
+            throw new PlatformNotSupportedException("Linux pidfd boundary requires the supported Linux amd64 host");
+    }
+    public static SafeFileHandle LinuxPin(int pid) {
+        LinuxHost();
+        if (pid <= 1) throw new ArgumentOutOfRangeException(nameof(pid));
+        long fd = PidOpen(434, pid, 0); // Linux x86-64 __NR_pidfd_open
+        if (fd < 0) throw Win32("pidfd_open: unsupported or unavailable process identity");
+        return new SafeFileHandle(new IntPtr(fd), true);
+    }
+    public static bool LinuxSignal(SafeFileHandle fd, int signal) {
+        LinuxHost();
+        if (fd == null || fd.IsInvalid || fd.IsClosed) throw new ArgumentException("Invalid pidfd");
+        if (signal != 9 && signal != 18 && signal != 19) throw new ArgumentOutOfRangeException(nameof(signal));
+        long result = PidSignal(424, fd, signal, IntPtr.Zero, 0);
+        return LinuxSignalResult(result, result < 0 ? Marshal.GetLastWin32Error() : 0);
+    }
+    static bool LinuxSignalResult(long result, int error) {
+        if (result == 0) return true;
+        if (result == -1 && error == 3) return false; // ESRCH: never signal a replacement PID.
+        throw new System.ComponentModel.Win32Exception(error, "pidfd_send_signal failed");
+    }
+    static bool LinuxPollResult(int count, short events, int error) {
+        if (count < 0) throw new System.ComponentModel.Win32Exception(error, "pidfd poll failed");
+        if (count > 1 || (count == 0 && events != 0) || (count == 1 && events == 0) || (events & ~(1 | 16)) != 0)
+            throw new IOException("Untrusted pidfd poll status");
+        return (events & (1 | 16)) != 0;
+    }
+    public static bool LinuxExited(SafeFileHandle fd) {
+        LinuxHost();
+        if (fd == null || fd.IsInvalid || fd.IsClosed) throw new ArgumentException("Invalid pidfd");
+        bool held = false;
+        try {
+            fd.DangerousAddRef(ref held);
+            var value = new LinuxPollFd { fd = fd.DangerousGetHandle().ToInt32(), events = 1 };
+            int count = PidPoll(ref value, new UIntPtr(1), 0);
+            return LinuxPollResult(count, value.revents, count < 0 ? Marshal.GetLastWin32Error() : 0);
+        } finally { if (held) fd.DangerousRelease(); }
+    }
+
     static Exception Win32(string operation) { return new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error(), operation); }
     static string Quote(string value) {
         if (value.Length > 0 && value.IndexOfAny(new[]{' ', '\t', '\n', '\v', '"'}) < 0) return value;
@@ -266,69 +314,184 @@ function Test-LinuxMemberAlive($Member) {
     $fields.Count -ge 20 -and [uint64]$fields[19] -eq $Member.StartTime
 }
 
-function Invoke-LinuxSessionBoundary([string]$ExecutableReference, [string[]]$Arguments, [Collections.Generic.Dictionary[string,string]]$Environment, [string]$WorkingDirectory) {
-    $setsid = '/usr/bin/setsid'
-    $setsidItem = Get-Item -LiteralPath $setsid -Force
-    if (!$setsidItem -or $setsidItem.LinkType -or ($setsidItem.UnixFileMode -band [IO.UnixFileMode]'GroupWrite,OtherWrite') -ne 0 -or (& /usr/bin/stat -c '%u' -- $setsid).Trim() -ne '0') { throw 'Fixed Linux session launcher is untrusted' }
-    $unshare = '/usr/bin/unshare'
-    $unshareItem = Get-Item -LiteralPath $unshare -Force
-    if (!$unshareItem -or $unshareItem.LinkType -or ($unshareItem.UnixFileMode -band [IO.UnixFileMode]'GroupWrite,OtherWrite') -ne 0 -or (& /usr/bin/stat -c '%u' -- $unshare).Trim() -ne '0') { throw 'Fixed Linux PID-namespace launcher is untrusted' }
-    $shell = (Resolve-Path -LiteralPath '/bin/sh').Path
-    if ((& /usr/bin/stat -Lc '%u:%a' -- $shell).Trim() -notmatch '^0:[1357][0145][0145]$') { throw 'Fixed Linux pre-execution gate shell is untrusted' }
-    $start = [Diagnostics.ProcessStartInfo]::new()
-    $start.FileName = $setsid
-    $start.UseShellExecute = $false
-    $start.RedirectStandardOutput = $true
-    $start.RedirectStandardError = $true
-    $start.WorkingDirectory = $WorkingDirectory
-    $start.Environment.Clear()
-    foreach ($pair in $Environment.GetEnumerator()) { $start.Environment.Add($pair.Key, $pair.Value) }
-    $start.ArgumentList.Add('--wait')
-    $start.ArgumentList.Add($unshare)
-    foreach ($argument in @('--user','--map-current-user','--pid','--fork','--kill-child=SIGKILL','--')) { $start.ArgumentList.Add($argument) }
-    $start.ArgumentList.Add($shell)
-    $start.ArgumentList.Add('-c')
-    $start.ArgumentList.Add('kill -STOP $$; exec "$@"')
-    $start.ArgumentList.Add('pscan-docker')
-    $start.ArgumentList.Add($ExecutableReference)
-    foreach ($argument in $Arguments) { $start.ArgumentList.Add($argument) }
-    $process = [Diagnostics.Process]::new(); $process.StartInfo = $start
-    if (!$process.Start()) { throw 'Linux session process did not start' }
-    $session = $process.Id; $ledger = @{}; $ledger["$session:supervisor"]=[pscustomobject]@{PID=$session;StartTime=0}
-    $stdoutTask = [PscanNativeBoundary]::Capture($process.StandardOutput.BaseStream, $dockerOutputLimit)
-    $stderrTask = [PscanNativeBoundary]::Capture($process.StandardError.BaseStream, $dockerOutputLimit)
-    $watch = [Diagnostics.Stopwatch]::StartNew(); $terminal = $null; $namespaceIdentity=$null; $namespaceInit=$null; $resumed=$false
-    while ($watch.ElapsedMilliseconds -lt $dockerBudgetMilliseconds) {
-        $sessionMembers=@(Get-LinuxSessionMembers -Session $session -Ledger $ledger)
-        if ($null -eq $namespaceIdentity) {
-            $childrenPath="/proc/$session/task/$session/children"
-            if (Test-Path -LiteralPath $childrenPath) {
-                $children=@(([IO.File]::ReadAllText($childrenPath).Trim() -split '\s+')|Where-Object{$_ -match '^\d+$'})
-                if ($children.Count -gt 1) { $terminal='ambiguous PID-namespace init membership'; break }
-                if ($children.Count -eq 1) { $namespaceInit=[int]$children[0];$namespacePath="/proc/$namespaceInit/ns/pid";if(Test-Path -LiteralPath $namespacePath){$namespaceIdentity=(Get-Item -LiteralPath $namespacePath -Force).Target;if($namespaceIdentity-notmatch '^pid:\[[0-9]+\]$'){$terminal='malformed PID-namespace identity';break};$stateText=[IO.File]::ReadAllText("/proc/$namespaceInit/stat");$close=$stateText.LastIndexOf(')');if($close-lt 1-or$stateText.Substring($close+2,1)-cne'T'){$terminal='PID-namespace init did not stop at the pre-execution gate';break};& /usr/bin/kill -CONT -- $namespaceInit;if($LASTEXITCODE-ne 0){$terminal='PID-namespace init resume failed';break};$resumed=$true} }
+function Get-LinuxBoundarySnapshot([int]$Identifier) {
+    try {
+        $text=[IO.File]::ReadAllText("/proc/$Identifier/stat")
+        $close=$text.LastIndexOf(')')
+        if($close-lt 1){throw 'Malformed Linux boundary process record'}
+        $fields=$text.Substring($close+2).Split(' ',[StringSplitOptions]::RemoveEmptyEntries)
+        if($fields.Count-lt 20){throw 'Incomplete Linux boundary process record'}
+        $pidNamespace=[string]((Get-Item -LiteralPath "/proc/$Identifier/ns/pid" -Force -ErrorAction Stop).Target)
+        $userNamespace=[string]((Get-Item -LiteralPath "/proc/$Identifier/ns/user" -Force -ErrorAction Stop).Target)
+        $mountNamespace=[string]((Get-Item -LiteralPath "/proc/$Identifier/ns/mnt" -Force -ErrorAction Stop).Target)
+        if($mountNamespace-notmatch '^mnt:\[[0-9]+\]$'){throw 'Malformed Linux mount namespace'}
+        if($pidNamespace-notmatch '^pid:\[[0-9]+\]$'-or$userNamespace-notmatch '^user:\[[0-9]+\]$'){throw 'Malformed Linux boundary namespace'}
+        [pscustomobject]@{PID=$Identifier;Parent=[int]$fields[1];Session=[int]$fields[3];State=$fields[0];StartTime=[uint64]$fields[19];PidNamespace=$pidNamespace;UserNamespace=$userNamespace;MountNamespace=$mountNamespace}
+    } catch [IO.FileNotFoundException] { return $null }
+      catch [IO.DirectoryNotFoundException] { return $null }
+      catch [Management.Automation.ItemNotFoundException] { return $null }
+}
+
+function New-LinuxBoundaryStartInfo([string]$ExecutableReference,[string[]]$Arguments,[Collections.Generic.Dictionary[string,string]]$Environment,[string]$WorkingDirectory) {
+    if($ExecutableReference-cnotmatch "^/proc/$PID/fd/[0-9]+$"){throw 'Linux executable must be the current caller held descriptor'}
+    $start=[Diagnostics.ProcessStartInfo]::new()
+    $start.FileName='/usr/bin/setsid';$start.UseShellExecute=$false
+    $start.RedirectStandardInput=$true;$start.RedirectStandardOutput=$true;$start.RedirectStandardError=$true
+    $start.WorkingDirectory=$WorkingDirectory;$start.Environment.Clear()
+    foreach($pair in $Environment.GetEnumerator()){$start.Environment.Add($pair.Key,$pair.Value)}
+    foreach($value in @('--wait','/bin/sh','-c',
+        'IFS= read -r gate || exit 125; [ "$gate" = PSCAN_OPEN_V1 ] || exit 125; exec 3<"$1" || exit 125; shift; exec "$@"',
+        'pscan-open',$ExecutableReference,'/usr/bin/unshare','--user','--map-current-user','--pid','--mount-proc','--propagation','private','--fork','--kill-child=SIGKILL','--','/bin/sh','-c',
+        'IFS= read -r gate || exit 125; [ "$gate" = PSCAN_EXEC_V1 ] || exit 125; exec /proc/self/fd/3 "$@"',
+        'pscan-docker')){$start.ArgumentList.Add($value)}
+    foreach($argument in $Arguments){$start.ArgumentList.Add($argument)}
+    return $start
+}
+
+function Get-LinuxGateAction($Snapshot,$Original,[int]$Supervisor,[string]$OuterPidNamespace,[string]$OuterUserNamespace,[string]$OuterMountNamespace,[string]$HeldIdentity,[string]$InheritedIdentity) {
+    if($null-eq$Snapshot){throw 'Namespace init disappeared before release'}
+    if($Snapshot.Parent-ne$Supervisor-or$Snapshot.Session-ne$Supervisor){throw 'Namespace init supervisor or session mismatch'}
+    if($Snapshot.PidNamespace-eq$OuterPidNamespace-or$Snapshot.UserNamespace-eq$OuterUserNamespace-or$Snapshot.MountNamespace-eq$OuterMountNamespace){throw 'Required new namespaces unavailable'}
+    if($null-eq$Original){return 'Stop'}
+    foreach($key in @('PID','StartTime','Parent','Session','PidNamespace','UserNamespace','MountNamespace')){
+        if($Snapshot.$key-cne$Original.$key){throw 'Namespace init identity changed before release'}
+    }
+    if($Snapshot.State-cne'T'){return 'Wait'}
+    if($HeldIdentity-cnotmatch '^[0-9]+:[0-9]+$'-or$InheritedIdentity-cne$HeldIdentity){throw 'Inherited executable descriptor identity mismatch'}
+    return 'Release'
+}
+
+function Invoke-LinuxSessionBoundary([string]$ExecutableReference,[string[]]$Arguments,[Collections.Generic.Dictionary[string,string]]$Environment,[string]$WorkingDirectory) {
+    # Reject an unsupported ABI/kernel before creating any child process.
+    $probe=[PscanNativeBoundary]::LinuxPin($PID)
+    try {if([PscanNativeBoundary]::LinuxExited($probe)){throw 'Calling Linux process identity unavailable'}}
+    finally {$probe.Dispose()}
+    foreach($path in @('/usr/bin/setsid','/usr/bin/unshare')){
+        $item=Get-Item -LiteralPath $path -Force
+        $owner=(& /usr/bin/stat -c '%u' -- $path).Trim()
+        if($LASTEXITCODE-ne 0-or!$item-or$item.LinkType-or($item.UnixFileMode-band[IO.UnixFileMode]'GroupWrite,OtherWrite')-ne 0-or$owner-ne'0'){throw 'Fixed Linux launcher is untrusted'}
+    }
+    $shellIdentity=(& /usr/bin/stat -Lc '%u:%a' -- /bin/sh).Trim()
+    if($LASTEXITCODE-ne 0-or$shellIdentity-notmatch '^0:[1357][0145][0145]$'){throw 'Fixed Linux gate shell is untrusted'}
+    $start=New-LinuxBoundaryStartInfo $ExecutableReference $Arguments $Environment $WorkingDirectory
+    $heldIdentity=(& /usr/bin/stat -Lc '%d:%i' -- $ExecutableReference).Trim()
+    if($LASTEXITCODE-ne 0-or$heldIdentity-notmatch '^[0-9]+:[0-9]+$'){throw 'Held Linux executable identity unavailable'}
+    $outer=Get-LinuxBoundarySnapshot $PID
+    if($null-eq$outer){throw 'Calling Linux context unavailable'}
+    $process=[Diagnostics.Process]::new();$process.StartInfo=$start
+    $handles=@{};$ledger=@{};$init=$null;$initHandle=$null;$rootHandle=$null
+    $namespaceIdentity=$null;$resumed=$false;$stdinClosed=$false;$started=$false;$terminal=$null
+    $stdoutTask=$null;$stderrTask=$null;$session=0;$phase='root-pin';$cleanupUncertain=$false
+    $watch=[Diagnostics.Stopwatch]::StartNew()
+
+    function Pin-Member($member) {
+        $key="$($member.PID):$($member.StartTime)"
+        if($handles.ContainsKey($key)){return $handles[$key]}
+        $handle=[PscanNativeBoundary]::LinuxPin($member.PID)
+        try {
+            $again=Get-LinuxBoundarySnapshot $member.PID
+            if($null-eq$again-or$again.StartTime-ne$member.StartTime-or$again.Parent-ne$member.Parent-or$again.Session-ne$member.Session-or[PscanNativeBoundary]::LinuxExited($handle)){throw 'Linux process identity changed during pin acquisition'}
+            $handles.Add($key,$handle)
+            return $handle
+        } catch {$handle.Dispose();throw}
+    }
+    function Close-Gate {
+        if(!$stdinClosed-and$started){$process.StandardInput.Close()}
+    }
+    try {
+        try {
+            if(!$process.Start()){throw 'Linux session process did not start'}
+            $started=$true;$session=$process.Id
+            $stdoutTask=[PscanNativeBoundary]::Capture($process.StandardOutput.BaseStream,$dockerOutputLimit)
+            $stderrTask=[PscanNativeBoundary]::Capture($process.StandardError.BaseStream,$dockerOutputLimit)
+            while($watch.ElapsedMilliseconds-lt$dockerBudgetMilliseconds){
+                if($stdoutTask.IsFaulted-or$stderrTask.IsFaulted){throw 'stream overflow or read failure'}
+                if($phase-eq'root-pin'){
+                    if($process.HasExited){throw 'Launcher exited before supervisor admission'}
+                    $root=Get-LinuxBoundarySnapshot $session
+                    if($null-ne$root){
+                        if($root.Parent-ne$PID){throw 'Launcher parent identity mismatch'}
+                        if($root.Session-eq$session){
+                            $rootHandle=Pin-Member $root
+                            if($process.HasExited){throw 'Launcher exited during supervisor admission'}
+                            $process.StandardInput.WriteLine('PSCAN_OPEN_V1');$process.StandardInput.Flush()
+                            $phase='init-discovery'
+                        }
+                    }
+                } elseif(!$resumed){
+                    if($process.HasExited-or[PscanNativeBoundary]::LinuxExited($rootHandle)){throw 'Launcher exited before namespace admission'}
+                    $childrenText=[IO.File]::ReadAllText("/proc/$session/task/$session/children").Trim()
+                    $children=@(($childrenText-split'\s+')|Where-Object{$_-ne''})
+                    if($children.Count-gt 1-or@($children|Where-Object{$_-notmatch'^[0-9]+$'}).Count){throw 'Ambiguous namespace init membership'}
+                    if($children.Count-eq 1){
+                        $snapshot=Get-LinuxBoundarySnapshot ([int]$children[0])
+                        $inherited=''
+                        if($null-ne$init-and$null-ne$snapshot-and$snapshot.State-ceq'T'){
+                            $inherited=(& /usr/bin/stat -Lc '%d:%i' -- "/proc/$($snapshot.PID)/fd/3").Trim()
+                            if($LASTEXITCODE-ne 0){throw 'Inherited held descriptor unavailable'}
+                        }
+                        $action=Get-LinuxGateAction $snapshot $init $session $outer.PidNamespace $outer.UserNamespace $outer.MountNamespace $heldIdentity $inherited
+                        if($action-eq'Stop'){
+                            $initHandle=Pin-Member $snapshot;$init=$snapshot;$namespaceIdentity=$snapshot.PidNamespace
+                            if(![PscanNativeBoundary]::LinuxSignal($initHandle,19)){throw 'Namespace init exited before ancestor stop'}
+                            $phase='init-stopping'
+                        } elseif($action-eq'Release'){
+                            if([PscanNativeBoundary]::LinuxExited($initHandle)){throw 'Pinned namespace init exited at stopped gate'}
+                            # Init cannot consume this token while stopped. Closing the owned
+                            # pipe leaves EOF for the eventual Docker command, never host stdin.
+                            $process.StandardInput.WriteLine('PSCAN_EXEC_V1');$process.StandardInput.Flush()
+                            Close-Gate;$stdinClosed=$true
+                            if(![PscanNativeBoundary]::LinuxSignal($initHandle,18)){throw 'Namespace init resume failed'}
+                            $resumed=$true;$phase='running'
+                        }
+                    } elseif($null-ne$init){throw 'Namespace init membership disappeared before release'}
+                }
+                $members=@(Get-LinuxSessionMembers -Session $session -Ledger $ledger)
+                if($resumed-and$process.HasExited-and$stdoutTask.IsCompleted-and$stderrTask.IsCompleted-and$members.Count-eq 0-and[PscanNativeBoundary]::LinuxExited($initHandle)-and!(Test-Path -LiteralPath "/proc/$($init.PID)/ns/pid")){break}
+                Start-Sleep -Milliseconds 2
             }
+            if(!$resumed-or!$process.HasExited-or!$stdoutTask.IsCompleted-or!$stderrTask.IsCompleted-or@(Get-LinuxSessionMembers -Session $session -Ledger $ledger).Count-ne 0-or![PscanNativeBoundary]::LinuxExited($initHandle)-or(Test-Path -LiteralPath "/proc/$($init.PID)/ns/pid")){throw 'timeout or incomplete lifecycle'}
+        } catch {$terminal="${phase}: $($_.Exception.Message)"}
+
+        if($terminal-and$started){
+            $cleanup=[Diagnostics.Stopwatch]::StartNew()
+            try {Close-Gate;$stdinClosed=$true} catch {$cleanupUncertain=$true}
+            # First terminate pinned namespace init: its death terminates detached
+            # descendants. Never direct a signal at a numeric PID or process group.
+            foreach($handle in @($initHandle,$rootHandle)){
+                if($null-ne$handle-and$cleanup.ElapsedMilliseconds-lt$cleanupGraceMilliseconds){
+                    try{[void][PscanNativeBoundary]::LinuxSignal($handle,9)}catch{$cleanupUncertain=$true}
+                }
+            }
+            while($cleanup.ElapsedMilliseconds-lt$cleanupGraceMilliseconds){
+                try {
+                    $members=@(Get-LinuxSessionMembers -Session $session -Ledger $ledger)
+                    foreach($member in $members){
+                        if($cleanup.ElapsedMilliseconds-ge$cleanupGraceMilliseconds){break}
+                        $snapshot=Get-LinuxBoundarySnapshot $member.PID
+                        if($null-ne$snapshot-and$snapshot.StartTime-eq$member.StartTime-and$snapshot.Session-eq$session){
+                            $handle=Pin-Member $snapshot
+                            [void][PscanNativeBoundary]::LinuxSignal($handle,9)
+                        }
+                    }
+                    $namespaceGone=$null-ne$initHandle-and[PscanNativeBoundary]::LinuxExited($initHandle)-and!(Test-Path -LiteralPath "/proc/$($init.PID)/ns/pid")
+                    if($process.HasExited-and$members.Count-eq 0-and$namespaceGone-and$stdoutTask.IsCompleted-and$stderrTask.IsCompleted){break}
+                } catch {$cleanupUncertain=$true}
+                Start-Sleep -Milliseconds 2
+            }
+            try {
+                if(!$process.HasExited-or@(Get-LinuxSessionMembers -Session $session -Ledger $ledger).Count-ne 0-or$null-eq$initHandle-or![PscanNativeBoundary]::LinuxExited($initHandle)-or(Test-Path -LiteralPath "/proc/$($init.PID)/ns/pid")-or!$stdoutTask.IsCompleted-or!$stderrTask.IsCompleted){$cleanupUncertain=$true}
+            } catch {$cleanupUncertain=$true}
+            if($cleanupUncertain){$terminal+='; cleanup uncertainty'}
         }
-        if ($stdoutTask.IsFaulted -or $stderrTask.IsFaulted) { $terminal='stream overflow or read failure'; break }
-        if ($process.HasExited -and $stdoutTask.IsCompleted -and $stderrTask.IsCompleted -and $sessionMembers.Count -eq 0 -and $resumed -and $null-ne$namespaceIdentity -and !(Test-Path -LiteralPath "/proc/$namespaceInit/ns/pid")) { break }
-        Start-Sleep -Milliseconds 2
+        $stdout=if($null-ne$stdoutTask-and$stdoutTask.IsCompletedSuccessfully){$stdoutTask.Result}else{[byte[]]::new(0)}
+        $stderr=if($null-ne$stderrTask-and$stderrTask.IsCompletedSuccessfully){$stderrTask.Result}else{[byte[]]::new(0)}
+        [pscustomobject]@{ExitCode=$(if($started-and$process.HasExited){$process.ExitCode}else{199});StdOut=$stdout;StdErr=$stderr;Terminal=$terminal;ObservedMembers=@($ledger.Keys)+@($namespaceIdentity);ContainmentEmpty=(!$terminal)}
+    } finally {
+        try{Close-Gate}catch{}
+        foreach($handle in $handles.Values){$handle.Dispose()}
+        $process.Dispose()
     }
-    if (!$process.HasExited -or !$stdoutTask.IsCompleted -or !$stderrTask.IsCompleted -or @(Get-LinuxSessionMembers -Session $session -Ledger $ledger).Count -ne 0 -or !$resumed -or $null-eq$namespaceIdentity -or (Test-Path -LiteralPath "/proc/$namespaceInit/ns/pid")) { if (!$terminal) {$terminal='timeout or incomplete lifecycle'} }
-    if ($terminal) {
-        & /usr/bin/kill -KILL -- "-$session" 2>$null
-        foreach ($member in $ledger.Values) { if ($member.StartTime -ne 0 -and (Test-LinuxMemberAlive $member)) { & /usr/bin/kill -KILL -- "$($member.PID)" 2>$null } }
-        $cleanup = [Diagnostics.Stopwatch]::StartNew()
-        while ($cleanup.ElapsedMilliseconds -lt $cleanupGraceMilliseconds) {
-            $alive=@($ledger.Values | Where-Object { $_.StartTime -ne 0 -and (Test-LinuxMemberAlive $_) }); $current=@(Get-LinuxSessionMembers -Session $session -Ledger $ledger)
-            $namespaceGone=$null-ne$namespaceIdentity -and !(Test-Path -LiteralPath "/proc/$namespaceInit/ns/pid")
-            if ($alive.Count -eq 0 -and $current.Count -eq 0 -and $namespaceGone -and $stdoutTask.IsCompleted -and $stderrTask.IsCompleted) { break }
-            Start-Sleep -Milliseconds 2
-        }
-        $remaining=@($ledger.Values | Where-Object { $_.StartTime -ne 0 -and (Test-LinuxMemberAlive $_) })
-        if ($remaining.Count -ne 0 -or @(Get-LinuxSessionMembers -Session $session -Ledger $ledger).Count -ne 0 -or $null-eq$namespaceIdentity -or (Test-Path -LiteralPath "/proc/$namespaceInit/ns/pid") -or !$stdoutTask.IsCompleted -or !$stderrTask.IsCompleted) { $terminal += '; cleanup uncertainty' }
-    }
-    $stdout = if($stdoutTask.IsCompletedSuccessfully){$stdoutTask.Result}else{[byte[]]::new(0)}
-    $stderr = if($stderrTask.IsCompletedSuccessfully){$stderrTask.Result}else{[byte[]]::new(0)}
-    [pscustomobject]@{ExitCode=$(if($process.HasExited){$process.ExitCode}else{199});StdOut=$stdout;StdErr=$stderr;Terminal=$terminal;ObservedMembers=@($ledger.Keys)+@($namespaceIdentity);ContainmentEmpty=(!$terminal)}
 }
 
 function Invoke-BoundDocker([string[]]$Arguments) {

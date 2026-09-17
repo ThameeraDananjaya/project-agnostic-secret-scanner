@@ -13,7 +13,7 @@ function Format($Value,$Name='stdout-131071') {
     $json=ConvertTo-PscanNativeFixtureDiagnostic -Result $Value -CaseName $Name
     Assert ($json -is [string]) 'one string result'
     Assert ([Text.Encoding]::UTF8.GetByteCount($json) -le 2048) 'bounded serialized result'
-    Assert (!$json.Contains('DO-NOT-LOG-THIS-SECRET')) 'no supplied stream or unknown reason content'
+    Assert (!$json.Contains('DO-NOT-LOG-THIS-SECRET')) 'no stdout or unknown reason content'
     $json | ConvertFrom-Json
 }
 $r=Format (Fixture)
@@ -21,7 +21,8 @@ Assert ($r.terminalReason -ceq 'timeout or incomplete lifecycle') 'known reason 
 Assert ($r.ContainmentEmpty.state -eq 'present' -and $r.ContainmentEmpty.value -ceq $false) 'false preserved'
 Assert ($r.ExitCode.state -eq 'present' -and $r.ExitCode.value -ceq 1) 'nonzero preserved'
 Assert ($r.stdout.bytes -eq 0 -and $r.stdout.state -eq 'present') 'actual empty byte array'
-Assert ($r.stderr.classification -eq 'unshare-operation-not-permitted') 'exact fixed launcher classification'
+Assert ($r.stderr.excerpt -ceq 'unshare: unshare failed: Operation not permitted\x0a') 'exact fixed launcher stderr excerpt'
+Assert ($r.stderr.excerptSourceBytes -eq $r.stderr.bytes -and !$r.stderr.excerptTruncated) 'complete short excerpt'
 
 foreach ($reason in @('ambiguous PID-namespace init membership','malformed PID-namespace identity',
     'PID-namespace init did not stop at the pre-execution gate','PID-namespace init resume failed',
@@ -45,7 +46,7 @@ Assert ($r.ExitCode.state -eq 'invalid-type' -and $r.ContainmentEmpty.state -eq 
 Assert ($r.stdout.state -eq 'invalid-type' -and $r.terminalState -eq 'invalid-type') 'invalid stream and reason types'
 $value=Fixture; $value.StdOut=$null; $value.StdErr=$null; $value.Terminal=$null; $r=Format $value
 Assert ($r.stdout.state -eq 'unavailable' -and $r.stdout.bytes -eq $null) 'null stream not presumed empty'
-Assert ($r.stderr.classification -eq 'unavailable' -and $r.terminalState -eq 'null') 'null values explicit'
+Assert ($r.stderr.excerpt -eq $null -and $r.stderr.excerptSourceBytes -eq $null -and $r.stderr.excerptTruncated -eq $null -and $r.terminalState -eq 'null') 'null values explicit'
 $value=Fixture; $value.StdOut=[object[]]@([byte]1,[byte]2); $r=Format $value
 Assert ($r.stdout.state -eq 'present' -and $r.stdout.bytes -eq 2) 'PowerShell enumerated bytes'
 $value.StdOut=[object[]]@(1,'x'); $r=Format $value
@@ -55,16 +56,23 @@ Assert ($r.stdout.state -in @('invalid-type','invalid-rank')) 'multidimensional 
 $value=Fixture; $value.StdOut=[byte[]]::new(131073); $r=Format $value
 Assert ($r.stdout.state -eq 'oversize' -and $r.stdout.bytes -eq 131073) 'oversize metadata only'
 $value=Fixture; $value.StdErr=[byte[]]::new(4097); $r=Format $value
-Assert ($r.stderr.classification -eq 'truncated-without-content' -and $r.stderr.bytes -eq 4097) 'stderr inspection cap'
+Assert ($r.stderr.excerptSourceBytes -eq 256 -and $r.stderr.excerptTruncated -and $r.stderr.bytes -eq 4097) 'source-byte excerpt cap'
+Assert ($r.stderr.excerpt -ceq ('\x00'*256)) 'control-byte escaping preserves exact capped bytes'
 $value=Fixture; $value.Terminal='DO-NOT-LOG-THIS-SECRET'*100; $r=Format $value
 Assert ($r.terminalState -eq 'truncated-without-content' -and $r.terminalReason -eq $null) 'terminal truncation without raw prefix'
 $value.Terminal='DO-NOT-LOG-THIS-SECRET'; $value.StdOut=[Text.Encoding]::UTF8.GetBytes('DO-NOT-LOG-THIS-SECRET')
-$value.StdErr=[Text.Encoding]::UTF8.GetBytes('DO-NOT-LOG-THIS-SECRET'); $r=Format $value
-Assert ($r.terminalState -eq 'unrecognized-without-content' -and $r.stderr.classification -eq 'unrecognized-without-content') 'unknown content omitted'
+$value.StdErr=[Text.Encoding]::UTF8.GetBytes('fixed synthetic diagnostic text'); $r=Format $value
+Assert ($r.terminalState -eq 'unrecognized-without-content' -and $r.stderr.excerpt -ceq 'fixed synthetic diagnostic text') 'unknown reason omitted but synthetic stderr preserved'
 $value=Fixture; $value.StdErr=[byte[]]@(0xc3,0x28); $r=Format $value
-Assert ($r.stderr.classification -eq 'invalid-utf8-without-content') 'invalid UTF8 metadata'
+Assert ($r.stderr.excerptEncoding -eq 'escaped-bytes' -and $r.stderr.excerpt -ceq '\xc3(') 'invalid UTF8 preserved without replacement or decoding'
 $value=Fixture; $value.StdErr=[byte[]]::new(0); $r=Format $value
-Assert ($r.stderr.classification -eq 'empty') 'empty stderr distinct from unavailable'
+Assert ($r.stderr.excerpt -ceq '' -and $r.stderr.excerptSourceBytes -eq 0 -and !$r.stderr.excerptTruncated) 'empty stderr distinct from unavailable'
+$value=Fixture; $value.StdErr=[byte[]]@(34,92,27,10,9,0,0xe2,0x82,0xac); $r=Format $value
+Assert ($r.stderr.excerpt -ceq '"\\\x1b\x0a\x09\x00\xe2\x82\xac') 'quotes slash controls and multibyte UTF8 unambiguous'
+$value=Fixture; $value.StdErr=[byte[]]::new(257); $value.StdErr[255]=0xe2; $value.StdErr[256]=0x82; $r=Format $value
+Assert ($r.stderr.excerpt.EndsWith('\xe2') -and $r.stderr.excerptSourceBytes -eq 256 -and $r.stderr.excerptTruncated) 'truncation at multibyte boundary is byte-exact'
+$value=Fixture; $value.StdErr=[byte[]]::new(256); $value.Terminal='PID-namespace init did not stop at the pre-execution gate; cleanup uncertainty'; $r=Format $value 'stderr-131072'
+Assert ($r.stderr.excerptSourceBytes -eq 256 -and !$r.stderr.excerptTruncated) 'worst-case escaping at exact source cap fits total bound'
 $value=Fixture; $value.PSObject.Properties.Remove('ExitCode')
 $value | Add-Member -MemberType ScriptProperty -Name ExitCode -Value { throw 'must not invoke property code' }
 $r=Format $value

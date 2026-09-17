@@ -59,6 +59,15 @@ jobs:
         shell: pwsh
         run: '& "$env:PSCAN_EXACT_DIAGNOSTIC_ROOT/build/release/test-native-fixture-diagnostics.ps1"'
 
-      - name: Observe exact clean native fixture with bounded failure diagnostics
+      - name: Observe fixed native fixture and allowlisted host facts
         shell: pwsh
-        run: '& "$env:PSCAN_EXACT_DIAGNOSTIC_ROOT/build/release/test-docker-execution.ps1" -InternalMode CleanNative'
+        run: |
+          $startEpoch=[DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+          & /usr/bin/python3 "$env:PSCAN_EXACT_DIAGNOSTIC_ROOT/build/release/native-host-facts.py" --phase before --since $startEpoch
+          if ($LASTEXITCODE -ne 0) { throw 'Before-fixture host facts unavailable' }
+          try {
+            & "$env:PSCAN_EXACT_DIAGNOSTIC_ROOT/build/release/test-docker-execution.ps1" -InternalMode CleanNative
+          } finally {
+            & /usr/bin/python3 "$env:PSCAN_EXACT_DIAGNOSTIC_ROOT/build/release/native-host-facts.py" --phase after --since $startEpoch
+            if ($LASTEXITCODE -ne 0) { Write-Error 'After-fixture host facts unavailable' }
+          }

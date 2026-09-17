@@ -29,36 +29,18 @@ class Tests(unittest.TestCase):
         self.quiet.start()
         self.addCleanup(self.quiet.stop)
 
-    def test_conflicts_and_unknowns_reject(self):
-        for attachment in ('/usr/bin/unshare', '/usr/bin/*', '/**', '<unknown>', '', '/usr/bin/unsh?re',
-                           '/usr/bin/[ux]nshare', '/{usr/,}bin/unshare', '@{bin}/unshare', '/usr/bin/\\unshare',
-                           '/**/not-unshare', '{broken', '/usr/bin/unshare\n'):
-            with self.subTest(attachment=attachment):
-                self.assertTrue(prereq.possible_attachment(attachment, 'existing'))
-                with patch('builtins.print'), self.assertRaises(RuntimeError):
-                    prereq.admit_inventory([row(attachment=attachment)])
-
-    def test_conflict_diagnostics_are_bounded_explicit_and_do_not_admit(self):
-        rows = [row(name='p' + str(n), attachment='/usr/bin/*' + '\u2603' * 2000) for n in range(30)]
-        raw = prereq.conflict_record(rows)
+    def test_unattached_policy_preserves_opaque_inventory(self):
+        rows = [row(attachment=value) for value in ('<unknown>', '/usr/bin/*', '/usr/bin/unshare')]
+        prereq.admit_inventory(rows)
+        with self.assertRaises(RuntimeError): prereq.admit_inventory([row(name=prereq.NAME)])
+        raw = prereq.conflict_record(rows * 30)
         self.assertLessEqual(len(raw.encode()), 16384)
         record = json.loads(raw)
-        self.assertEqual(record['total_conflicts'], 30)
+        self.assertEqual(record['total_records'], 90)
+        self.assertNotIn('total_conflicts', record)
+        self.assertNotIn('reason_counts', record)
         self.assertGreater(record['records_omitted'], 0)
         self.assertEqual(len(record['all_records_sha256']), 64)
-        for item in record['records']:
-            self.assertTrue(item['attachment']['truncated'])
-            self.assertEqual(item['attachment']['utf8_bytes'], 6010)
-            self.assertEqual(item['depth'], 0)
-        with patch('builtins.print') as output, self.assertRaisesRegex(RuntimeError, 'Existing or ambiguous'):
-            prereq.admit_inventory([row(attachment='/usr/bin/*')])
-        self.assertEqual(json.loads(output.call_args.args[0])['total_conflicts'], 1)
-
-    def test_attachment_reason_distinguishes_evidence_without_allowing_unknowns(self):
-        for value, reason in (('/usr/bin/unshare', 'literal-overlap'), ('/usr/bin/*', 'possible-pattern-overlap'),
-                              ('<unknown>', 'unknown-attachment'), ('@{bin}/unshare', 'unsupported-pattern')):
-            self.assertEqual(prereq.attachment_reason(value, 'existing'), reason)
-            self.assertTrue(prereq.possible_attachment(value, 'existing'))
 
     def test_parser_diagnostics_preserve_exit_and_capture_failures(self):
         excerpt = prereq.byte_excerpt(bytes([0, 27, 92, 255]) + b'x' * 1100)
@@ -139,7 +121,7 @@ class Tests(unittest.TestCase):
                     self.assertIn('actual inert parser error', record['stderr']['value'])
 
     def test_failed_policy_mutation_readback_never_establishes_ownership(self):
-        own = row(prereq.NAME, prereq.TARGET, 'unconfined')
+        own = row(prereq.NAME, prereq.NAME, 'unconfined')
         for action in ('add', 'remove'):
             with patch.object(prereq, 'capture_parser', return_value={'state': 'complete', 'input_state': 'complete', 'exit_code': 1,
                               'stdout': b'', 'stderr': b'inert error'}), \
@@ -163,16 +145,8 @@ class Tests(unittest.TestCase):
                 self.assertNotIn('total_conflicts', record['changes'])
                 self.assertLess(len(call.args[0].encode()), 32768)
 
-    def test_provably_disjoint_literals_prefixes_and_plain_unattached(self):
-        for attachment, name in (('/usr/bin/other', 'existing'), ('/opt/vendor/**', 'existing'),
-                                 ('/{usr/,}bin/other', 'existing'), ('/usr/lib/{a,b}/**', 'existing'),
-                                 ('unprivileged_userns', 'unprivileged_userns')):
-            self.assertFalse(prereq.possible_attachment(attachment, name))
-        prereq.admit_inventory([row()])
-        with self.assertRaises(RuntimeError): prereq.admit_inventory([row(name=prereq.NAME)])
-
     def test_policy_and_commands_are_closed(self):
-        self.assertEqual(prereq.POLICY, b'abi <abi/4.0>,\nprofile pscan-native-diagnostic-unshare /usr/bin/unshare flags=(unconfined) {\n  userns,\n}\n')
+        self.assertEqual(prereq.POLICY, b'abi <abi/4.0>,\nprofile pscan-native-diagnostic flags=(unconfined) {\n  userns,\n}\n')
         for action, final in (('compile', '--add'), ('add', '--add'), ('remove', '--remove')):
             args = prereq.parser_command(action)
             self.assertEqual(args[0], '/usr/sbin/apparmor_parser')
@@ -182,10 +156,21 @@ class Tests(unittest.TestCase):
             self.assertNotIn('--replace', args)
         with self.assertRaises(RuntimeError): prereq.parser_command('replace')
 
+    def test_named_selection_flag_must_already_be_supported(self):
+        path = '/proc/sys/kernel/apparmor_restrict_unprivileged_unconfined'
+        self.assertEqual(prereq.GLOBALS[path], '0')
+        for value in (b'1', b'', b'unsupported'):
+            def read(name, maximum):
+                return value if name == path else prereq.GLOBALS[name].encode()
+            with patch.object(prereq, 'read', side_effect=read), \
+                 patch.object(prereq, 'trusted') as trust, self.assertRaises(RuntimeError):
+                prereq.host()
+            trust.assert_not_called()
+
     def test_readback_requires_exact_name_attachment_mode(self):
-        own = row(prereq.NAME, prereq.TARGET, 'unconfined')
+        own = row(prereq.NAME, prereq.NAME, 'unconfined')
         self.assertEqual(prereq.own_row([row(), own]), own)
-        for rows in ([], [own, own], [row(prereq.NAME)], [row(prereq.NAME, prereq.TARGET, 'complain')],
+        for rows in ([], [own, own], [row(prereq.NAME)], [row(prereq.NAME, prereq.NAME, 'complain')],
                      [dict(own, lineage=['other', prereq.NAME])]):
             with self.assertRaises(RuntimeError): prereq.own_row(rows)
 
@@ -235,7 +220,7 @@ class Tests(unittest.TestCase):
 
     def test_install_orders_compile_add_readback_and_ownership(self):
         before = [row()]
-        own = row(prereq.NAME, prereq.TARGET, 'unconfined')
+        own = row(prereq.NAME, prereq.NAME, 'unconfined')
         calls, saved, success = self.install_fixture([before, before, before + [own]])
         self.assertTrue(success)
         self.assertEqual(calls, ['compile', 'add'])
@@ -278,7 +263,7 @@ class Tests(unittest.TestCase):
         return calls, True
 
     def test_cleanup_removes_only_exact_owned_unchanged_profile(self):
-        own = row(prereq.NAME, prereq.TARGET, 'unconfined')
+        own = row(prereq.NAME, prereq.NAME, 'unconfined')
         self.assertEqual(self.cleanup_fixture([row(), own], own), (['remove'], True))
         self.assertEqual(self.cleanup_fixture([row()], None), ([], True))
         for current, stored, kwargs in (([row(), own], None, {}),
@@ -290,7 +275,7 @@ class Tests(unittest.TestCase):
             self.assertEqual(self.cleanup_fixture(current, stored, **kwargs), ([], False))
 
     def test_cleanup_readback_drift_remains_failure(self):
-        own = row(prereq.NAME, prereq.TARGET, 'unconfined')
+        own = row(prereq.NAME, prereq.NAME, 'unconfined')
         self.assertEqual(self.cleanup_fixture([row(), own], own, final=[row(), own]), (['remove'], False))
 
 

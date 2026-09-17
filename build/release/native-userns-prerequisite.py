@@ -10,15 +10,16 @@ import subprocess
 import sys
 import time
 
-NAME = 'pscan-native-diagnostic-unshare'
+NAME = 'pscan-native-diagnostic'
 TARGET = '/usr/bin/unshare'
 PARSER = '/usr/sbin/apparmor_parser'
 STATE = Path('/run/pscan-native-userns-prerequisite')
 POLICY_ROOT = Path('/sys/kernel/security/apparmor/policy')
-POLICY = (f'abi <abi/4.0>,\nprofile {NAME} {TARGET} flags=(unconfined) {{\n  userns,\n}}\n').encode('ascii')
+POLICY = (f'abi <abi/4.0>,\nprofile {NAME} flags=(unconfined) {{\n  userns,\n}}\n').encode('ascii')
 GLOBALS = {
     '/sys/module/apparmor/parameters/enabled': 'Y',
     '/proc/sys/kernel/apparmor_restrict_unprivileged_userns': '1',
+    '/proc/sys/kernel/apparmor_restrict_unprivileged_unconfined': '0',
     '/proc/sys/kernel/unprivileged_userns_clone': '1',
 }
 
@@ -49,45 +50,6 @@ def trusted(path, directory=False):
     require((stat.S_ISDIR(info.st_mode) if directory else stat.S_ISREG(info.st_mode))
             and info.st_uid == 0 and not info.st_mode & 0o022, 'Untrusted path: ' + str(path))
     return info
-
-
-def attachment_reason(attachment, name):
-    """Conservative: admit only provably disjoint literal prefixes, never guess regexes."""
-    if attachment == name and re.fullmatch(r'[A-Za-z0-9_.-]+', name):
-        return 'unattached'  # kernel emits a plain unattached name when it has no xmatch
-    if not attachment or len(attachment) > 4096 or any(c in attachment for c in ('\\', '@', '<', '>', '\n')):
-        return 'unknown-attachment' if not attachment or attachment == '<unknown>' else 'unsupported-pattern'
-    variants = [attachment]
-    for _ in range(16):
-        expanded = []
-        changed = False
-        for value in variants:
-            match = re.search(r'\{([^{}]*)\}', value)
-            if match:
-                changed = True
-                expanded.extend(value[:match.start()] + part + value[match.end():]
-                                for part in match.group(1).split(','))
-            else:
-                expanded.append(value)
-        if len(expanded) > 64:
-            return 'unsupported-pattern'
-        variants = expanded
-        if not changed:
-            break
-    for value in variants:
-        if not value.startswith('/') or any(c in value for c in '{}'):
-            return 'unsupported-pattern'
-        prefix = re.split(r'[*?\[]', value, maxsplit=1)[0]
-        if prefix == value:
-            if value == TARGET:
-                return 'literal-overlap'
-        elif TARGET.startswith(prefix):
-            return 'possible-pattern-overlap'
-    return 'disjoint'
-
-
-def possible_attachment(attachment, name):
-    return attachment_reason(attachment, name) not in ('unattached', 'disjoint')
 
 
 def inventory():
@@ -129,8 +91,10 @@ def host():
         print(json.dumps({'schema': 'pscan-native-userns-global-flags-v1', 'expected': GLOBALS, 'actual': flags}, sort_keys=True))
     require(flags == GLOBALS, 'Required global protections unavailable')
     files = {}
-    for path in (TARGET, PARSER, '/etc/apparmor.d/abi/4.0'):
+    for path in (TARGET, '/usr/bin/setsid', '/usr/bin/aa-exec', PARSER, '/etc/apparmor.d/abi/4.0'):
         info = trusted(path)
+        require(not info.st_mode & 0o6000, 'Set-ID prerequisite unsupported')
+        require('security.capability' not in os.listxattr(path, follow_symlinks=False), 'File capabilities unsupported')
         files[path] = {'sha256': digest(read(path, 16 * 1024 * 1024)),
                        'device': info.st_dev, 'inode': info.st_ino, 'mode': info.st_mode}
     require(read('/proc/self/attr/current', 256).strip() == b'unconfined', 'Privileged helper profile unsupported')
@@ -236,13 +200,9 @@ def load(name):
 
 def admit_inventory(rows):
     require(not any(row['name'] == NAME for row in rows), 'Reserved profile name already exists')
-    conflicts = [row for row in rows if possible_attachment(row['attach'], row['name'])]
-    if conflicts:
-        print(conflict_record(conflicts))
-        raise RuntimeError('Existing or ambiguous executable attachment')
 
 
-def conflict_record(conflicts, purpose='conflicts'):
+def conflict_record(conflicts, purpose='profile-metadata'):
     """Bounded evidence only; does not classify a conservative hit as actual overlap."""
     def excerpt(value, maximum):
         return {'value': value[:maximum], 'characters': len(value),
@@ -251,18 +211,11 @@ def conflict_record(conflicts, purpose='conflicts'):
     record = {'schema': 'pscan-native-userns-profile-metadata-v1', 'purpose': purpose,
               'total_records': len(conflicts), 'records': [],
               'all_records_sha256': digest(json.dumps(conflicts, sort_keys=True, ensure_ascii=True).encode())}
-    if purpose == 'conflicts':
-        record.update(schema='pscan-native-userns-conflicts-v1', total_conflicts=len(conflicts),
-                      meaning='existing-or-conservatively-ambiguous-attachment')
-        reasons = [attachment_reason(row['attach'], row['name']) for row in conflicts]
-        record['reason_counts'] = {reason: reasons.count(reason) for reason in sorted(set(reasons))}
     for row in conflicts[:16]:
         record['records'].append({'name': excerpt(row['name'], 128), 'attachment': excerpt(row['attach'], 512),
                                   'depth': len(row['lineage']) - 1,
                                   'identity_sha256': digest(json.dumps(row['lineage'], ensure_ascii=True).encode()),
-                                  'mode': row['mode'], 'policy_sha256': row['sha256'],
-                                  'reason': attachment_reason(row['attach'], row['name'])})
-        if purpose != 'conflicts': record['records'][-1].pop('reason')
+                                  'mode': row['mode'], 'policy_sha256': row['sha256']})
     while True:
         record['records_omitted'] = len(conflicts) - len(record['records'])
         raw = json.dumps(record, ensure_ascii=True, sort_keys=True, separators=(',', ':'))
@@ -277,7 +230,7 @@ def own_row(rows):
         print(json.dumps({'schema': 'pscan-native-userns-readback-v1',
                           'own_records': json.loads(conflict_record(own, 'own-policy-readback'))}, sort_keys=True))
     require(len(own) == 1 and own[0]['lineage'] == [NAME]
-            and own[0]['attach'] == TARGET and own[0]['mode'] == 'unconfined',
+            and own[0]['attach'] == NAME and own[0]['mode'] == 'unconfined',
             'Loaded profile readback mismatch')
     return own[0]
 
@@ -309,7 +262,7 @@ def same_host(actual, expected, phase):
 def emit(phase, state, rows):
     print(json.dumps({'schema': 'pscan-native-userns-prerequisite-v1', 'phase': phase,
                       'source_sha256': state['source_sha256'], 'policy_sha256': digest(POLICY),
-                      'profile_name': NAME, 'attachment': TARGET, 'profile_count': len(rows),
+                      'profile_name': NAME, 'attachment': None, 'profile_count': len(rows),
                       'inventory_sha256': digest(json.dumps(rows, sort_keys=True).encode()),
                       'global_restrictions_preserved': True}, sort_keys=True))
 

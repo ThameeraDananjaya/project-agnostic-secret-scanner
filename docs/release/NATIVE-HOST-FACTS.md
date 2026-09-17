@@ -1,9 +1,9 @@
 # Read-only host facts for the fixed native fixture
 
 The facts collector supports before/after snapshots around the unchanged
-CleanNative fixture; earlier diagnostic revisions used a finally snapshot even
-on failure. The current dedicated manual workflow performs only a read-only
-named-profile compatibility snapshot, with no fixture or policy helper invocation.
+CleanNative fixture, including a finally snapshot on failure. Compatibility
+revision abe622b used only a before snapshot without fixture or policy execution.
+The named-profile workflow now uses both snapshots around the fixed fixture.
 The production boundary, namespace arguments, limits and cleanup are unchanged.
 
 `native-host-facts.py` records the calling PowerShell process's effective UID/GID,

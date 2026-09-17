@@ -55,9 +55,63 @@ jobs:
           test "$actual" -eq "$expected"
           echo "PSCAN_EXACT_DIAGNOSTIC_ROOT=$exact" >> "$GITHUB_ENV"
 
-      - name: Read named-profile host compatibility without policy or fixture execution
+      - name: Validate bounded diagnostic formatter using inert records
         shell: pwsh
         run: |
-          $startEpoch=[DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
-          & /usr/bin/python3 "$env:PSCAN_EXACT_DIAGNOSTIC_ROOT/build/release/native-host-facts.py" --phase before --since $startEpoch
-          if ($LASTEXITCODE -ne 0) { throw 'Read-only host compatibility facts unavailable' }
+          & "$env:PSCAN_EXACT_DIAGNOSTIC_ROOT/build/release/test-native-fixture-diagnostics.ps1"
+          & "$env:PSCAN_EXACT_DIAGNOSTIC_ROOT/build/release/test-native-profile-driver.ps1"
+
+      - name: Validate scoped prerequisite using inert providers
+        shell: bash
+        run: |
+          set -euo pipefail
+          /usr/bin/python3 -I -B "$PSCAN_EXACT_DIAGNOSTIC_ROOT/build/release/test-native-userns-prerequisite.py"
+          /usr/bin/python3 -I -B "$PSCAN_EXACT_DIAGNOSTIC_ROOT/build/release/test-native-profile-context.py"
+
+      - name: Install reviewed disposable host prerequisite
+        id: prerequisite
+        shell: bash
+        run: |
+          set -euo pipefail
+          export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null GIT_NO_REPLACE_OBJECTS=1 GIT_NO_LAZY_FETCH=1 GIT_OPTIONAL_LOCKS=0
+          blob="$(git rev-parse "$GITHUB_SHA:build/release/native-userns-prerequisite.py")"
+          /usr/bin/sudo --non-interactive /usr/bin/python3 -I -B -c '
+          import hashlib, pathlib, re, sys
+          path, expected, action = sys.argv[1:]
+          if not re.fullmatch(r"[0-9a-f]{40}", expected): raise SystemExit("Invalid source identity")
+          with open(path, "rb") as stream: raw = stream.read(65537)
+          if len(raw) > 65536: raise SystemExit("Source exceeds bound")
+          actual = hashlib.sha1(b"blob " + str(len(raw)).encode() + b"\0" + raw).hexdigest()
+          if actual != expected: raise SystemExit("Committed source mismatch")
+          sys.argv = [path, action]
+          exec(compile(raw, path, "exec"), {"__name__": "__main__", "__file__": path, "__source_sha256__": hashlib.sha256(raw).hexdigest()})
+          ' "$PSCAN_EXACT_DIAGNOSTIC_ROOT/build/release/native-userns-prerequisite.py" "$blob" install
+
+      - name: Select named profile as the ordinary caller and run the fixed native fixture
+        shell: pwsh
+        run: |
+          $baseline=Join-Path $env:RUNNER_TEMP 'pscan-native-profile-baseline.json'
+          & /usr/bin/python3 -I -B "$env:PSCAN_EXACT_DIAGNOSTIC_ROOT/build/release/native-profile-context.py" snapshot $baseline
+          if ($LASTEXITCODE -ne 0) { throw 'Ordinary caller baseline unavailable' }
+          $baselineHash=(Get-FileHash -LiteralPath $baseline -Algorithm SHA256).Hash.ToLowerInvariant()
+          & /usr/bin/aa-exec --profile pscan-native-diagnostic -- /opt/microsoft/powershell/7/pwsh -NoLogo -NoProfile -NonInteractive -File "$env:PSCAN_EXACT_DIAGNOSTIC_ROOT/build/release/native-profile-driver.ps1" -BaselinePath $baseline -BaselineSHA256 $baselineHash
+          if ($LASTEXITCODE -ne 0) { throw 'Named-profile native fixture failed' }
+
+      - name: Remove only owned prerequisite and verify host preservation
+        if: ${{ always() && steps.prerequisite.outcome != 'skipped' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null GIT_NO_REPLACE_OBJECTS=1 GIT_NO_LAZY_FETCH=1 GIT_OPTIONAL_LOCKS=0
+          blob="$(git rev-parse "$GITHUB_SHA:build/release/native-userns-prerequisite.py")"
+          /usr/bin/sudo --non-interactive /usr/bin/python3 -I -B -c '
+          import hashlib, pathlib, re, sys
+          path, expected, action = sys.argv[1:]
+          if not re.fullmatch(r"[0-9a-f]{40}", expected): raise SystemExit("Invalid source identity")
+          with open(path, "rb") as stream: raw = stream.read(65537)
+          if len(raw) > 65536: raise SystemExit("Source exceeds bound")
+          actual = hashlib.sha1(b"blob " + str(len(raw)).encode() + b"\0" + raw).hexdigest()
+          if actual != expected: raise SystemExit("Committed source mismatch")
+          sys.argv = [path, action]
+          exec(compile(raw, path, "exec"), {"__name__": "__main__", "__file__": path, "__source_sha256__": hashlib.sha256(raw).hexdigest()})
+          ' "$PSCAN_EXACT_DIAGNOSTIC_ROOT/build/release/native-userns-prerequisite.py" "$blob" cleanup

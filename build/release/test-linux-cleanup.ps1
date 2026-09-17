@@ -86,13 +86,16 @@ try {
         if($scenario-ceq'missing-root'){$rootHandle=$null}
         $process=[pscustomobject]@{};$process|Add-Member -MemberType ScriptProperty -Name HasExited -Value {[PscanCleanupTestIO]::RootExited}
         $task=[pscustomobject]@{};$task|Add-Member -MemberType ScriptProperty -Name IsCompleted -Value {$script:pipesClosed}
-        $budget=[PscanOperationBudget]::new(15000,150,131072);$budget.BeginCleanup()
+        $expected=$scenario-in@('live-then-reaped','zombie-then-reaped','already-reaped','delayed-supervisor','pipe-delay')
+        # Successful scenarios include cold PowerShell/JIT work. Use the actual
+        # production grace; keep short explicit exhaustion cases independent.
+        $grace=if($expected){2000}else{150}
+        $budget=[PscanOperationBudget]::new(15000,$grace,131072);$budget.BeginCleanup()
         if($scenario-ceq'expired'){Start-Sleep -Milliseconds 170}
         $clock=[Diagnostics.Stopwatch]::StartNew()
         $result=Invoke-LinuxPinnedCleanup $init $initHandle $rootHandle $process $task $task 111 @{} $budget ($scenario-ceq'initial-error')
-        $expected=$scenario-in@('live-then-reaped','zombie-then-reaped','already-reaped','delayed-supervisor','pipe-delay')
         Check ($result.Proved-eq$expected) "Cleanup outcome differs: $scenario $($result|ConvertTo-Json -Compress)"
-        Check ($clock.ElapsedMilliseconds-lt1000) "Cleanup obtained unbounded time: $scenario"
+        Check ($clock.ElapsedMilliseconds-lt($grace+1000)) "Cleanup obtained unbounded time: $scenario"
         Check (@([PscanCleanupTestIO]::Signals|Where-Object{$_-ceq'root'}).Count-le1) 'Repeated supervisor signal'
         if($scenario-in@('never-reaped','absent-before-exit','expired','missing-root')){Check (![PscanCleanupTestIO]::Signals.Contains('root')) 'Root signalled without init reaping or budget/handle'}
         if($scenario-in@('reused-record','malformed-record','poll-error','member-error','signal-error','initial-error','namespace-error')){Check ($null-ne$result.FailureStage) 'Actual error latch lost'}

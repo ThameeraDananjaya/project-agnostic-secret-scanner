@@ -200,3 +200,7 @@ Cleanup failure, redaction uncertainty, retry exhaustion or contradictory
 evidence is terminal. Operators preserve content-free evidence, quarantine the
 release/request, stop promotion and escalate to the applicable product or
 project owner. They never paste suspected secret text into logs or issues.
+
+## Unsigned schema 2.3
+
+The corrected unsigned build records buildIdentity separately from releaseIdentity. releaseState=unsigned-candidate and null releaseIdentity are never trusted-release evidence. See the offline verification runbook for independently pinned signer-policy inputs and later separately gated manifest finalization. Product scan request/outcome contracts are unchanged.

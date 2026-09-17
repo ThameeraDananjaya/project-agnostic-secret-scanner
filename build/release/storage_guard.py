@@ -18,8 +18,8 @@ import time
 PRODUCT = "a13c28fe7273bc8dc6545f97966a02889524eb4c"
 PRODUCT_TREE = "217b711ddea51fd0ea7e808edd2e27fdecef8427"
 REPOSITORY = "ThameeraDananjaya/project-agnostic-secret-scanner"
-TAG = "release-tooling-v1.0.0-c2-r6"
-WORKFLOW = ".github/workflows/release-recovery-v1.0.0-c2-r6.yml"
+TAG = "release-tooling-v1.0.0-c2-linux-boundary"
+WORKFLOW = ".github/workflows/release-build-unsigned.yml"
 MAX_PAYLOAD = 240 * 1024 * 1024
 ENVELOPE_RESERVE = 16 * 1024 * 1024
 MAX_TRANSFER = MAX_PAYLOAD + ENVELOPE_RESERVE
@@ -35,7 +35,7 @@ project-agnostic-secret-scanner_v1.0.0_windows_amd64.zip
 rules-gitleaks-v8.30.1.toml rules-gitleaks-ignore-empty-v1.txt
 schema-scan-request-1.1.json schema-scan-outcome-1.0.json
 schema-release-manifest-1.1.json schema-release-manifest-2.0.json
-schema-release-manifest-2.1.json schema-release-manifest-2.2.json
+schema-release-manifest-2.1.json schema-release-manifest-2.2.json schema-release-manifest-2.3.json
 schema-global-revocation-1.1.json schema-rule-pack-1.0.json
 LICENSE.txt THIRD_PARTY_NOTICES.md GITLEAKS-LICENCE-MANIFEST.json
 sbom.spdx.json TEST-SUMMARY.json LIMITATIONS.md COMPATIBILITY.json
@@ -134,7 +134,7 @@ def validate_distribution(directory, revision):
     no_links(root)
     require(root.is_dir(), "DISTRIBUTION_DIRECTORY")
     entries = list(root.iterdir())
-    require(len(entries) == 32 and {p.name for p in entries} == FILES, "DISTRIBUTION_FILE_SET")
+    require(len(entries) == 33 and {p.name for p in entries} == FILES, "DISTRIBUTION_FILE_SET")
     sizes = {}
     for p in entries:
         no_links(p)
@@ -168,7 +168,7 @@ def validate_distribution(directory, revision):
         if capture is not None:
             bodies[p.name] = bytes(capture)
     manifest = parse_json(bodies["release-manifest.json"])
-    require(isinstance(manifest, dict) and manifest.get("manifestSchemaVersion") == "2.2" and
+    require(isinstance(manifest, dict) and manifest.get("manifestSchemaVersion") == "2.3" and
             manifest.get("releaseVersion") == "v1.0.0", "MANIFEST_VERSION")
     require(manifest.get("productSource") == {"tag": "v1.0.0", "commit": PRODUCT, "tree": PRODUCT_TREE},
             "MANIFEST_PRODUCT")
@@ -178,8 +178,13 @@ def validate_distribution(directory, revision):
             tooling.get("workflowRef") == "refs/tags/" + TAG and
             tooling.get("workflowSha") == revision and tooling.get("trigger") == "workflow_dispatch",
             "MANIFEST_TOOLING")
+    require(manifest.get("releaseState") == "unsigned-candidate" and
+            "releaseIdentity" in manifest and manifest["releaseIdentity"] is None, "MANIFEST_UNSIGNED_STATE")
+    require(manifest.get("buildIdentity") == {"repository": REPOSITORY, "repositoryOwnerId": 50274860,
+            "workflow": WORKFLOW, "ref": "refs/tags/"+TAG, "workflowSha": revision,
+            "trigger": "workflow_dispatch"}, "MANIFEST_BUILD_IDENTITY")
     assets = manifest.get("assets")
-    require(isinstance(assets, list) and len(assets) == 31, "MANIFEST_ASSETS")
+    require(isinstance(assets, list) and len(assets) == 32, "MANIFEST_ASSETS")
     seen = set()
     for asset in assets:
         require(isinstance(asset, dict) and isinstance(asset.get("path"), str), "MANIFEST_ASSET_FIELDS")
@@ -212,7 +217,7 @@ def check(directory, raw_admission, revision, now):
     record = validate_admission(raw_admission, revision, now)
     total, manifest_digest = validate_distribution(directory, revision)
     return {"schema": "pscan-build-storage-guard-result-v1", "status": "PASS",
-            "tooling_revision": revision, "files": 32, "payload_bytes": total,
+            "tooling_revision": revision, "files": 33, "payload_bytes": total,
             "transfer_upper_bound_bytes": total + ENVELOPE_RESERVE,
             "maximum_transfer_bytes": MAX_TRANSFER,
             "manifest_sha256": manifest_digest,

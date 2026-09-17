@@ -52,7 +52,7 @@ if ($imageAdmission.schemaVersion -cne '1.0' -or $imageAdmission.sourceRevision 
     $imageAdmission.hostIdentityMode -cne $platformMode -or $imageAdmission.hostUID -ne $hostUID -or $imageAdmission.hostGID -ne $hostGID) { throw 'Docker admission receipt does not bind this exact acquisition' }
 $dockerSHA256 = $imageAdmission.dockerExecutableSHA256
 . (Join-Path $PSScriptRoot 'image-admission.ps1')
-$inspectJson = & (Join-Path $PSScriptRoot 'docker-execution.ps1') -Operation RepositoryDigestInspection -ExpectedDockerSHA256 $dockerSHA256
+$inspectJson = & (Join-Path $PSScriptRoot 'invoke-docker-boundary.ps1') -Operation RepositoryDigestInspection -ExpectedDockerSHA256 $dockerSHA256
 $inspect = ($inspectJson -join "`n") | ConvertFrom-Json
 if ($inspect.ExitCode -ne 0 -or ![string]::IsNullOrEmpty($inspect.StdErr) -or !$inspect.ContainmentEmpty) { throw 'Pre-acquisition image inspection failed closed' }
 $repoDigests = Read-ReleaseRepoDigestsEvidence -Json $inspect.StdOut
@@ -102,7 +102,7 @@ $boundaryParameters = @{
     GitleaksArchive=$gitleaks; CacheDirectory=$moduleCache
 }
 if ($null -ne $hostUID) { $boundaryParameters.HostUID=[int]$hostUID; $boundaryParameters.HostGID=[int]$hostGID }
-$boundaryJson = & (Join-Path $PSScriptRoot 'docker-execution.ps1') @boundaryParameters
+$boundaryJson = & (Join-Path $PSScriptRoot 'invoke-docker-boundary.ps1') @boundaryParameters
 $boundaryResult = ($boundaryJson -join "`n") | ConvertFrom-Json
 if ($boundaryResult.ExitCode -ne 0 -or ![string]::IsNullOrEmpty($boundaryResult.StdErr) -or !$boundaryResult.ContainmentEmpty -or $boundaryResult.DockerSHA256 -cne $dockerSHA256) { throw 'Pinned dependency acquisition failed closed at the Docker boundary' }
 

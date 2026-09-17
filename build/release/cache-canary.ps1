@@ -19,7 +19,7 @@ function Invoke-ReleaseCacheCanary {
         if (!$HostUID.HasValue -or !$HostGID.HasValue) { throw 'Cache proof requires a complete UID/GID pair' }
         $parameters.HostUID=$HostUID.Value; $parameters.HostGID=$HostGID.Value
     }
-    $json = & (Join-Path $PSScriptRoot 'docker-execution.ps1') @parameters
+    $json = & (Join-Path $PSScriptRoot 'invoke-docker-boundary.ps1') @parameters
     $result = ($json -join "`n") | ConvertFrom-Json
     if ($result.ExitCode -ne 0 -or ![string]::IsNullOrEmpty($result.StdErr) -or !$result.ContainmentEmpty -or $result.DockerSHA256 -cne $ExpectedDockerSHA256) {
         throw 'Module-cache canary failed closed at the Docker boundary'

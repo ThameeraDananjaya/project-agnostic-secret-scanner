@@ -9,7 +9,7 @@ $ErrorActionPreference = 'Stop'
 if ($MyInvocation.InvocationName -eq '.') { throw 'The release image admission entrypoint cannot be dot-sourced' }
 
 $releaseImage = 'docker.io/library/golang@sha256:ded31c68586d2e49e760acc2e65a884b23d032e9bbbed0ae0c55abd3fcaf4452'
-$dockerBoundary = [IO.Path]::Combine($PSScriptRoot, 'docker-execution.ps1')
+$dockerBoundary = [IO.Path]::Combine($PSScriptRoot, 'invoke-docker-boundary.ps1')
 $receiptPath = Join-Path ([IO.Path]::GetFullPath((Resolve-Path -LiteralPath $CacheDirectory).Path)) 'docker-admission.json'
 if (Test-Path -LiteralPath $receiptPath) { throw 'Docker admission receipt path must be absent before any admission operation' }
 . ([IO.Path]::Combine($PSScriptRoot, 'image-admission.ps1'))

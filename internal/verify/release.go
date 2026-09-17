@@ -110,6 +110,8 @@ type ReleaseRevocation struct {
 }
 
 type ReleaseManifest struct {
+	BuildIdentity         *BuildIdentity          `json:"buildIdentity,omitempty"`
+	ReleaseState          string                  `json:"releaseState,omitempty"`
 	SchemaFamily          string                  `json:"schemaFamily"`
 	ManifestSchemaVersion string                  `json:"manifestSchemaVersion"`
 	ReleaseVersion        string                  `json:"releaseVersion"`
@@ -183,6 +185,29 @@ func ParseReleaseManifest(raw []byte) (ReleaseManifest, error) {
 	}
 	if err := ensureJSONEOF(decoder); err != nil {
 		return ReleaseManifest{}, err
+	}
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(raw, &fields) != nil {
+		return ReleaseManifest{}, ErrInvalidReference
+	}
+	if manifest.ManifestSchemaVersion == "2.3" {
+		if !exactObjectFields(raw, "schemaFamily", "manifestSchemaVersion", "releaseVersion", "productSource", "releaseTooling", "runnerVersion", "goToolchainVersion", "runnerBindings", "engineBindings", "rulePack", "schemaBindings", "releaseIdentity", "compatibility", "revocation", "assets", "createdAt", "buildIdentity", "releaseState") || !exactBuildFields(raw) {
+			return ReleaseManifest{}, ErrInvalidReference
+		}
+		if manifest.ReleaseState == "signing-pending" && !exactIdentityFields(fields["releaseIdentity"], true) {
+			return ReleaseManifest{}, ErrInvalidReference
+		}
+		identity, exists := fields["releaseIdentity"]
+		if !exists || (manifest.ReleaseState == "unsigned-candidate" && !bytes.Equal(bytes.TrimSpace(identity), []byte("null"))) {
+			return ReleaseManifest{}, ErrInvalidReference
+		}
+	} else {
+		if _, ok := fields["buildIdentity"]; ok {
+			return ReleaseManifest{}, ErrInvalidReference
+		}
+		if _, ok := fields["releaseState"]; ok {
+			return ReleaseManifest{}, ErrInvalidReference
+		}
 	}
 	if err := validateReleaseManifest(manifest); err != nil {
 		return ReleaseManifest{}, err
@@ -380,6 +405,12 @@ func validateReleaseManifest(m ReleaseManifest) error {
 }
 
 func validateReleaseIdentityVersion(m ReleaseManifest) error {
+	if m.ManifestSchemaVersion == "2.3" {
+		return validateUnsignedBuildIdentity(m)
+	}
+	if m.BuildIdentity != nil || m.ReleaseState != "" {
+		return ErrInvalidReference
+	}
 	switch m.ManifestSchemaVersion {
 	case "1.1":
 		if !gitOIDPattern.MatchString(m.SourceRevision) || !gitOIDPattern.MatchString(m.SourceTree) ||
@@ -423,6 +454,9 @@ func validateReleaseIdentityVersion(m ReleaseManifest) error {
 }
 
 func checkReleasePolicy(m ReleaseManifest, p ReleaseTrustPolicy, now time.Time) error {
+	if m.ManifestSchemaVersion == "2.3" {
+		return checkSeparateSignerPolicy(m, p, now)
+	}
 	identity := m.ReleaseIdentity
 	if p.Repository == "" || p.RepositoryOwnerID <= 0 || p.Workflow == "" || p.Ref == "" || p.OIDCIssuer == "" || p.CertificateIdentity == "" || p.ReleaseVersion == "" ||
 		identity.Repository != p.Repository || identity.RepositoryOwnerID != p.RepositoryOwnerID || identity.Workflow != p.Workflow || identity.Ref != p.Ref ||

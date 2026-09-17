@@ -106,9 +106,11 @@ $epoch = [DateTimeOffset]::Parse($created).ToUnixTimeSeconds()
 $productTag = 'v1.0.0'
 $productRevision = 'a13c28fe7273bc8dc6545f97966a02889524eb4c'
 $productTree = '217b711ddea51fd0ea7e808edd2e27fdecef8427'
-$toolingTag = 'release-tooling-v1.0.0-c2-r6'
-$workflow = '.github/workflows/release-recovery-v1.0.0-c2-r6.yml'
-$workflowRef = 'refs/tags/release-tooling-v1.0.0-c2-r6'
+$toolingTag = 'release-tooling-v1.0.0-c2-linux-boundary'
+$workflow = '.github/workflows/release-build-unsigned.yml'
+$workflowRef = 'refs/tags/release-tooling-v1.0.0-c2-linux-boundary'
+$resolvedToolingTag = (Convert-StrictUtf8 -Bytes (Invoke-SourceTrustGit -Repository $root -Arguments @('rev-parse',"$toolingTag`^{commit}")).Bytes -Label 'Immutable tooling commit').Trim()
+if ($resolvedToolingTag -cne $toolingRevision) { throw 'Build tag does not identify the exact corrected tooling commit' }
 $resolvedProductTag = (Convert-StrictUtf8 -Bytes (Invoke-SourceTrustGit -Repository $root -Arguments @('rev-parse','v1.0.0^{commit}')).Bytes -Label 'Locked product commit').Trim()
 $resolvedProductTree = (Convert-StrictUtf8 -Bytes (Invoke-SourceTrustGit -Repository $root -Arguments @('rev-parse','v1.0.0^{tree}')).Bytes -Label 'Locked product tree').Trim()
 if ($resolvedProductTag -ne $productRevision -or $resolvedProductTree -ne $productTree) {
@@ -161,13 +163,13 @@ if ($imageAdmission.schemaVersion -cne '1.0' -or $imageAdmission.sourceRevision 
 $dockerSHA256 = $imageAdmission.dockerExecutableSHA256
 if ($ledgerValue.imageAdmission.dockerExecutableSHA256 -cne $dockerSHA256) { throw 'Acquisition ledger and Docker admission receipt identities conflict' }
 . (Join-Path $PSScriptRoot 'image-admission.ps1')
-$inspectJson = & (Join-Path $PSScriptRoot 'docker-execution.ps1') -Operation RepositoryDigestInspection -ExpectedDockerSHA256 $dockerSHA256
+$inspectJson = & (Join-Path $PSScriptRoot 'invoke-docker-boundary.ps1') -Operation RepositoryDigestInspection -ExpectedDockerSHA256 $dockerSHA256
 $inspect = ($inspectJson -join "`n") | ConvertFrom-Json
 if ($inspect.ExitCode -ne 0 -or ![string]::IsNullOrEmpty($inspect.StdErr) -or !$inspect.ContainmentEmpty) { throw 'Pre-build image inspection failed closed' }
 $repoDigests = Read-ReleaseRepoDigestsEvidence -Json $inspect.StdOut
 [void](Assert-ReleaseImageIdentityEvidence -Image $image -RepoDigests $repoDigests)
 
-$buildBoundary = & (Join-Path $PSScriptRoot 'docker-execution.ps1') -Operation ReleaseBuild -ExpectedDockerSHA256 $dockerSHA256 -CacheDirectory $moduleCache -RunnerGoArchive $runnerGo -EngineGoArchive $engineGo -GitleaksArchive $gitleaksSource -ProductArchive $productArchive -ProductBlobManifest $productMaterialization.BlobManifest -ProductPathManifest $productMaterialization.PathManifest -ProductModeManifest $productMaterialization.ModeManifest -ToolingArchive $toolingArchive -ToolingBlobManifest $toolingMaterialization.BlobManifest -ToolingPathManifest $toolingMaterialization.PathManifest -ToolingModeManifest $toolingMaterialization.ModeManifest -RawOutputDirectory $raw -SourceDateEpoch ([string]$epoch) -ProductRevision $productRevision -ToolingRevision $toolingRevision -ToolingTree $toolingTree -ProductArchiveSHA256 $productMaterialization.ArchiveSHA256 -ToolingArchiveSHA256 $toolingMaterialization.ArchiveSHA256 -ProductFileCount $productMaterialization.FileCount -ToolingFileCount $toolingMaterialization.FileCount -Created $created
+$buildBoundary = & (Join-Path $PSScriptRoot 'invoke-docker-boundary.ps1') -Operation ReleaseBuild -ExpectedDockerSHA256 $dockerSHA256 -CacheDirectory $moduleCache -RunnerGoArchive $runnerGo -EngineGoArchive $engineGo -GitleaksArchive $gitleaksSource -ProductArchive $productArchive -ProductBlobManifest $productMaterialization.BlobManifest -ProductPathManifest $productMaterialization.PathManifest -ProductModeManifest $productMaterialization.ModeManifest -ToolingArchive $toolingArchive -ToolingBlobManifest $toolingMaterialization.BlobManifest -ToolingPathManifest $toolingMaterialization.PathManifest -ToolingModeManifest $toolingMaterialization.ModeManifest -RawOutputDirectory $raw -SourceDateEpoch ([string]$epoch) -ProductRevision $productRevision -ToolingRevision $toolingRevision -ToolingTree $toolingTree -ProductArchiveSHA256 $productMaterialization.ArchiveSHA256 -ToolingArchiveSHA256 $toolingMaterialization.ArchiveSHA256 -ProductFileCount $productMaterialization.FileCount -ToolingFileCount $toolingMaterialization.FileCount -Created $created
 $buildResult = ($buildBoundary -join "`n") | ConvertFrom-Json
 if ($buildResult.ExitCode -ne 0 -or ![string]::IsNullOrEmpty($buildResult.StdErr) -or !$buildResult.ContainmentEmpty -or $buildResult.DockerSHA256 -cne $dockerSHA256) { throw 'Offline release build or validation failed closed at the Docker boundary' }
 
@@ -192,6 +194,7 @@ Copy-ReleaseFile (Join-Path $productFiles 'contracts\release-manifest\schema-1.1
 Copy-ReleaseFile (Join-Path $toolingFiles 'contracts\release-manifest\schema-2.0.json') 'schema-release-manifest-2.0.json' | Out-Null
 Copy-ReleaseFile (Join-Path $toolingFiles 'contracts\release-manifest\schema-2.1.json') 'schema-release-manifest-2.1.json' | Out-Null
 Copy-ReleaseFile (Join-Path $toolingFiles 'contracts\release-manifest\schema-2.2.json') 'schema-release-manifest-2.2.json' | Out-Null
+Copy-ReleaseFile (Join-Path $toolingFiles 'contracts\release-manifest\schema-2.3.json') 'schema-release-manifest-2.3.json' | Out-Null
 Copy-ReleaseFile (Join-Path $productFiles 'contracts\global-revocation\schema-1.1.json') 'schema-global-revocation-1.1.json' | Out-Null
 Copy-ReleaseFile (Join-Path $productFiles 'contracts\rule-pack\schema-1.0.json') 'schema-rule-pack-1.0.json' | Out-Null
 Copy-ReleaseFile (Join-Path $productFiles 'LICENSE') 'LICENSE.txt' | Out-Null
@@ -202,18 +205,18 @@ Copy-ReleaseFile (Join-Path $toolingFiles 'docs\release\OFFLINE-VERIFICATION-RUN
 Copy-ReleaseFile (Join-Path $toolingFiles 'docs\release\SCANNER-IO-REFERENCE.md') 'SCANNER-IO-REFERENCE.md' | Out-Null
 
 $testSummary = [ordered]@{
-    schemaVersion = '2.2'; productSourceRevision = $productRevision; releaseToolingRevision = $toolingRevision; createdAt = $created
+    schemaVersion = '2.3'; productSourceRevision = $productRevision; releaseToolingRevision = $toolingRevision; createdAt = $created
     authoritativeEnvironment = 'pinned-network-disabled-linux-container'
     goToolchain = 'go1.27.1'; engineToolchain = 'go1.27.0'
     commands = @("go test -p=1 -count=1 -run '^TestPinnedRuleAndCoverageIntegrityBindings$' ./tests/acceptance/gitleaks", 'go test -p=1 -count=1 ./...', 'go vet -p=1 ./...', 'GOOS=windows GOARCH=amd64 go test -p=1 -exec /bin/true ./...')
     linuxExecution = 'PASS'; windowsCompilation = 'PASS'; windowsNativeExecution = 'UNPROVEN_SMART_APP_CONTROL'
-    signing = 'NOT_PERFORMED_OWNER_GATE'; remoteWorkflow = 'NOT_PERFORMED_OWNER_GATE'
+    signing = 'NOT_PERFORMED_OWNER_GATE'; remoteWorkflow = 'UNSIGNED_BUILD_ONLY'
 }
 Write-Utf8 (Join-Path $dist 'TEST-SUMMARY.json') ($testSummary | ConvertTo-Json -Depth 6)
 $compatibility = [ordered]@{
-    schemaVersion = '2.2'; releaseVersion = 'v1.0.0'; productSourceRevision = $productRevision; releaseToolingRevision = $toolingRevision
+    schemaVersion = '2.3'; releaseVersion = 'v1.0.0'; productSourceRevision = $productRevision; releaseToolingRevision = $toolingRevision
     platforms = @([ordered]@{os='linux';arch='amd64'},[ordered]@{os='windows';arch='amd64'})
-    requestSchemas = @('1.0','1.1'); outcomeSchemas = @('1.0'); releaseManifestSchemas = @('1.0','1.1','2.0','2.1','2.2')
+    requestSchemas = @('1.0','1.1'); outcomeSchemas = @('1.0'); releaseManifestSchemas = @('1.0','1.1','2.0','2.1','2.2','2.3')
     engine = [ordered]@{name='gitleaks';version='8.30.1';adapterVersion='2.0.0'}
 }
 Write-Utf8 (Join-Path $dist 'COMPATIBILITY.json') ($compatibility | ConvertTo-Json -Depth 6)
@@ -221,7 +224,7 @@ $limitations = @"
 # v1.0.0 limitations
 
 - Native Windows amd64 execution is unproven on the author host because Windows Smart App Control blocks unsigned locally built executables. Windows amd64 cross-compilation and byte verification pass; this is not substituted for native execution.
-- Remote repository identity, settings, rules, environment, immutable releases, workflow execution, keyless signature, artifact attestation, draft upload and publication are not performed without separate exact owner approval.
+- This candidate was built by the exact unsigned build workflow recorded in BUILD-PROVENANCE.json. It is not a trusted signed release. Signing, artifact attestation, draft upload and publication remain separately gated.
 - The offline verifier requires separately acquired Cosign v3.1.3 at its documented exact SHA-256 and rejects absent, stale, conflicting or untrusted evidence.
 - Gitleaks is the only primary detector. TruffleHog is not assessed, downloaded, integrated, distributed or enabled.
 - Passing validation placeholders do not establish any consuming-project integration, policy, receipt, deployment or production result.
@@ -233,7 +236,7 @@ Write-Utf8 (Join-Path $dist 'global-revocations.json') ($revocations | ConvertTo
 $checkpoint = [ordered]@{schemaFamily='global-scanner-revocation-checkpoint';schemaVersion='1.0';sequence=0;digest=$null;capturedAt=$created;discoveryLocation=$revocationLocation}
 Write-Utf8 (Join-Path $dist 'global-revocation-checkpoint.json') ($checkpoint | ConvertTo-Json -Depth 6)
 $provenance = [ordered]@{
-    schemaVersion='2.2';createdAt=$created
+    schemaVersion='2.3';createdAt=$created
     productSource=[ordered]@{tag=$productTag;commit=$productRevision;tree=$productTree}
     releaseTooling=[ordered]@{tag=$toolingTag;commit=$toolingRevision;tree=$toolingTree;workflow=$workflow;workflowRef=$workflowRef;workflowSha=$toolingRevision;trigger='workflow_dispatch'}
     sourceTrust=[ordered]@{trackedFiles=$sourceTrust.FileCount;rawEqual=$sourceTrust.RawEqualCount;canonicalCrlfProjection=$sourceTrust.CanonicalEolProjectionCount;workingTreeInputsUsed=$false;buildDriver='exact-git-object-materialization'}
@@ -258,7 +261,7 @@ Copy-Item -LiteralPath (Join-Path $dist 'scanner-runner-windows-amd64.exe') -Des
 Copy-Item -LiteralPath (Join-Path $dist 'scanner-release-verifier-windows-amd64.exe') -Destination (Join-Path $windowsStage 'bin\scanner-release-verifier.exe')
 Copy-Item -LiteralPath (Join-Path $dist 'gitleaks-windows-amd64.exe') -Destination (Join-Path $windowsStage 'bin\gitleaks.exe')
 
-$packageBoundary = & (Join-Path $PSScriptRoot 'docker-execution.ps1') -Operation ReleasePackage -ExpectedDockerSHA256 $dockerSHA256 -RawOutputDirectory $raw -LinuxStageDirectory $linuxStage -WindowsStageDirectory $windowsStage -DistributionDirectory $dist -SourceDateEpoch ([string]$epoch)
+$packageBoundary = & (Join-Path $PSScriptRoot 'invoke-docker-boundary.ps1') -Operation ReleasePackage -ExpectedDockerSHA256 $dockerSHA256 -RawOutputDirectory $raw -LinuxStageDirectory $linuxStage -WindowsStageDirectory $windowsStage -DistributionDirectory $dist -SourceDateEpoch ([string]$epoch)
 $packageResult = ($packageBoundary -join "`n") | ConvertFrom-Json
 if ($packageResult.ExitCode -ne 0 -or ![string]::IsNullOrEmpty($packageResult.StdErr) -or !$packageResult.ContainmentEmpty -or $packageResult.DockerSHA256 -cne $dockerSHA256) { throw 'Deterministic packaging failed closed at the Docker boundary' }
 
@@ -303,10 +306,11 @@ $assets = @(
     (Asset 'BUILD-PROVENANCE.json' 'documentation'),
     (Asset 'OFFLINE-VERIFICATION-RUNBOOK.md' 'documentation'),
     (Asset 'SCANNER-IO-REFERENCE.md' 'documentation'),
+    (Asset 'schema-release-manifest-2.3.json' 'schema'),
     (Asset 'CHECKSUMS.sha256' 'checksums')
 )
 $manifest = [ordered]@{
-    schemaFamily='scanner-release-manifest';manifestSchemaVersion='2.2';releaseVersion='v1.0.0'
+    schemaFamily='scanner-release-manifest';manifestSchemaVersion='2.3';releaseVersion='v1.0.0'
     productSource=[ordered]@{tag=$productTag;commit=$productRevision;tree=$productTree}
     releaseTooling=[ordered]@{tag=$toolingTag;commit=$toolingRevision;tree=$toolingTree;workflow=$workflow;workflowRef=$workflowRef;workflowSha=$toolingRevision;trigger='workflow_dispatch'}
     runnerVersion='1.0.0';goToolchainVersion='go1.27.1'
@@ -327,11 +331,13 @@ $manifest = [ordered]@{
         [ordered]@{family='scanner-release-manifest';version='2.1';path='schema-release-manifest-2.1.json';sha256=$assets[14].sha256},
         [ordered]@{family='scanner-release-manifest';version='2.2';path='schema-release-manifest-2.2.json';sha256=$assets[15].sha256},
         [ordered]@{family='global-scanner-revocation';version='1.1';path='schema-global-revocation-1.1.json';sha256=$assets[16].sha256},
-        [ordered]@{family='rule-pack';version='1.0';path='schema-rule-pack-1.0.json';sha256=$assets[17].sha256}
+        [ordered]@{family='rule-pack';version='1.0';path='schema-rule-pack-1.0.json';sha256=$assets[17].sha256},
+        [ordered]@{family='scanner-release-manifest';version='2.3';path='schema-release-manifest-2.3.json';sha256=$assets[30].sha256}
     )
-    releaseIdentity=[ordered]@{
+    releaseState='unsigned-candidate'
+    releaseIdentity=$null
+    buildIdentity=[ordered]@{
         repository='ThameeraDananjaya/project-agnostic-secret-scanner';repositoryOwnerId=50274860;workflow=$workflow;ref=$workflowRef;workflowSha=$toolingRevision;trigger='workflow_dispatch'
-        oidcIssuer='https://token.actions.githubusercontent.com';certificateIdentity='https://github.com/ThameeraDananjaya/project-agnostic-secret-scanner/.github/workflows/release-recovery-v1.0.0-c2-r6.yml@refs/tags/release-tooling-v1.0.0-c2-r6'
     }
     compatibility=[ordered]@{minimumRunnerVersion='1.0.0';supportedOperatingSystems=@('linux','windows');supportedArchitectures=@('amd64');testSummaryAsset='TEST-SUMMARY.json';limitationsAsset='LIMITATIONS.md'}
     revocation=[ordered]@{discoveryLocation=$revocationLocation;snapshotAsset='global-revocations.json';checkpointAsset='global-revocation-checkpoint.json';schemaVersion='1.1';maximumSnapshotAgeHours=24}

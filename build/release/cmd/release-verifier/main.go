@@ -10,20 +10,6 @@ import (
 	"github.com/ThameeraDananjaya/project-agnostic-secret-scanner/internal/verify"
 )
 
-const (
-	repository          = "ThameeraDananjaya/project-agnostic-secret-scanner"
-	repositoryOwnerID   = int64(50274860)
-	workflow            = ".github/workflows/release-recovery-v1.0.0-c2-r6.yml"
-	releaseRef          = "refs/tags/release-tooling-v1.0.0-c2-r6"
-	oidcIssuer          = "https://token.actions.githubusercontent.com"
-	certificateIdentity = "https://github.com/ThameeraDananjaya/project-agnostic-secret-scanner/.github/workflows/release-recovery-v1.0.0-c2-r6.yml@refs/tags/release-tooling-v1.0.0-c2-r6"
-	productSourceTag    = "v1.0.0"
-	productSourceCommit = "a13c28fe7273bc8dc6545f97966a02889524eb4c"
-	productSourceTree   = "217b711ddea51fd0ea7e808edd2e27fdecef8427"
-	releaseToolingTag   = "release-tooling-v1.0.0-c2-r6"
-	workflowTrigger     = "workflow_dispatch"
-)
-
 var (
 	releaseToolingCommit = "UNSET"
 	releaseToolingTree   = "UNSET"
@@ -43,9 +29,16 @@ func run(args []string) int {
 	cosignSHA256 := flags.String("cosign-sha256", "", "expected lowercase SHA-256 of the Cosign executable")
 	trustedRoot := flags.String("trusted-root", "", "absolute path to the independently acquired Sigstore trusted root")
 	trustedRootSHA256 := flags.String("trusted-root-sha256", "", "expected lowercase SHA-256 recorded at trusted-root acquisition")
+	signerPolicy := flags.String("signer-policy", "", "absolute path to independently acquired owner-approved signer policy outside the candidate directory")
+	signerPolicyDigest := flags.String("signer-policy-sha256", "", "SHA-256 obtained independently from the owner trust channel, never from candidate assets")
 	if err := flags.Parse(args); err != nil || flags.NArg() != 0 || *directory == "" || *cosign == "" || *cosignSHA256 == "" || *trustedRoot == "" || *trustedRootSHA256 == "" ||
 		releaseToolingCommit == "UNSET" || releaseToolingTree == "UNSET" {
 		fmt.Fprintln(os.Stderr, "verification failed: complete bounded arguments are required")
+		return 40
+	}
+	policy, err := verify.LoadSeparateSignerPolicy(*signerPolicy, *signerPolicyDigest, *directory, releaseToolingCommit, releaseToolingTree)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "verification failed: independently pinned signer policy rejected")
 		return 40
 	}
 	signature, err := verify.NewCosignCommandVerifier(*cosign, *cosignSHA256, *trustedRoot, *trustedRootSHA256)
@@ -55,14 +48,7 @@ func run(args []string) int {
 	}
 	result, err := verify.VerifyRelease(context.Background(), verify.ReleaseVerificationRequest{
 		Directory: *directory, ManifestPath: *manifest, BundlePath: *bundle,
-		Policy: verify.ReleaseTrustPolicy{
-			Repository: repository, RepositoryOwnerID: repositoryOwnerID, Workflow: workflow,
-			Ref: releaseRef, OIDCIssuer: oidcIssuer, CertificateIdentity: certificateIdentity,
-			ReleaseVersion: "v1.0.0", ManifestSchemaVersion: "2.2",
-			ProductSourceTag: productSourceTag, ProductSourceCommit: productSourceCommit, ProductSourceTree: productSourceTree,
-			ReleaseToolingTag: releaseToolingTag, ReleaseToolingCommit: releaseToolingCommit, ReleaseToolingTree: releaseToolingTree,
-			WorkflowSHA: releaseToolingCommit, Trigger: workflowTrigger,
-		},
+		Policy:    policy,
 		Signature: signature,
 		Now:       time.Now().UTC(),
 	})

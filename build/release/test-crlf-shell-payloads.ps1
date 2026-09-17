@@ -105,7 +105,7 @@ if ($Phase -eq 'HostOnly') {
     return
 }
 
-$engineJson = & (Join-Path $PSScriptRoot 'docker-execution.ps1') -Operation EngineInspection
+$engineJson = & (Join-Path $PSScriptRoot 'invoke-docker-boundary.ps1') -Operation EngineInspection
 $engine = ($engineJson -join "`n") | ConvertFrom-Json
 if ($engine.ExitCode -ne 0 -or ![string]::IsNullOrEmpty($engine.StdErr) -or !$engine.ContainmentEmpty) { throw 'Docker engine boundary is untrusted' }
 . (Join-Path $PSScriptRoot 'image-admission.ps1')
@@ -113,7 +113,7 @@ if ($engine.ExitCode -ne 0 -or ![string]::IsNullOrEmpty($engine.StdErr) -or !$en
 $dockerSHA256 = $engine.DockerSHA256
 foreach ($case in $normalizedCases) {
     $kind = switch ($case.Name) { 'cache-canary' {'CacheCanary'} 'acquisition' {'Acquisition'} 'build' {'Build'} }
-    $parseJson = & (Join-Path $PSScriptRoot 'docker-execution.ps1') -Operation ContainerCrlfParse -PayloadKind $kind -ExpectedDockerSHA256 $dockerSHA256
+    $parseJson = & (Join-Path $PSScriptRoot 'invoke-docker-boundary.ps1') -Operation ContainerCrlfParse -PayloadKind $kind -ExpectedDockerSHA256 $dockerSHA256
     $parse = ($parseJson -join "`n") | ConvertFrom-Json
     if ($parse.ExitCode -ne 0 -or ![string]::IsNullOrEmpty($parse.StdErr) -or !$parse.ContainmentEmpty -or $parse.DockerSHA256 -cne $dockerSHA256) { throw "$($case.Name) normalized payload failed pinned offline shell parsing" }
 }

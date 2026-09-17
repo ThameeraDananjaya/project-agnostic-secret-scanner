@@ -90,4 +90,15 @@ foreach($mode in @('child','grandchild','hold-child','hold-grandchild','detach')
     for($i=0;$i-lt$expected.Count;$i++){Check ($actual[$i]-ceq$expected[$i]) 'Marker path concatenation or order is wrong'}
 }
 Reject {Get-LinuxFixtureMarkerPaths 'unknown' '/inert/base'}
+$windowsMarkerFunction=$fixtureTree.Find({param($n)$n-is[Management.Automation.Language.FunctionDefinitionAst]-and$n.Name-ceq'Get-WindowsFixtureMarkerPaths'},$true)
+if($null-eq$windowsMarkerFunction){throw 'Missing actual Windows fixture path builder'}
+. ([scriptblock]::Create($windowsMarkerFunction.Extent.Text))
+foreach($mode in @('child','grandchild')){
+    $base='C:/inert directory/descendant.pid'
+    $actual=@(Get-WindowsFixtureMarkerPaths $mode $base)
+    [string[]]$expected=if($mode-eq'grandchild'){@('C:/inert directory/descendant.pid','C:/inert directory/descendant.pid.child')}else{@('C:/inert directory/descendant.pid')}
+    Check ($actual.Count-eq$expected.Count) 'Windows marker path count mismatch'
+    for($i=0;$i-lt$expected.Count;$i++){Check ($actual[$i]-ceq$expected[$i]) 'Windows marker path concatenation or order is wrong'}
+}
+Reject {Get-WindowsFixtureMarkerPaths 'unknown' 'C:/inert/base'}
 Write-Output "Linux handoff inert PASS assertions=$script:assertions native-process-calls=0 Linux-runtime-proof=UNAVAILABLE"

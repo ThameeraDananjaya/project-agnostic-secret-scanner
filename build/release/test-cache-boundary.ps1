@@ -42,7 +42,7 @@ if ($Phase -in @('Host','All')) {
     }
 }
 
-$engineJson = & (Join-Path $PSScriptRoot 'docker-execution.ps1') -Operation EngineInspection
+$engineJson = & (Join-Path $PSScriptRoot 'invoke-docker-boundary.ps1') -Operation EngineInspection
 $engine = ($engineJson -join "`n") | ConvertFrom-Json
 if ($engine.ExitCode -ne 0 -or ![string]::IsNullOrEmpty($engine.StdErr) -or !$engine.ContainmentEmpty) { throw 'Docker engine boundary is untrusted' }
 . (Join-Path $PSScriptRoot 'image-admission.ps1')

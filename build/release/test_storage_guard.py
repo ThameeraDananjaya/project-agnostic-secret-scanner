@@ -35,11 +35,13 @@ def distribution(root):
     (root / "CHECKSUMS.sha256").write_text("".join(f"{hashes[n]}  {n}\n" for n in sorted(hashes)), encoding="ascii", newline="\n")
     assets = [{"path": p.name, "size": p.stat().st_size, "sha256": hashlib.sha256(p.read_bytes()).hexdigest()}
               for p in sorted(root.iterdir())]
-    manifest = dict(manifestSchemaVersion="2.2", releaseVersion="v1.0.0",
+    manifest = dict(manifestSchemaVersion="2.3", releaseVersion="v1.0.0",
                     productSource=dict(tag="v1.0.0", commit=guard.PRODUCT, tree=guard.PRODUCT_TREE),
                     releaseTooling=dict(tag=guard.TAG, commit=REVISION, workflow=guard.WORKFLOW,
                                        workflowRef="refs/tags/" + guard.TAG, workflowSha=REVISION,
-                                       trigger="workflow_dispatch"), assets=assets)
+                                       trigger="workflow_dispatch"),
+                    releaseState="unsigned-candidate", releaseIdentity=None,
+                    buildIdentity=dict(repository=guard.REPOSITORY,repositoryOwnerId=50274860,workflow=guard.WORKFLOW,ref="refs/tags/"+guard.TAG,workflowSha=REVISION,trigger="workflow_dispatch"), assets=assets)
     (root / "release-manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
 
 
@@ -110,7 +112,7 @@ class DistributionTests(unittest.TestCase):
         result = self.check()
         self.assertEqual(result["payload_bytes"], sum(map(len, before.values())))
         self.assertEqual(result["transfer_upper_bound_bytes"], sum(map(len, before.values())) + 16 * 1024 * 1024)
-        self.assertEqual(result["files"], 32)
+        self.assertEqual(result["files"], 33)
         self.assertEqual(before, {p.name: p.read_bytes() for p in self.root.iterdir()})
 
     def test_extra_hidden_file(self):
@@ -140,6 +142,9 @@ class DistributionTests(unittest.TestCase):
     def test_manifest_identity_and_asset_matrix(self):
         path = self.root / "release-manifest.json"; original = json.loads(path.read_text())
         mutations = [lambda m: m.update(releaseVersion="v2.0.0"),
+                     lambda m: m.update(releaseState="signing-pending"),
+                     lambda m: m.update(releaseIdentity={}),
+                     lambda m: m["buildIdentity"].update(workflowSha="3"*40),
                      lambda m: m["productSource"].update(commit="3" * 40),
                      lambda m: m["releaseTooling"].update(workflowSha="3" * 40),
                      lambda m: m["assets"].append(m["assets"][0]),

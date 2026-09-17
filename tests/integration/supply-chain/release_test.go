@@ -660,8 +660,8 @@ func TestIteration007RepositoryIdentityAgreementAndPreservation(t *testing.T) {
 	}
 
 	for path, required := range map[string][]string{
-		"build/release/build.ps1":                    {"release-tooling-v1.0.0-c2-r6", ".github/workflows/release-recovery-v1.0.0-c2-r6.yml", "manifestSchemaVersion='2.2'", "schema-release-manifest-2.1.json", "schema-release-manifest-2.2.json"},
-		"build/release/cmd/release-verifier/main.go": {"release-tooling-v1.0.0-c2-r6", ".github/workflows/release-recovery-v1.0.0-c2-r6.yml", `ManifestSchemaVersion: "2.2"`},
+		"build/release/build.ps1":                    {"release-tooling-v1.0.0-c2-linux-boundary", ".github/workflows/release-build-unsigned.yml", "manifestSchemaVersion='2.3'", "schema-release-manifest-2.1.json", "schema-release-manifest-2.2.json", "schema-release-manifest-2.3.json", "releaseIdentity=$null"},
+		"build/release/cmd/release-verifier/main.go": {"LoadSeparateSignerPolicy", "signer-policy-sha256"},
 		"internal/verify/release.go":                 {"release-tooling-v1.0.0-c2", "release-tooling-v1.0.0-c2-r6", ".github/workflows/release-recovery-v1.0.0.yml", ".github/workflows/release-recovery-v1.0.0-c2-r6.yml"},
 	} {
 		source := read(path)

@@ -50,6 +50,12 @@ function Get-LinuxFixtureMarkerPaths([string]$Mode,[string]$PidFile) {
     return @($PidFile,($PidFile+'.ready'))
 }
 
+function Get-WindowsFixtureMarkerPaths([string]$Mode,[string]$PidFile) {
+    if($Mode-eq'child'){return @($PidFile)}
+    if($Mode-eq'grandchild'){return @($PidFile,($PidFile+'.child'))}
+    throw 'Unknown Windows descendant fixture mode'
+}
+
 function Invoke-CleanNativeFixture {
     . (Join-Path $PSScriptRoot 'native-fixture-diagnostics.ps1')
     if ($null -ne ('PscanNativeBoundary' -as [type])) { throw 'Clean fixture process began with the native boundary already loaded' }
@@ -172,7 +178,15 @@ default{throw 'unknown fixture mode'}
             foreach($case in @(@{M='stdout';C=131073},@{M='stderr';C=131073},@{M='both';C=131073},@{M='hang';C=0})){Terminal (Run $case.M $case.C) $case.M}
             foreach($mode in @('invalid-utf8','incomplete-utf8')){$r=Run $mode;Success $r $mode;$failed=$false;try{[void]$utf8.GetString($r.StdOut)}catch{$failed=$true};if(!$failed){throw "$mode unexpectedly decoded"}}
             $startFailed=$false;try{[void][PscanNativeBoundary]::RunWindows((Join-Path $temporaryRoot 'missing.exe'),@(),$environment,$temporaryRoot,131072,15000,2000)}catch{$startFailed=$true};if(!$startFailed){throw 'Start failure unexpectedly returned trusted evidence'}
-            foreach($mode in @('child','grandchild')){$pidFile=Join-Path $temporaryRoot "$mode.pid";$r=Run $mode 0 $pidFile;Terminal $r $mode;foreach($path in @($pidFile,$pidFile+'.child')){if(Test-Path $path){$id=[int](Get-Content -Raw $path);if(Get-Process -Id $id -ErrorAction SilentlyContinue){throw "$mode left live member $id"}}}}
+            foreach($mode in @('child','grandchild')){
+                $pidFile=Join-Path $temporaryRoot "$mode.pid";$r=Run $mode 0 $pidFile;Terminal $r $mode
+                foreach($path in @(Get-WindowsFixtureMarkerPaths $mode $pidFile)){
+                    if(!(Test-Path -LiteralPath $path -PathType Leaf)-or(Get-Item -LiteralPath $path).Length-gt 64){throw "$mode required Windows descendant marker missing or oversized"}
+                    $id=[int](Get-Content -Raw -LiteralPath $path)
+                    if($id-le 0){throw "$mode invalid Windows descendant identifier"}
+                    if(Get-Process -Id $id -ErrorAction SilentlyContinue){throw "$mode left live member $id"}
+                }
+            }
             $copy=Join-Path $temporaryRoot 'identity.exe';Copy-Item -LiteralPath $native -Destination $copy
             $replacement=Join-Path $temporaryRoot 'replacement.exe';Copy-Item -LiteralPath $native -Destination $replacement
             $handle=[IO.File]::Open($copy,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::Read)

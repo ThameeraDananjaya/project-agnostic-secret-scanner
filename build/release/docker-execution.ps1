@@ -747,12 +747,11 @@ GOOS=linux GOARCH=amd64 /work/runner/go/bin/go build -mod=readonly -trimpath -bu
 GOOS=windows GOARCH=amd64 /work/runner/go/bin/go build -mod=readonly -trimpath -buildvcs=false -ldflags "$verifier_ldflags" -o /out/scanner-release-verifier-windows-amd64.exe ./build/release/cmd/release-verifier
 GOOS=linux GOARCH=amd64 /work/runner/go/bin/go build -mod=readonly -trimpath -buildvcs=false -ldflags '-s -w -buildid=' -o /out/packager-linux-amd64 ./build/release/cmd/packager
 GOOS=linux GOARCH=amd64 /work/runner/go/bin/go build -mod=readonly -trimpath -buildvcs=false -ldflags '-s -w -buildid=' -o /out/sbom-linux-amd64 ./build/release/cmd/sbom
-/work/runner/go/bin/go list -mod=readonly -m -json all > /out/modules.json
 PSCAN_GITLEAKS_BINARY=/out/gitleaks-linux-amd64 PSCAN_GITLEAKS_CONFIG=/work/product/rules/generic/gitleaks-v8.30.1.toml PSCAN_GITLEAKS_IGNORE=/work/product/rules/generic/gitleaks-ignore-empty-v1.txt /work/runner/go/bin/go test -p=1 -count=1 -run '^TestPinnedRuleAndCoverageIntegrityBindings$' ./tests/acceptance/gitleaks
 PSCAN_GITLEAKS_BINARY=/out/gitleaks-linux-amd64 PSCAN_GITLEAKS_CONFIG=/work/product/rules/generic/gitleaks-v8.30.1.toml PSCAN_GITLEAKS_IGNORE=/work/product/rules/generic/gitleaks-ignore-empty-v1.txt /work/runner/go/bin/go test -p=1 -count=1 ./...
 /work/runner/go/bin/go vet -p=1 ./...
 GOOS=windows GOARCH=amd64 /work/runner/go/bin/go test -p=1 -exec /bin/true ./...
-/out/sbom-linux-amd64 -input /out/modules.json -output /out/sbom.spdx.json -revision "$PSCAN_PRODUCT_REVISION" -created "$PSCAN_CREATED"
+/out/sbom-linux-amd64 -binaries /out -product-source /work/product -tooling-source /work/tooling -engine-source /work/gitleaks -runner-go /work/runner/go -engine-go /work/engine/go -tooling-revision "$PSCAN_TOOLING_REVISION" -tooling-tree "$PSCAN_TOOLING_TREE" -output /out/sbom.spdx.json -created "$PSCAN_CREATED"
 cp /work/tooling/contracts/release-manifest/schema-2.0.json /out/tooling-materialized/contracts/release-manifest/schema-2.0.json
 cp /work/tooling/contracts/release-manifest/schema-2.1.json /out/tooling-materialized/contracts/release-manifest/schema-2.1.json
 cp /work/tooling/contracts/release-manifest/schema-2.2.json /out/tooling-materialized/contracts/release-manifest/schema-2.2.json

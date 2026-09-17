@@ -278,7 +278,8 @@ if ($InternalMode -ceq 'HostileStale') { Invoke-HostileFixture -Stale $true }
 if ($null -ne ('PscanNativeBoundary' -as [type])) { throw 'Orchestrator process began with an ambient native boundary type' }
 $releaseFiles = @(
     'admit-image.ps1','acquire.ps1','build.ps1','cache-canary.ps1',
-    'image-admission.ps1','test-cache-boundary.ps1','test-crlf-shell-payloads.ps1'
+    'image-admission.ps1','test-cache-boundary.ps1','test-crlf-shell-payloads.ps1',
+    'docker-container-lifecycle.ps1','build-validation.ps1','invoke-docker-boundary.ps1'
 )
 $allSource = foreach ($name in $releaseFiles) { Get-Content -Raw -LiteralPath (Join-Path $PSScriptRoot $name) }
 $production = Get-Content -Raw -LiteralPath $productionPath
@@ -512,9 +513,13 @@ foreach ($forbidden in @('ScriptBlock','Callback','Invoker','ExecutablePath','Ar
 foreach ($required in @(
     "ValidateSet('EngineInspection','ExactImageInventory','ApprovedImagePull','RepositoryDigestInspection','ContainerCacheProof','ContainerCrlfParse','DependencyAcquisition','ReleaseBuild','ReleasePackage')",
     'CREATE_SUSPENDED','AssignProcessToJobObject','JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE',
-    '/usr/bin/setsid','/usr/bin/unshare','--kill-child=SIGKILL','kill -STOP $$','Get-LinuxSessionMembers','Test-LinuxMemberAlive',
+    '/usr/bin/setsid','/usr/bin/unshare','--kill-child=SIGKILL','Get-LinuxGateAction','Get-LinuxSessionMembers','Test-LinuxMemberAlive',
     '131072','15000','2000','Environment.Clear()','DOCKER_CONFIG','FileShare]::Read'
 )) { if (!$production.Contains($required)) { throw "Closed entrypoint omits required marker: $required" } }
+# Exercise the actual ancestor-stop, pinned identity, stopped-state and inherited
+# inode gate before the isolated native matrix. A retired shell self-stop string
+# cannot prove this protocol (namespace PID 1 does not accept that self-stop).
+& (Join-Path $PSScriptRoot 'test-linux-handoff.ps1')
 $gate = $production.IndexOf("if (`$null -ne ('PscanNativeBoundary' -as [type]))")
 $compile = $production.IndexOf('Add-Type -TypeDefinition $nativeBoundarySource')
 $dispatch = $production.IndexOf('[PscanNativeBoundary]::')

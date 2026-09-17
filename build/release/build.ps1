@@ -3,7 +3,8 @@ param(
     [Parameter(Mandatory = $true)][string]$ExpectedToolingRevision,
     [Parameter(Mandatory = $true)][string]$AcquisitionDirectory,
     [Parameter(Mandatory = $true)][string]$OutputDirectory,
-    [switch]$AllowCanonicalEolProjection
+    [switch]$AllowCanonicalEolProjection,
+    [ValidateSet('Candidate','Validation')][string]$Mode='Candidate'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -109,8 +110,16 @@ $productTree = '217b711ddea51fd0ea7e808edd2e27fdecef8427'
 $toolingTag = 'release-tooling-v1.0.0-c2-linux-boundary'
 $workflow = '.github/workflows/release-build-unsigned.yml'
 $workflowRef = 'refs/tags/release-tooling-v1.0.0-c2-linux-boundary'
-$resolvedToolingTag = (Convert-StrictUtf8 -Bytes (Invoke-SourceTrustGit -Repository $root -Arguments @('rev-parse',"$toolingTag`^{commit}")).Bytes -Label 'Immutable tooling commit').Trim()
-if ($resolvedToolingTag -cne $toolingRevision) { throw 'Build tag does not identify the exact corrected tooling commit' }
+. (Join-Path $PSScriptRoot 'build-validation.ps1')
+$validationInvocation=$null
+if($Mode-ceq'Validation'){
+    $validationInvocation=Assert-BuildValidationInvocation $toolingRevision
+    $toolingTag=$null;$workflow=$validationInvocation.workflow;$workflowRef=$validationInvocation.ref
+}else{
+    if(![string]::IsNullOrEmpty($env:PSCAN_VALIDATION_WORKFLOW_SHA)){throw 'Validation workflow cannot enter candidate mode'}
+    $resolvedToolingTag = (Convert-StrictUtf8 -Bytes (Invoke-SourceTrustGit -Repository $root -Arguments @('rev-parse',"$toolingTag`^{commit}")).Bytes -Label 'Immutable tooling commit').Trim()
+    if ($resolvedToolingTag -cne $toolingRevision) { throw 'Build tag does not identify the exact corrected tooling commit' }
+}
 $resolvedProductTag = (Convert-StrictUtf8 -Bytes (Invoke-SourceTrustGit -Repository $root -Arguments @('rev-parse','v1.0.0^{commit}')).Bytes -Label 'Locked product commit').Trim()
 $resolvedProductTree = (Convert-StrictUtf8 -Bytes (Invoke-SourceTrustGit -Repository $root -Arguments @('rev-parse','v1.0.0^{tree}')).Bytes -Label 'Locked product tree').Trim()
 if ($resolvedProductTag -ne $productRevision -or $resolvedProductTree -ne $productTree) {
@@ -160,6 +169,22 @@ try { $imageAdmission = Get-Content -Raw -LiteralPath $receiptPath | ConvertFrom
 if ($imageAdmission.schemaVersion -cne '1.0' -or $imageAdmission.sourceRevision -cne $toolingRevision -or $imageAdmission.image -cne $image -or
     $imageAdmission.dockerExecutableSHA256 -notmatch '^[0-9a-f]{64}$' -or $imageAdmission.containment -cne 'empty-after-every-operation' -or
     $imageAdmission.streamLimitBytes -ne 131072 -or $imageAdmission.commandBudgetMilliseconds -ne 15000 -or $imageAdmission.cleanupGraceMilliseconds -ne 2000) { throw 'Docker admission receipt does not bind this exact build' }
+# Carry the admitted ordinary host identity through every writable container.
+. (Join-Path $PSScriptRoot 'host-cache-canary.ps1')
+$hostIdentity = Get-HostCacheIdentity -CacheDirectory $moduleCache
+$containerUser = @{}
+if ($IsLinux) {
+    foreach ($directory in @($raw,$linuxStage,$windowsStage,$dist)) {
+        $identity = Get-HostCacheIdentity -CacheDirectory $directory
+        if ($identity.HostUID -ne $hostIdentity.HostUID -or $identity.HostGID -ne $hostIdentity.HostGID) { throw 'Build output ownership differs from the admitted host identity' }
+        & chmod 0700 -- $directory
+        if ($LASTEXITCODE -ne 0) { throw 'Private build directory mode preparation failed' }
+    }
+    $containerUser.HostUID=$hostIdentity.HostUID; $containerUser.HostGID=$hostIdentity.HostGID
+}
+$expectedHostMode = $hostIdentity.IdentityMode
+if ($imageAdmission.hostIdentityMode -cne $expectedHostMode -or $imageAdmission.hostUID -ne $hostIdentity.HostUID -or $imageAdmission.hostGID -ne $hostIdentity.HostGID -or
+    $ledgerValue.cacheCanary.hostIdentityMode -cne $expectedHostMode -or $ledgerValue.cacheCanary.hostUID -ne $hostIdentity.HostUID -or $ledgerValue.cacheCanary.hostGID -ne $hostIdentity.HostGID) { throw 'Build host identity differs from admission and acquisition evidence' }
 $dockerSHA256 = $imageAdmission.dockerExecutableSHA256
 if ($ledgerValue.imageAdmission.dockerExecutableSHA256 -cne $dockerSHA256) { throw 'Acquisition ledger and Docker admission receipt identities conflict' }
 . (Join-Path $PSScriptRoot 'image-admission.ps1')
@@ -169,7 +194,7 @@ if ($inspect.ExitCode -ne 0 -or ![string]::IsNullOrEmpty($inspect.StdErr) -or !$
 $repoDigests = Read-ReleaseRepoDigestsEvidence -Json $inspect.StdOut
 [void](Assert-ReleaseImageIdentityEvidence -Image $image -RepoDigests $repoDigests)
 
-$buildBoundary = & (Join-Path $PSScriptRoot 'invoke-docker-boundary.ps1') -Operation ReleaseBuild -ExpectedDockerSHA256 $dockerSHA256 -CacheDirectory $moduleCache -RunnerGoArchive $runnerGo -EngineGoArchive $engineGo -GitleaksArchive $gitleaksSource -ProductArchive $productArchive -ProductBlobManifest $productMaterialization.BlobManifest -ProductPathManifest $productMaterialization.PathManifest -ProductModeManifest $productMaterialization.ModeManifest -ToolingArchive $toolingArchive -ToolingBlobManifest $toolingMaterialization.BlobManifest -ToolingPathManifest $toolingMaterialization.PathManifest -ToolingModeManifest $toolingMaterialization.ModeManifest -RawOutputDirectory $raw -SourceDateEpoch ([string]$epoch) -ProductRevision $productRevision -ToolingRevision $toolingRevision -ToolingTree $toolingTree -ProductArchiveSHA256 $productMaterialization.ArchiveSHA256 -ToolingArchiveSHA256 $toolingMaterialization.ArchiveSHA256 -ProductFileCount $productMaterialization.FileCount -ToolingFileCount $toolingMaterialization.FileCount -Created $created
+$buildBoundary = & (Join-Path $PSScriptRoot 'invoke-docker-boundary.ps1') -Operation ReleaseBuild @containerUser -ExpectedDockerSHA256 $dockerSHA256 -CacheDirectory $moduleCache -RunnerGoArchive $runnerGo -EngineGoArchive $engineGo -GitleaksArchive $gitleaksSource -ProductArchive $productArchive -ProductBlobManifest $productMaterialization.BlobManifest -ProductPathManifest $productMaterialization.PathManifest -ProductModeManifest $productMaterialization.ModeManifest -ToolingArchive $toolingArchive -ToolingBlobManifest $toolingMaterialization.BlobManifest -ToolingPathManifest $toolingMaterialization.PathManifest -ToolingModeManifest $toolingMaterialization.ModeManifest -RawOutputDirectory $raw -SourceDateEpoch ([string]$epoch) -ProductRevision $productRevision -ToolingRevision $toolingRevision -ToolingTree $toolingTree -ProductArchiveSHA256 $productMaterialization.ArchiveSHA256 -ToolingArchiveSHA256 $toolingMaterialization.ArchiveSHA256 -ProductFileCount $productMaterialization.FileCount -ToolingFileCount $toolingMaterialization.FileCount -Created $created
 $buildResult = ($buildBoundary -join "`n") | ConvertFrom-Json
 if ($buildResult.ExitCode -ne 0 -or ![string]::IsNullOrEmpty($buildResult.StdErr) -or !$buildResult.ContainmentEmpty -or $buildResult.DockerSHA256 -cne $dockerSHA256) { throw 'Offline release build or validation failed closed at the Docker boundary' }
 
@@ -212,6 +237,7 @@ $testSummary = [ordered]@{
     linuxExecution = 'PASS'; windowsCompilation = 'PASS'; windowsNativeExecution = 'UNPROVEN_SMART_APP_CONTROL'
     signing = 'NOT_PERFORMED_OWNER_GATE'; remoteWorkflow = 'UNSIGNED_BUILD_ONLY'
 }
+if($Mode-ceq'Validation'){$testSummary.schemaVersion='pscan-validation-test-summary-v1';$testSummary.remoteWorkflow='VALIDATION_ONLY';$testSummary.candidate=$false}
 Write-Utf8 (Join-Path $dist 'TEST-SUMMARY.json') ($testSummary | ConvertTo-Json -Depth 6)
 $compatibility = [ordered]@{
     schemaVersion = '2.3'; releaseVersion = 'v1.0.0'; productSourceRevision = $productRevision; releaseToolingRevision = $toolingRevision
@@ -229,6 +255,7 @@ $limitations = @"
 - Gitleaks is the only primary detector. TruffleHog is not assessed, downloaded, integrated, distributed or enabled.
 - Passing validation placeholders do not establish any consuming-project integration, policy, receipt, deployment or production result.
 "@
+if($Mode-ceq'Validation'){$limitations=$limitations.Replace('This candidate was built by the exact unsigned build workflow','This validation-only package was built by the exact validation workflow');$limitations="# Validation only; not a release candidate`n`n"+$limitations}
 Write-Utf8 (Join-Path $dist 'LIMITATIONS.md') $limitations
 $revocationLocation = 'https://api.github.com/repos/ThameeraDananjaya/project-agnostic-secret-scanner/releases?per_page=100'
 $revocations = [ordered]@{schemaFamily='global-scanner-revocation-snapshot';schemaVersion='1.0';capturedAt=$created;records=@()}
@@ -243,6 +270,11 @@ $provenance = [ordered]@{
     buildImage=$image;runnerGo='go1.27.1';engineGo='go1.27.0'
     gitleaksSourceRevision='83d9cd684c87d95d656c1458ef04895a7f1cbd8e'
     network='disabled';moduleCache='read-only';cgo=$false;trimpath=$true;buildVCS=$false;buildId='empty'
+}
+if($Mode-ceq'Validation'){
+    $provenance.Remove('releaseTooling');$provenance.schemaVersion='pscan-validation-provenance-v1'
+    $provenance.purpose='validation-only';$provenance.candidate=$false
+    $provenance.source=[ordered]@{commit=$toolingRevision;tree=$toolingTree};$provenance.invocation=$validationInvocation
 }
 Write-Utf8 (Join-Path $dist 'BUILD-PROVENANCE.json') ($provenance | ConvertTo-Json -Depth 6)
 
@@ -261,7 +293,7 @@ Copy-Item -LiteralPath (Join-Path $dist 'scanner-runner-windows-amd64.exe') -Des
 Copy-Item -LiteralPath (Join-Path $dist 'scanner-release-verifier-windows-amd64.exe') -Destination (Join-Path $windowsStage 'bin\scanner-release-verifier.exe')
 Copy-Item -LiteralPath (Join-Path $dist 'gitleaks-windows-amd64.exe') -Destination (Join-Path $windowsStage 'bin\gitleaks.exe')
 
-$packageBoundary = & (Join-Path $PSScriptRoot 'invoke-docker-boundary.ps1') -Operation ReleasePackage -ExpectedDockerSHA256 $dockerSHA256 -RawOutputDirectory $raw -LinuxStageDirectory $linuxStage -WindowsStageDirectory $windowsStage -DistributionDirectory $dist -SourceDateEpoch ([string]$epoch)
+$packageBoundary = & (Join-Path $PSScriptRoot 'invoke-docker-boundary.ps1') -Operation ReleasePackage @containerUser -ExpectedDockerSHA256 $dockerSHA256 -RawOutputDirectory $raw -LinuxStageDirectory $linuxStage -WindowsStageDirectory $windowsStage -DistributionDirectory $dist -SourceDateEpoch ([string]$epoch)
 $packageResult = ($packageBoundary -join "`n") | ConvertFrom-Json
 if ($packageResult.ExitCode -ne 0 -or ![string]::IsNullOrEmpty($packageResult.StdErr) -or !$packageResult.ContainmentEmpty -or $packageResult.DockerSHA256 -cne $dockerSHA256) { throw 'Deterministic packaging failed closed at the Docker boundary' }
 
@@ -270,6 +302,10 @@ $checksumLines = foreach ($file in $checksumTargets) {
     "$((Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant())  $($file.Name)"
 }
 Write-Utf8 (Join-Path $dist 'CHECKSUMS.sha256') ($checksumLines -join "`n")
+if($Mode-ceq'Validation'){
+    Complete-BuildValidation -Distribution $dist -SourceTrust $sourceTrust -Invocation $validationInvocation -Created $created
+    return
+}
 
 function Asset([string]$Name, [string]$Kind, [string]$OS='none', [string]$Arch='none') {
     $file = Get-Item -LiteralPath (Join-Path $dist $Name)

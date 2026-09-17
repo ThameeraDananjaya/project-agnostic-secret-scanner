@@ -32,9 +32,18 @@ if ($Phase -in @('Host','All')) {
         [ordered]@{Name='read-only';Path=$ReadOnlyCacheDirectory}
     )) {
         $failedClosed = $false
-        try { [void](Invoke-HostCacheCanary -CacheDirectory $case.Path) } catch { $failedClosed = $true }
+        try { [void](Invoke-HostCacheCanary -CacheDirectory $case.Path) } catch {
+            if($case.Name-ceq'wrong-owner'){
+                if($_.FullyQualifiedErrorId-notlike'PSCAN_HOST_CACHE_OWNER_MISMATCH*'){throw}
+            }else{
+                $failure=$_.Exception;$cause=$failure;while($null-ne$cause.InnerException){$cause=$cause.InnerException}
+                if($failure.Data['PSCANCachePhase']-cne'create-write'-or$failure.Data['PSCANCacheCleanup']-cne'not-needed'-or$cause-isnot[UnauthorizedAccessException]){throw}
+            }
+            $failedClosed = $true
+        }
         if (!$failedClosed) { throw "$($case.Name) cache unexpectedly admitted the host canary" }
         Require-EmptyWithoutLedger $case.Path
+        Write-Host ('PSCAN_HOST_CACHE_NEGATIVE '+(@{schema='pscan-host-cache-negative-v1';case=$case.Name;outcome='expected-denial';phase=$(if($case.Name-ceq'wrong-owner'){'owner-admission'}else{'create-write'});ownedFilesRemaining=0}|ConvertTo-Json -Compress))
     }
     if ($Phase -eq 'Host') {
         Write-Output "Linux host cache boundary PASS uid=$uid gid=$gid positive=PASS wrong-owner=REJECT read-only=REJECT docker=NOT_INVOKED"
@@ -60,6 +69,8 @@ foreach ($case in @(
     try {
         Invoke-ReleaseCacheCanary -Image $image -ModuleCache $case.Path -ExpectedDockerSHA256 $dockerSHA256 -HostUID $uid -HostGID $gid -ReadOnlyCache:$case.ReadOnly
     } catch {
+        if($_.FullyQualifiedErrorId-notlike'PSCAN_CACHE_EXPECTED_DENIAL*'){throw}
+        Write-Host ('PSCAN_CACHE_NEGATIVE '+($_.TargetObject|ConvertTo-Json -Compress))
         $failedClosed = $true
     }
     if (!$failedClosed) { throw "$($case.Name) cache unexpectedly admitted acquisition" }

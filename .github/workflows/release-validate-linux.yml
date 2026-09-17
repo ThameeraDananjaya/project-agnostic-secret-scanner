@@ -1,0 +1,227 @@
+name: validate-v1.0.0-c2-linux-path
+
+on:
+  workflow_dispatch:
+    inputs:
+      product_source_revision:
+        description: Locked v1.0.0 product-source commit
+        required: true
+        type: string
+      release_tooling_revision:
+        description: Exact commit for noncandidate Linux validation
+        required: true
+        type: string
+      release_version:
+        description: Contracted product release tag; only v1.0.0 is permitted
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-v1.0.0-c2-linux-path
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: >-
+      github.repository == 'ThameeraDananjaya/project-agnostic-secret-scanner' &&
+      github.repository_owner_id == '50274860' &&
+      github.ref == 'refs/heads/main' &&
+      github.sha == inputs.release_tooling_revision &&
+      github.workflow_ref == 'ThameeraDananjaya/project-agnostic-secret-scanner/.github/workflows/release-validate-linux.yml@refs/heads/main' &&
+      github.workflow_sha == inputs.release_tooling_revision &&
+      inputs.product_source_revision == 'a13c28fe7273bc8dc6545f97966a02889524eb4c' &&
+      inputs.release_version == 'v1.0.0'
+    env:
+      PSCAN_VALIDATION_WORKFLOW_SHA: ${{ github.workflow_sha }}
+      PSCAN_VALIDATION_WORKFLOW_REF: ${{ github.workflow_ref }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - name: Validate exact noncandidate workflow invocation
+        shell: bash
+        env:
+          PRODUCT_SOURCE_REVISION: ${{ inputs.product_source_revision }}
+          RELEASE_TOOLING_REVISION: ${{ inputs.release_tooling_revision }}
+          WORKFLOW_REF: ${{ github.workflow_ref }}
+          WORKFLOW_SHA: ${{ github.workflow_sha }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY_OWNER_ID" = '50274860'
+          test "$PRODUCT_SOURCE_REVISION" = 'a13c28fe7273bc8dc6545f97966a02889524eb4c'
+          test "$RELEASE_TOOLING_REVISION" = "$GITHUB_SHA"
+          test "$GITHUB_REF" = 'refs/heads/main'
+          test "$WORKFLOW_REF" = 'ThameeraDananjaya/project-agnostic-secret-scanner/.github/workflows/release-validate-linux.yml@refs/heads/main'
+          test "$WORKFLOW_SHA" = "$RELEASE_TOOLING_REVISION"
+
+      - name: Check out exact tooling revision without persisted credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.release_tooling_revision }}
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Verify locked product tag and tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse 'v1.0.0^{commit}')" = 'a13c28fe7273bc8dc6545f97966a02889524eb4c'
+          test "$(git rev-parse 'v1.0.0^{tree}')" = '217b711ddea51fd0ea7e808edd2e27fdecef8427'
+
+      - name: Materialize and verify exact committed release entrypoints
+        shell: bash
+        run: |
+          set -euo pipefail
+          export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null GIT_NO_REPLACE_OBJECTS=1 GIT_NO_LAZY_FETCH=1 GIT_OPTIONAL_LOCKS=0
+          exact="$RUNNER_TEMP/pscan-exact-tooling"
+          mkdir -p "$exact"
+          git -c core.autocrlf=false -c core.eol=lf -c tar.umask=0022 archive "$GITHUB_SHA" build/release | tar -xf - -C "$exact"
+          expected=0
+          while IFS=$'\t' read -r metadata path; do
+            mode="${metadata%% *}"
+            remainder="${metadata#* }"
+            type="${remainder%% *}"
+            object="${remainder##* }"
+            test "$type" = blob
+            case "$mode" in 100644|100755) ;; *) exit 1 ;; esac
+            test "$(git hash-object --no-filters "$exact/$path")" = "$object"
+            expected=$((expected + 1))
+          done < <(git ls-tree -r "$GITHUB_SHA" -- build/release)
+          actual="$(find "$exact/build/release" -type f -printf '%P\n' | wc -l)"
+          test "$actual" -eq "$expected"
+          echo "PSCAN_EXACT_TOOLING_ROOT=$exact" >> "$GITHUB_ENV"
+          echo "PSCAN_VERIFIED_REPOSITORY_ROOT=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+          echo "PSCAN_TRUSTED_LAUNCHER_REVISION=$GITHUB_SHA" >> "$GITHUB_ENV"
+
+      - name: Reject hostile Git index and checkout states before build output
+        shell: pwsh
+        run: >-
+          & "$env:PSCAN_EXACT_TOOLING_ROOT/build/release/test-source-trust.ps1"
+          -SourceRepository "$env:GITHUB_WORKSPACE"
+          -SourceRevision "$env:GITHUB_SHA"
+          -WorkingDirectory "$env:RUNNER_TEMP/pscan-source-trust"
+
+      - name: Prove fixed child transport and inert handoff/host controls
+        shell: pwsh
+        run: |
+          & "$env:PSCAN_EXACT_TOOLING_ROOT/build/release/test-boundary-child.ps1"
+          & "$env:PSCAN_EXACT_TOOLING_ROOT/build/release/test-linux-handoff.ps1"
+          & "$env:PSCAN_EXACT_TOOLING_ROOT/build/release/test-native-fixture-diagnostics.ps1"
+          & "$env:PSCAN_EXACT_TOOLING_ROOT/build/release/test-native-profile-driver.ps1"
+          & "$env:PSCAN_EXACT_TOOLING_ROOT/build/release/test-unsigned-build-driver.ps1"
+
+      - name: Prove actual local lifecycle, identity and validation gates
+        shell: pwsh
+        run: |
+          foreach ($fixture in @('test-linux-build-path.ps1','test-acquisition-source.ps1','test-container-lifecycle.ps1','test-build-validation.ps1')) {
+            & /opt/microsoft/powershell/7/pwsh -NoLogo -NoProfile -NonInteractive -File "$env:PSCAN_EXACT_TOOLING_ROOT/build/release/$fixture"
+            if ($LASTEXITCODE -ne 0) { throw "Local validation fixture failed: $fixture" }
+          }
+
+      - name: Prove named policy and context observers using inert inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          /usr/bin/python3 -I -B "$PSCAN_EXACT_TOOLING_ROOT/build/release/test-native-userns-prerequisite.py"
+          /usr/bin/python3 -I -B "$PSCAN_EXACT_TOOLING_ROOT/build/release/test-native-profile-context.py"
+
+      - name: Prove host cache ownership failures and prepare exact cache directories
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -d -m 0700 "$RUNNER_TEMP/cache-positive" "$RUNNER_TEMP/cache-wrong-owner" "$RUNNER_TEMP/cache-read-only"
+          sudo chown root:root "$RUNNER_TEMP/cache-wrong-owner"
+          sudo chmod 0755 "$RUNNER_TEMP/cache-wrong-owner"
+          chmod 0500 "$RUNNER_TEMP/cache-read-only"
+          pwsh "$PSCAN_EXACT_TOOLING_ROOT/build/release/test-cache-boundary.ps1" \
+            -PositiveCacheDirectory "$RUNNER_TEMP/cache-positive" \
+            -WrongOwnerCacheDirectory "$RUNNER_TEMP/cache-wrong-owner" \
+            -ReadOnlyCacheDirectory "$RUNNER_TEMP/cache-read-only" -Phase Host
+          install -d -m 0700 "$RUNNER_TEMP/pscan-acquisition" "$RUNNER_TEMP/pscan-acquisition/downloads" "$RUNNER_TEMP/pscan-acquisition/gomodcache"
+
+      - name: Install reviewed disposable host prerequisite
+        id: prerequisite
+        shell: bash
+        run: |
+          set -euo pipefail
+          export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null GIT_NO_REPLACE_OBJECTS=1 GIT_NO_LAZY_FETCH=1 GIT_OPTIONAL_LOCKS=0
+          blob="$(git rev-parse "$GITHUB_SHA:build/release/native-userns-prerequisite.py")"
+          /usr/bin/sudo --non-interactive /usr/bin/python3 -I -B -c '
+          import hashlib, pathlib, re, sys
+          path, expected, action = sys.argv[1:]
+          if not re.fullmatch(r"[0-9a-f]{40}", expected): raise SystemExit("Invalid source identity")
+          with open(path, "rb") as stream: raw = stream.read(65537)
+          if len(raw) > 65536: raise SystemExit("Source exceeds bound")
+          actual = hashlib.sha1(b"blob " + str(len(raw)).encode() + b"\0" + raw).hexdigest()
+          if actual != expected: raise SystemExit("Committed source mismatch")
+          sys.argv = [path, action]
+          exec(compile(raw, path, "exec"), {"__name__": "__main__", "__file__": path, "__source_sha256__": hashlib.sha256(raw).hexdigest()})
+          ' "$PSCAN_EXACT_TOOLING_ROOT/build/release/native-userns-prerequisite.py" "$blob" install
+
+      - name: Prove actual native and image admission prerequisites
+        shell: pwsh
+        run: '& "$env:PSCAN_EXACT_TOOLING_ROOT/build/release/unsigned-build-stage.ps1" -Stage NativePrerequisites -Mode Validation'
+
+      - name: Admit exact pinned Docker image
+        shell: pwsh
+        run: '& "$env:PSCAN_EXACT_TOOLING_ROOT/build/release/unsigned-build-stage.ps1" -Stage ImageAdmission -Mode Validation'
+
+      - name: Prove offline container cache rejection
+        shell: pwsh
+        run: '& "$env:PSCAN_EXACT_TOOLING_ROOT/build/release/unsigned-build-stage.ps1" -Stage ContainerCache -Mode Validation'
+
+      - name: Prove normalized CRLF shell payload parsing
+        shell: pwsh
+        run: '& "$env:PSCAN_EXACT_TOOLING_ROOT/build/release/unsigned-build-stage.ps1" -Stage ContainerCRLF -Mode Validation'
+
+      - name: Acquire pinned public dependencies
+        shell: pwsh
+        run: '& "$env:PSCAN_EXACT_TOOLING_ROOT/build/release/unsigned-build-stage.ps1" -Stage Acquire -Mode Validation'
+
+      - name: Build and validate first CRLF source without network
+        shell: pwsh
+        run: '& "$env:PSCAN_EXACT_TOOLING_ROOT/build/release/unsigned-build-stage.ps1" -Stage BuildA -Mode Validation'
+
+      - name: Independently rebuild second CRLF source without network
+        shell: pwsh
+        run: '& "$env:PSCAN_EXACT_TOOLING_ROOT/build/release/unsigned-build-stage.ps1" -Stage BuildB -Mode Validation'
+
+      - name: Compare every reproduced byte
+        shell: pwsh
+        run: '& "$env:PSCAN_EXACT_TOOLING_ROOT/build/release/unsigned-build-stage.ps1" -Stage Compare -Mode Validation'
+
+      - name: Remove only owned prerequisite and verify host preservation
+        if: ${{ always() && steps.prerequisite.outcome != 'skipped' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null GIT_NO_REPLACE_OBJECTS=1 GIT_NO_LAZY_FETCH=1 GIT_OPTIONAL_LOCKS=0
+          blob="$(git rev-parse "$GITHUB_SHA:build/release/native-userns-prerequisite.py")"
+          /usr/bin/sudo --non-interactive /usr/bin/python3 -I -B -c '
+          import hashlib, pathlib, re, sys
+          path, expected, action = sys.argv[1:]
+          if not re.fullmatch(r"[0-9a-f]{40}", expected): raise SystemExit("Invalid source identity")
+          with open(path, "rb") as stream: raw = stream.read(65537)
+          if len(raw) > 65536: raise SystemExit("Source exceeds bound")
+          actual = hashlib.sha1(b"blob " + str(len(raw)).encode() + b"\0" + raw).hexdigest()
+          if actual != expected: raise SystemExit("Committed source mismatch")
+          sys.argv = [path, action]
+          exec(compile(raw, path, "exec"), {"__name__": "__main__", "__file__": path, "__source_sha256__": hashlib.sha256(raw).hexdigest()})
+          ' "$PSCAN_EXACT_TOOLING_ROOT/build/release/native-userns-prerequisite.py" "$blob" cleanup
+
+      - name: Record hashes of actual noncandidate packages
+        shell: pwsh
+        run: |
+          $dist=Join-Path $env:RUNNER_TEMP 'pscan-release-a/dist'
+          if (Test-Path -LiteralPath (Join-Path $dist 'release-manifest.json')) { throw 'Validation produced a candidate trust manifest' }
+          $record=Get-Content -Raw -LiteralPath (Join-Path $dist 'BUILD-VALIDATION.json') | ConvertFrom-Json
+          if ($record.schema -cne 'pscan-build-validation-v1' -or $record.candidate -ne $false -or $record.source.commit -cne $env:GITHUB_SHA) { throw 'Validation evidence mismatch' }
+          foreach ($name in @('project-agnostic-secret-scanner_v1.0.0_linux_amd64.tar.gz','project-agnostic-secret-scanner_v1.0.0_windows_amd64.zip')) {
+            $file=Get-Item -LiteralPath (Join-Path $dist $name)
+            $hash=(Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            Write-Output ("PSCAN_VALIDATION_PACKAGE "+(@{name=$name;bytes=$file.Length;sha256=$hash;candidate=$false}|ConvertTo-Json -Compress))
+          }

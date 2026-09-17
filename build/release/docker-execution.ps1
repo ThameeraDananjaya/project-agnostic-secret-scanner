@@ -67,6 +67,33 @@ public sealed class PscanBoundaryResult {
     public bool ContainmentEmpty;
 }
 
+public sealed class PscanOperationBudget {
+    readonly Stopwatch watch = Stopwatch.StartNew();
+    readonly int operationMs, cleanupMs, streamLimit;
+    long cleanupStart = -1;
+    int stdoutUsed, stderrUsed;
+    public PscanOperationBudget(int operation, int cleanup, int limit) {
+        if (operation < 1 || operation > 15000 || cleanup < 0 || cleanup > 2000 || limit < 1 || limit > 131072) throw new ArgumentOutOfRangeException();
+        operationMs=operation; cleanupMs=cleanup; streamLimit=limit;
+    }
+    public void BeginCleanup() { Interlocked.CompareExchange(ref cleanupStart, watch.ElapsedMilliseconds, -1); }
+    public bool CleanupStarted { get { return Interlocked.Read(ref cleanupStart)>=0; } }
+    public int Remaining {
+        get {
+            long start=Interlocked.Read(ref cleanupStart);
+            long left=start<0 ? operationMs-watch.ElapsedMilliseconds : cleanupMs-(watch.ElapsedMilliseconds-start);
+            return (int)Math.Max(0,left);
+        }
+    }
+    public int StdOutUsed { get { return Volatile.Read(ref stdoutUsed); } }
+    public int StdErrUsed { get { return Volatile.Read(ref stderrUsed); } }
+    public bool Consume(int bytes, bool stderr) {
+        if(bytes<0)throw new ArgumentOutOfRangeException();
+        int used=stderr ? Interlocked.Add(ref stderrUsed,bytes) : Interlocked.Add(ref stdoutUsed,bytes);
+        return used<=streamLimit;
+    }
+}
+
 public static class PscanNativeBoundary {
     const uint CREATE_SUSPENDED = 0x00000004;
     const uint CREATE_NO_WINDOW = 0x08000000;
@@ -178,25 +205,30 @@ public static class PscanNativeBoundary {
         }
         throw new InvalidOperationException("containment member limit exceeded");
     }
-    static byte[] ReadBounded(IntPtr handle, int limit, Action<string> fail, string stream) {
+    static byte[] ReadBounded(IntPtr handle, int limit, Action<string> fail, string stream, PscanOperationBudget budget) {
         using (var fs=new FileStream(new SafeFileHandle(handle,true),FileAccess.Read,4096,false)) using (var ms=new MemoryStream()) {
             var buffer=new byte[4096];
-            try { for (;;) { int n=fs.Read(buffer,0,buffer.Length); if(n==0) break; if(ms.Length+n>limit) { fail(stream+" overflow"); break; } ms.Write(buffer,0,n); } }
+            try { for (;;) { int n=fs.Read(buffer,0,buffer.Length); if(n==0) break; if(ms.Length+n>limit || !budget.Consume(n,stream=="stderr")) { fail(stream+" overflow"); break; } ms.Write(buffer,0,n); } }
             catch(Exception e) { fail(stream+" read failure: "+e.GetType().Name); }
             return ms.ToArray();
         }
     }
-    public static Task<byte[]> Capture(Stream stream, int limit) {
+    public static Task<byte[]> Capture(Stream stream, int limit) { return CaptureShared(stream,limit,null,false); }
+    public static Task<byte[]> CaptureShared(Stream stream, int limit, PscanOperationBudget budget, bool stderr) {
         return Task.Run(() => {
             using (stream) using (var ms=new MemoryStream()) {
-                var buffer=new byte[4096]; for(;;){int n=stream.Read(buffer,0,buffer.Length);if(n==0)break;if(ms.Length+n>limit)throw new InvalidDataException("stream overflow");ms.Write(buffer,0,n);} return ms.ToArray();
+                var buffer=new byte[4096]; for(;;){int n=stream.Read(buffer,0,buffer.Length);if(n==0)break;if(ms.Length+n>limit || (budget!=null && !budget.Consume(n,stderr)))throw new InvalidDataException("stream overflow");ms.Write(buffer,0,n);} return ms.ToArray();
             }
         });
     }
     public static PscanBoundaryResult RunWindows(string executable, string[] arguments, IDictionary<string,string> environment, string cwd, int streamLimit, int budgetMs, int cleanupMs) {
+        return RunWindowsShared(executable,arguments,environment,cwd,streamLimit,new PscanOperationBudget(budgetMs,cleanupMs,streamLimit));
+    }
+    public static PscanBoundaryResult RunWindowsShared(string executable, string[] arguments, IDictionary<string,string> environment, string cwd, int streamLimit, PscanOperationBudget budget) {
+        if(budget.Remaining<=0)throw new TimeoutException("Shared Docker operation deadline exhausted before process creation");
         IntPtr job=IntPtr.Zero, outRead=IntPtr.Zero, outWrite=IntPtr.Zero, errRead=IntPtr.Zero, errWrite=IntPtr.Zero, env=IntPtr.Zero; PROCESS_INFORMATION pi=new PROCESS_INFORMATION(); bool resumed=false;
         var observed=new HashSet<long>(); string terminal=null; object gate=new object(); var watch=Stopwatch.StartNew();
-        Action<string> fail=(reason)=>{ lock(gate){ if(terminal==null) terminal=reason; } if(job!=IntPtr.Zero) TerminateJobObject(job,197); };
+        Action<string> fail=(reason)=>{ lock(gate){ if(terminal==null) { terminal=reason; budget.BeginCleanup(); } } if(job!=IntPtr.Zero) TerminateJobObject(job,197); };
         try {
             job=CreateJobObject(IntPtr.Zero,null); if(job==IntPtr.Zero) throw Win32("CreateJobObject");
             var info=new JOBOBJECT_EXTENDED_LIMIT_INFORMATION(); info.BasicLimitInformation.LimitFlags=JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE; int infoSize=Marshal.SizeOf(info); IntPtr infoPtr=Marshal.AllocHGlobal(infoSize);
@@ -206,29 +238,30 @@ public static class PscanNativeBoundary {
             if(!CreatePipe(out errRead,out errWrite,ref sa,0)||!SetHandleInformation(errRead,HANDLE_FLAG_INHERIT,0)) throw Win32("stderr pipe");
             var si=new STARTUPINFO{cb=Marshal.SizeOf(typeof(STARTUPINFO)),dwFlags=(int)STARTF_USESTDHANDLES,hStdInput=IntPtr.Zero,hStdOutput=outWrite,hStdError=errWrite};
             var command=new StringBuilder(Quote(executable)); foreach(string arg in arguments) command.Append(' ').Append(Quote(arg)); env=EnvironmentBlock(environment);
+            if(budget.Remaining<=0)throw new TimeoutException("Shared deadline exhausted before native creation");
             if(!CreateProcess(executable,command,IntPtr.Zero,IntPtr.Zero,true,CREATE_SUSPENDED|CREATE_NO_WINDOW|CREATE_UNICODE_ENVIRONMENT,env,cwd,ref si,out pi)) throw Win32("CreateProcess");
             if(!AssignProcessToJobObject(job,pi.hProcess)) throw Win32("AssignProcessToJobObject"); observed.Add(pi.dwProcessId);
             CloseHandle(outWrite);outWrite=IntPtr.Zero;CloseHandle(errWrite);errWrite=IntPtr.Zero;
             IntPtr stdoutHandle=outRead;outRead=IntPtr.Zero;IntPtr stderrHandle=errRead;errRead=IntPtr.Zero;
-            var outTask=Task.Run(()=>ReadBounded(stdoutHandle,streamLimit,fail,"stdout"));
-            var errTask=Task.Run(()=>ReadBounded(stderrHandle,streamLimit,fail,"stderr"));
+            var outTask=Task.Run(()=>ReadBounded(stdoutHandle,streamLimit,fail,"stdout",budget));
+            var errTask=Task.Run(()=>ReadBounded(stderrHandle,streamLimit,fail,"stderr",budget));
             if(ResumeThread(pi.hThread)==0xffffffff) throw Win32("ResumeThread"); resumed=true;
             bool rootExited=false;
-            while(watch.ElapsedMilliseconds<budgetMs){
+            while(budget.Remaining>0){
                 foreach(long id in Members(job)) observed.Add(id);
                 if(terminal!=null) break;
                 rootExited=WaitForSingleObject(pi.hProcess,0)==WAIT_OBJECT_0;
                 if(rootExited&&outTask.IsCompleted&&errTask.IsCompleted&&Members(job).Length==0) break;
                 Thread.Sleep(5);
             }
-            if(!(rootExited&&outTask.IsCompleted&&errTask.IsCompleted&&Members(job).Length==0)) { if(terminal==null) terminal="timeout or incomplete lifecycle"; TerminateJobObject(job,198); }
+            if(!(rootExited&&outTask.IsCompleted&&errTask.IsCompleted&&Members(job).Length==0)) { if(terminal==null) terminal="timeout or incomplete lifecycle"; budget.BeginCleanup(); TerminateJobObject(job,198); }
             if(terminal!=null){
-                var cleanup=Stopwatch.StartNew(); while(cleanup.ElapsedMilliseconds<cleanupMs){foreach(long id in Members(job))observed.Add(id);if(Members(job).Length==0&&outTask.IsCompleted&&errTask.IsCompleted)break;Thread.Sleep(5);} if(Members(job).Length!=0||!outTask.IsCompleted||!errTask.IsCompleted) terminal+="; cleanup uncertainty";
+                budget.BeginCleanup(); while(budget.Remaining>0){foreach(long id in Members(job))observed.Add(id);if(Members(job).Length==0&&outTask.IsCompleted&&errTask.IsCompleted)break;Thread.Sleep(5);} if(Members(job).Length!=0||!outTask.IsCompleted||!errTask.IsCompleted) terminal+="; cleanup uncertainty";
             }
             uint exit; if(!GetExitCodeProcess(pi.hProcess,out exit)) { fail("exit read failure"); exit=199; }
             var stdout=outTask.IsCompleted?outTask.Result:new byte[0];var stderr=errTask.IsCompleted?errTask.Result:new byte[0];bool empty=Members(job).Length==0;
             return new PscanBoundaryResult{ExitCode=(int)exit,StdOut=stdout,StdErr=stderr,Terminal=terminal,ObservedMembers=new List<long>(observed).ToArray(),ContainmentEmpty=empty};
-        } finally {
+        } catch { budget.BeginCleanup(); throw; } finally {
             if(!resumed&&pi.hProcess!=IntPtr.Zero&&job!=IntPtr.Zero)TerminateJobObject(job,200);
             if(pi.hThread!=IntPtr.Zero)CloseHandle(pi.hThread);if(pi.hProcess!=IntPtr.Zero)CloseHandle(pi.hProcess);
             if(outRead!=IntPtr.Zero)CloseHandle(outRead);if(outWrite!=IntPtr.Zero)CloseHandle(outWrite);if(errRead!=IntPtr.Zero)CloseHandle(errRead);if(errWrite!=IntPtr.Zero)CloseHandle(errWrite);
@@ -241,9 +274,15 @@ public static class PscanNativeBoundary {
 if ($null -ne ('PscanNativeBoundary' -as [type])) {
     throw 'Pre-existing PscanNativeBoundary type is terminal ambient state'
 }
+foreach($nativeTypeName in @('PscanOperationBudget','PscanBoundaryResult')){
+    if($null-ne($nativeTypeName-as[type])){throw "Pre-existing $nativeTypeName type is terminal ambient state"}
+}
 $compiledNativeBoundaryTypes = @(Add-Type -TypeDefinition $nativeBoundarySource -Language CSharp -PassThru)
 $compiledBoundary = @($compiledNativeBoundaryTypes | Where-Object { $_.IsPublic -and $_.FullName -ceq 'PscanNativeBoundary' })
 $compiledResult = @($compiledNativeBoundaryTypes | Where-Object { $_.IsPublic -and $_.FullName -ceq 'PscanBoundaryResult' })
+$compiledBudget = @($compiledNativeBoundaryTypes | Where-Object { $_.IsPublic -and $_.FullName -ceq 'PscanOperationBudget' })
+if($compiledBudget.Count-ne 1-or![object]::ReferenceEquals($compiledBudget[0],('PscanOperationBudget'-as[type]))-or
+    ![object]::ReferenceEquals($compiledBudget[0].Assembly,$compiledBoundary[0].Assembly)-or![object]::ReferenceEquals($compiledResult[0],('PscanBoundaryResult'-as[type]))){throw 'Compiled native budget/result identity is unexpected'}
 if ($compiledBoundary.Count -ne 1 -or $compiledResult.Count -ne 1 -or
     ![object]::ReferenceEquals($compiledBoundary[0].Assembly, $compiledResult[0].Assembly) -or
     ![object]::ReferenceEquals($compiledBoundary[0], ('PscanNativeBoundary' -as [type])) -or
@@ -361,7 +400,9 @@ function Get-LinuxGateAction($Snapshot,$Original,[int]$Supervisor,[string]$Outer
     return 'Release'
 }
 
-function Invoke-LinuxSessionBoundary([string]$ExecutableReference,[string[]]$Arguments,[Collections.Generic.Dictionary[string,string]]$Environment,[string]$WorkingDirectory) {
+function Invoke-LinuxSessionBoundary([string]$ExecutableReference,[string[]]$Arguments,[Collections.Generic.Dictionary[string,string]]$Environment,[string]$WorkingDirectory, $SharedBudget=$null) {
+    if ($null-eq$SharedBudget) { $SharedBudget=[PscanOperationBudget]::new($dockerBudgetMilliseconds,$cleanupGraceMilliseconds,$dockerOutputLimit) }
+    if ($SharedBudget.Remaining-le 0) { throw 'Shared Docker deadline exhausted before Linux process creation' }
     # Reject an unsupported ABI/kernel before creating any child process.
     $probe=[PscanNativeBoundary]::LinuxPin($PID)
     try {if([PscanNativeBoundary]::LinuxExited($probe)){throw 'Calling Linux process identity unavailable'}}
@@ -400,11 +441,12 @@ function Invoke-LinuxSessionBoundary([string]$ExecutableReference,[string[]]$Arg
     }
     try {
         try {
+            if($SharedBudget.Remaining-le 0){throw 'Shared deadline exhausted before Linux creation'}
             if(!$process.Start()){throw 'Linux session process did not start'}
             $started=$true;$session=$process.Id
-            $stdoutTask=[PscanNativeBoundary]::Capture($process.StandardOutput.BaseStream,$dockerOutputLimit)
-            $stderrTask=[PscanNativeBoundary]::Capture($process.StandardError.BaseStream,$dockerOutputLimit)
-            while($watch.ElapsedMilliseconds-lt$dockerBudgetMilliseconds){
+            $stdoutTask=[PscanNativeBoundary]::CaptureShared($process.StandardOutput.BaseStream,$dockerOutputLimit,$SharedBudget,$false)
+            $stderrTask=[PscanNativeBoundary]::CaptureShared($process.StandardError.BaseStream,$dockerOutputLimit,$SharedBudget,$true)
+            while($SharedBudget.Remaining-gt 0){
                 if($stdoutTask.IsFaulted-or$stderrTask.IsFaulted){throw 'stream overflow or read failure'}
                 if($phase-eq'root-pin'){
                     if($process.HasExited){throw 'Launcher exited before supervisor admission'}
@@ -451,23 +493,23 @@ function Invoke-LinuxSessionBoundary([string]$ExecutableReference,[string[]]$Arg
                 Start-Sleep -Milliseconds 2
             }
             if(!$resumed-or!$process.HasExited-or!$stdoutTask.IsCompleted-or!$stderrTask.IsCompleted-or@(Get-LinuxSessionMembers -Session $session -Ledger $ledger).Count-ne 0-or![PscanNativeBoundary]::LinuxExited($initHandle)-or(Test-Path -LiteralPath "/proc/$($init.PID)/ns/pid")){throw 'timeout or incomplete lifecycle'}
-        } catch {$terminal="${phase}: $($_.Exception.Message)"}
+        } catch {$terminal="${phase}: $($_.Exception.Message)";$SharedBudget.BeginCleanup()}
 
         if($terminal-and$started){
-            $cleanup=[Diagnostics.Stopwatch]::StartNew()
+            $SharedBudget.BeginCleanup()
             try {Close-Gate;$stdinClosed=$true} catch {$cleanupUncertain=$true}
             # First terminate pinned namespace init: its death terminates detached
             # descendants. Never direct a signal at a numeric PID or process group.
             foreach($handle in @($initHandle,$rootHandle)){
-                if($null-ne$handle-and$cleanup.ElapsedMilliseconds-lt$cleanupGraceMilliseconds){
+                if($null-ne$handle-and$SharedBudget.Remaining-gt 0){
                     try{[void][PscanNativeBoundary]::LinuxSignal($handle,9)}catch{$cleanupUncertain=$true}
                 }
             }
-            while($cleanup.ElapsedMilliseconds-lt$cleanupGraceMilliseconds){
+            while($SharedBudget.Remaining-gt 0){
                 try {
                     $members=@(Get-LinuxSessionMembers -Session $session -Ledger $ledger)
                     foreach($member in $members){
-                        if($cleanup.ElapsedMilliseconds-ge$cleanupGraceMilliseconds){break}
+                        if($SharedBudget.Remaining-le 0){break}
                         $snapshot=Get-LinuxBoundarySnapshot $member.PID
                         if($null-ne$snapshot-and$snapshot.StartTime-eq$member.StartTime-and$snapshot.Session-eq$session){
                             $handle=Pin-Member $snapshot
@@ -494,7 +536,26 @@ function Invoke-LinuxSessionBoundary([string]$ExecutableReference,[string[]]$Arg
     }
 }
 
+function Invoke-HeldDockerCall([string[]]$Arguments,$Context) {
+    if ($Context.Budget.Remaining-le 0) { throw 'Shared Docker deadline exhausted before protocol call' }
+    $Context.Calls++
+    if ($Context.Calls-gt 9) { throw 'Fixed Docker protocol call count exceeded' }
+    if ($IsWindows) {
+        $result=[PscanNativeBoundary]::RunWindowsShared($Context.Path,$Arguments,$Context.Environment,$Context.Working,$dockerOutputLimit,$Context.Budget)
+    } else {
+        $result=Invoke-LinuxSessionBoundary -ExecutableReference $Context.Reference -Arguments $Arguments -Environment $Context.Environment -WorkingDirectory $Context.Working -SharedBudget $Context.Budget
+    }
+    $Context.Observed += $result.ObservedMembers.Count
+    if ($result.Terminal-or!$result.ContainmentEmpty) { throw "Docker protocol native containment failed: $($result.Terminal)" }
+    if ($Context.Budget.Remaining-le 0) { throw 'Shared Docker deadline exhausted after protocol call' }
+    $utf8=[Text.UTF8Encoding]::new($false,$true)
+    return [pscustomobject]@{ExitCode=$result.ExitCode;StdOut=$utf8.GetString($result.StdOut);StdErr=$utf8.GetString($result.StdErr)}
+}
+
+. (Join-Path $PSScriptRoot 'docker-container-lifecycle.ps1')
+
 function Invoke-BoundDocker([string[]]$Arguments) {
+    $budget=[PscanOperationBudget]::new($dockerBudgetMilliseconds,$cleanupGraceMilliseconds,$dockerOutputLimit)
     $privateRoot = Join-Path ([IO.Path]::GetTempPath()) ('pscan-docker-boundary-' + [guid]::NewGuid().ToString('N'))
     $working = Join-Path $privateRoot 'work'; $config = Join-Path $privateRoot 'docker-config'; $temp = Join-Path $privateRoot 'temp'
     New-PrivateDirectory $privateRoot; New-PrivateDirectory $working; New-PrivateDirectory $config; New-PrivateDirectory $temp
@@ -515,18 +576,24 @@ function Invoke-BoundDocker([string[]]$Arguments) {
         $environment.Add('DOCKER_CONFIG', $config); $environment.Add('HOME', $working)
         if ($IsWindows) {
             $environment.Add('SystemRoot', $env:SystemRoot); $environment.Add('WINDIR', $env:WINDIR); $environment.Add('TEMP', $temp); $environment.Add('TMP', $temp); $environment.Add('DOCKER_HOST', 'npipe:////./pipe/dockerDesktopLinuxEngine')
-            $result = [PscanNativeBoundary]::RunWindows($dockerPath, $Arguments, $environment, $working, $dockerOutputLimit, $dockerBudgetMilliseconds, $cleanupGraceMilliseconds)
         } else {
             $environment.Add('TMPDIR', $temp); $environment.Add('DOCKER_HOST', 'unix:///var/run/docker.sock'); $environment.Add('LANG', 'C.UTF-8')
-            $result = Invoke-LinuxSessionBoundary -ExecutableReference $reference -Arguments $Arguments -Environment $environment -WorkingDirectory $working
         }
+        $context=@{Budget=$budget;Path=$dockerPath;Reference=$reference;Environment=$environment;Working=$working;Image=$image;Observed=0;Calls=0}
+        $result=if ($Arguments[0]-ceq'run') { Invoke-ContainerProtocol $Arguments $context } else { Invoke-HeldDockerCall $Arguments $context }
+        if ($budget.CleanupStarted-or$budget.Remaining-le 0) { throw 'Shared Docker lifecycle is terminal or expired' }
         $identityStream.Position = 0; $after = (Get-FileHash -InputStream $identityStream -Algorithm SHA256).Hash.ToLowerInvariant()
         if ($after -cne $digest) { throw 'Docker executable identity changed during execution' }
-        if ($result.Terminal -or !$result.ContainmentEmpty) { throw "Docker $Operation returned terminal untrusted evidence: $($result.Terminal)" }
-        $utf8 = [Text.UTF8Encoding]::new($false, $true)
-        try { $stdout = $utf8.GetString($result.StdOut); $stderr = $utf8.GetString($result.StdErr) } catch { throw "Docker $Operation returned invalid UTF-8" }
+        $stdout=$result.StdOut; $stderr=$result.StdErr
         if (Get-ChildItem -LiteralPath $config -Force | Select-Object -First 1) { throw 'Docker wrote unexpected configuration or credential state' }
-        return [pscustomobject]@{ Operation=$Operation; DockerSHA256=$digest; ExitCode=$result.ExitCode; StdOut=$stdout; StdErr=$stderr; StdOutByteCount=$result.StdOut.Length; StdErrByteCount=$result.StdErr.Length; ContainmentMembersObserved=$result.ObservedMembers.Count; ContainmentEmpty=$true }
+        if ($budget.Remaining-le 0) { throw 'Shared Docker deadline exhausted before final evidence' }
+        return [pscustomobject]@{
+            Operation=$Operation; DockerSHA256=$digest; ExitCode=$result.ExitCode; StdOut=$stdout; StdErr=$stderr
+            StdOutByteCount=[Text.Encoding]::UTF8.GetByteCount($stdout); StdErrByteCount=[Text.Encoding]::UTF8.GetByteCount($stderr)
+            ContainmentMembersObserved=$context.Observed; ContainmentEmpty=$true
+            DaemonContainerID=$result.ContainerID; DaemonContainerRemoved=($Arguments[0]-ceq'run'-and$result.DaemonEmpty)
+            ProtocolCallCount=$context.Calls; AggregateStdOutByteCount=$budget.StdOutUsed; AggregateStdErrByteCount=$budget.StdErrUsed
+        }
     } finally {
         $identityStream.Dispose()
         if (Test-Path -LiteralPath $privateRoot) { Remove-Item -LiteralPath $privateRoot -Recurse -Force }
@@ -548,7 +615,10 @@ cleanup() { rm -f "$canary" "$renamed"; }
 trap cleanup EXIT HUP INT TERM
 test ! -e "$canary"
 test ! -e "$renamed"
-printf '%s\n' 'PSCAN-06-C2-CONTAINER-CACHE-CANARY' > "$canary"
+if ! printf '%s\n' 'PSCAN-06-C2-CONTAINER-CACHE-CANARY' > "$canary"; then
+    printf '%s\n' '{"schema":"pscan-cache-write-v1","phase":"create-write","outcome":"failed"}'
+    exit 74
+fi
 mv "$canary" "$renamed"
 test "$(cat "$renamed")" = 'PSCAN-06-C2-CONTAINER-CACHE-CANARY'
 rm "$renamed"
@@ -635,6 +705,30 @@ function Get-PackagePayload([string]$Epoch) {
     ConvertTo-LF "cp /tools/packager-linux-amd64 /tmp/packager; chmod 0755 /tmp/packager; /tmp/packager -root /input/linux -output /dist/project-agnostic-secret-scanner_v1.0.0_linux_amd64.tar.gz -format tar.gz -epoch $Epoch; /tmp/packager -root /input/windows -output /dist/project-agnostic-secret-scanner_v1.0.0_windows_amd64.zip -format zip -epoch $Epoch"
 }
 
+function Resolve-ContainerUser([Nullable[int]]$UIDValue, [Nullable[int]]$GIDValue, [bool]$Required) {
+    if ($null -eq $UIDValue -and $null -eq $GIDValue) {
+        if ($Required) { throw 'Linux container operation requires the admitted host UID/GID pair' }
+        return [pscustomobject]@{ Arguments=@(); TmpfsSuffix='' }
+    }
+    if ($null -eq $UIDValue -or $null -eq $GIDValue -or $UIDValue -lt 0 -or $GIDValue -lt 0) {
+        throw 'Container operation requires a complete non-negative UID/GID pair'
+    }
+    return [pscustomobject]@{
+        Arguments=@('--user', "${UIDValue}:${GIDValue}")
+        TmpfsSuffix=",mode=0700,uid=$UIDValue,gid=$GIDValue"
+    }
+}
+
+$containerUser = $null
+if ($Operation -in @('ContainerCacheProof','DependencyAcquisition','ReleaseBuild','ReleasePackage')) {
+    $containerUser = Resolve-ContainerUser $HostUID $HostGID $IsLinux
+    if ($IsLinux) {
+        $currentUID = (& /usr/bin/id -u).Trim()
+        if ($LASTEXITCODE -ne 0 -or $currentUID -notmatch '^\d+$' -or [int]$currentUID -ne $HostUID) { throw 'Container UID differs from the invoking host identity' }
+        $currentGID = (& /usr/bin/id -g).Trim()
+        if ($LASTEXITCODE -ne 0 -or $currentGID -notmatch '^\d+$' -or [int]$currentGID -ne $HostGID) { throw 'Container GID differs from the invoking host identity' }
+    }
+}
 $arguments = switch ($Operation) {
     'EngineInspection' { @('version','--format','{{json .Server}}') }
     'ExactImageInventory' { @('image','ls','--all','--no-trunc','--digests','--filter',"reference=$image",'--format','{{json .}}') }
@@ -642,20 +736,22 @@ $arguments = switch ($Operation) {
     'RepositoryDigestInspection' { @('image','inspect','--format','{{json .RepoDigests}}',$image) }
     'ContainerCacheProof' {
         $cache = Require-Path 'CacheDirectory' $CacheDirectory $true
-        $tmpfs='/work:rw,noexec,nosuid,nodev,size=16m,mode=0700'; $a=@('run','--rm','--pull=never','--network','none','--read-only','--cap-drop','ALL','--security-opt','no-new-privileges','--pids-limit','32','--memory','128m','--memory-swap','128m','--cpus','1')
-        if($HostUID.HasValue -or $HostGID.HasValue){if(!$HostUID.HasValue -or !$HostGID.HasValue -or $HostUID.Value-lt 0 -or $HostGID.Value-lt 0){throw 'Cache proof requires a complete non-negative UID/GID pair'};$a+=@('--user',"$($HostUID.Value):$($HostGID.Value)");$tmpfs+=",uid=$($HostUID.Value),gid=$($HostGID.Value)"}
+        $tmpfs='/work:rw,noexec,nosuid,nodev,size=16m'; $a=@('run','--rm','--pull=never','--network','none','--read-only','--cap-drop','ALL','--security-opt','no-new-privileges','--pids-limit','32','--memory','128m','--memory-swap','128m','--cpus','1')
+        $a += $containerUser.Arguments
+        $tmpfs += $(if ($containerUser.TmpfsSuffix) { $containerUser.TmpfsSuffix } else { ',mode=0700' })
         $mount="type=bind,src=$cache,dst=/gomodcache";if($ReadOnlyCache){$mount+=',readonly'}
         $a+@('--tmpfs',$tmpfs,'--mount',$mount,'--workdir','/work',$image,'/usr/bin/env','-i','PATH=/usr/bin:/bin','HOME=/work','/bin/sh','-ceu',(Get-CachePayload))
     }
     'ContainerCrlfParse' {
         if([string]::IsNullOrEmpty($PayloadKind)){throw 'ContainerCrlfParse requires PayloadKind'}
         $payload=switch($PayloadKind){'CacheCanary'{Get-CachePayload};'Acquisition'{Get-AcquisitionPayload};'Build'{Get-BuildPayload};'Package'{Get-PackagePayload '0'}}
-        @('run','--rm','--pull=never','--network','none','--read-only','--cap-drop','ALL','--security-opt','no-new-privileges','--pids-limit','32','--memory','128m','--memory-swap','128m','--cpus','1','--tmpfs','/work:rw,noexec,nosuid,nodev,size=16m,mode=0700',$image,'/bin/sh','-n','-c',$payload)
+        @('run','--rm','--pull=never','--network','none','--read-only','--cap-drop','ALL','--security-opt','no-new-privileges','--pids-limit','32','--memory','128m','--memory-swap','128m','--cpus','1','--tmpfs','/work:rw,noexec,nosuid,nodev,size=16m,mode=0700','--workdir','/work',$image,'/bin/sh','-n','-c',$payload)
     }
     'DependencyAcquisition' {
         $root=Require-Path 'SourceRoot' $SourceRoot $true;$runner=Require-Path 'RunnerGoArchive' $RunnerGoArchive;$engine=Require-Path 'EngineGoArchive' $EngineGoArchive;$gitleaks=Require-Path 'GitleaksArchive' $GitleaksArchive;$cache=Require-Path 'CacheDirectory' $CacheDirectory $true
         $a=@('run','--rm','--pull=never','--read-only','--cap-drop','ALL','--security-opt','no-new-privileges','--pids-limit','256','--memory','4g','--memory-swap','4g','--cpus','2','--tmpfs','/work:rw,exec,nosuid,nodev,size=1g','--mount',"type=bind,src=$root,dst=/src,readonly",'--mount',"type=bind,src=$runner,dst=/input/runner-go.tar.gz,readonly",'--mount',"type=bind,src=$engine,dst=/input/engine-go.tar.gz,readonly",'--mount',"type=bind,src=$gitleaks,dst=/input/gitleaks.tar.gz,readonly",'--mount',"type=bind,src=$cache,dst=/gomodcache",'--workdir','/src',$image,'/usr/bin/env','-i','PATH=/usr/bin:/bin','HOME=/work','/bin/sh','-ceu',(Get-AcquisitionPayload))
-        if($HostUID.HasValue -or $HostGID.HasValue){if(!$HostUID.HasValue-or!$HostGID.HasValue){throw 'Acquisition requires a complete UID/GID pair'};$index=$a.IndexOf('--tmpfs');$a=$a[0..($index-1)]+@('--user',"$($HostUID.Value):$($HostGID.Value)")+$a[$index..($a.Count-1)];$a[$a.IndexOf('/work:rw,exec,nosuid,nodev,size=1g')]="/work:rw,exec,nosuid,nodev,size=1g,mode=0700,uid=$($HostUID.Value),gid=$($HostGID.Value)"}
+        $index=$a.IndexOf('--tmpfs');$a=$a[0..($index-1)]+$containerUser.Arguments+$a[$index..($a.Count-1)]
+        $a[$a.IndexOf('/work:rw,exec,nosuid,nodev,size=1g')] += $containerUser.TmpfsSuffix
         $a
     }
     'ReleaseBuild' {
@@ -663,12 +759,18 @@ $arguments = switch ($Operation) {
         $product=Require-Path 'ProductArchive' $ProductArchive;$productBlobs=Require-Path 'ProductBlobManifest' $ProductBlobManifest;$productPaths=Require-Path 'ProductPathManifest' $ProductPathManifest;$productModes=Require-Path 'ProductModeManifest' $ProductModeManifest
         $tooling=Require-Path 'ToolingArchive' $ToolingArchive;$toolingBlobs=Require-Path 'ToolingBlobManifest' $ToolingBlobManifest;$toolingPaths=Require-Path 'ToolingPathManifest' $ToolingPathManifest;$toolingModes=Require-Path 'ToolingModeManifest' $ToolingModeManifest
         $runner=Require-Path 'RunnerGoArchive' $RunnerGoArchive;$engine=Require-Path 'EngineGoArchive' $EngineGoArchive;$gitleaks=Require-Path 'GitleaksArchive' $GitleaksArchive;$cache=Require-Path 'CacheDirectory' $CacheDirectory $true;$raw=Require-Path 'RawOutputDirectory' $RawOutputDirectory $true
-        @('run','--rm','--pull=never','--network','none','--read-only','--cap-drop','ALL','--security-opt','no-new-privileges','--pids-limit','512','--memory','8g','--memory-swap','8g','--cpus','2','--tmpfs','/work:rw,exec,nosuid,nodev,size=4g','--mount',"type=bind,src=$product,dst=/input/product-source.tar,readonly",'--mount',"type=bind,src=$productBlobs,dst=/input/product-source.blobs.sha256,readonly",'--mount',"type=bind,src=$productPaths,dst=/input/product-source.paths,readonly",'--mount',"type=bind,src=$productModes,dst=/input/product-source.modes,readonly",'--mount',"type=bind,src=$tooling,dst=/input/release-tooling-source.tar,readonly",'--mount',"type=bind,src=$toolingBlobs,dst=/input/release-tooling-source.blobs.sha256,readonly",'--mount',"type=bind,src=$toolingPaths,dst=/input/release-tooling-source.paths,readonly",'--mount',"type=bind,src=$toolingModes,dst=/input/release-tooling-source.modes,readonly",'--mount',"type=bind,src=$runner,dst=/input/runner-go.tar.gz,readonly",'--mount',"type=bind,src=$engine,dst=/input/engine-go.tar.gz,readonly",'--mount',"type=bind,src=$gitleaks,dst=/input/gitleaks.tar.gz,readonly",'--mount',"type=bind,src=$cache,dst=/gomodcache,readonly",'--mount',"type=bind,src=$raw,dst=/out",'--workdir','/work/tooling',$image,'/usr/bin/env','-i','PATH=/usr/bin:/bin','HOME=/work',"SOURCE_DATE_EPOCH=$SourceDateEpoch","PSCAN_PRODUCT_REVISION=$ProductRevision","PSCAN_TOOLING_REVISION=$ToolingRevision","PSCAN_TOOLING_TREE=$ToolingTree","PSCAN_CREATED=$Created","PSCAN_PRODUCT_ARCHIVE_SHA256=$ProductArchiveSHA256","PSCAN_TOOLING_ARCHIVE_SHA256=$ToolingArchiveSHA256","PSCAN_PRODUCT_FILE_COUNT=$ProductFileCount","PSCAN_TOOLING_FILE_COUNT=$ToolingFileCount",'/bin/sh','-ceu',(Get-BuildPayload))
+        $a=@('run','--rm','--pull=never','--network','none','--read-only','--cap-drop','ALL','--security-opt','no-new-privileges','--pids-limit','512','--memory','8g','--memory-swap','8g','--cpus','2','--tmpfs','/work:rw,exec,nosuid,nodev,size=4g','--mount',"type=bind,src=$product,dst=/input/product-source.tar,readonly",'--mount',"type=bind,src=$productBlobs,dst=/input/product-source.blobs.sha256,readonly",'--mount',"type=bind,src=$productPaths,dst=/input/product-source.paths,readonly",'--mount',"type=bind,src=$productModes,dst=/input/product-source.modes,readonly",'--mount',"type=bind,src=$tooling,dst=/input/release-tooling-source.tar,readonly",'--mount',"type=bind,src=$toolingBlobs,dst=/input/release-tooling-source.blobs.sha256,readonly",'--mount',"type=bind,src=$toolingPaths,dst=/input/release-tooling-source.paths,readonly",'--mount',"type=bind,src=$toolingModes,dst=/input/release-tooling-source.modes,readonly",'--mount',"type=bind,src=$runner,dst=/input/runner-go.tar.gz,readonly",'--mount',"type=bind,src=$engine,dst=/input/engine-go.tar.gz,readonly",'--mount',"type=bind,src=$gitleaks,dst=/input/gitleaks.tar.gz,readonly",'--mount',"type=bind,src=$cache,dst=/gomodcache,readonly",'--mount',"type=bind,src=$raw,dst=/out",'--workdir','/work',$image,'/usr/bin/env','-i','PATH=/usr/bin:/bin','HOME=/work',"SOURCE_DATE_EPOCH=$SourceDateEpoch","PSCAN_PRODUCT_REVISION=$ProductRevision","PSCAN_TOOLING_REVISION=$ToolingRevision","PSCAN_TOOLING_TREE=$ToolingTree","PSCAN_CREATED=$Created","PSCAN_PRODUCT_ARCHIVE_SHA256=$ProductArchiveSHA256","PSCAN_TOOLING_ARCHIVE_SHA256=$ToolingArchiveSHA256","PSCAN_PRODUCT_FILE_COUNT=$ProductFileCount","PSCAN_TOOLING_FILE_COUNT=$ToolingFileCount",'/bin/sh','-ceu',(Get-BuildPayload))
+        $index=$a.IndexOf('--tmpfs');$a=$a[0..($index-1)]+$containerUser.Arguments+$a[$index..($a.Count-1)]
+        $a[$a.IndexOf('--tmpfs')+1] += $containerUser.TmpfsSuffix
+        $a
     }
     'ReleasePackage' {
         if([string]::IsNullOrEmpty($SourceDateEpoch)){throw 'ReleasePackage requires SourceDateEpoch'}
         $raw=Require-Path 'RawOutputDirectory' $RawOutputDirectory $true;$linux=Require-Path 'LinuxStageDirectory' $LinuxStageDirectory $true;$windows=Require-Path 'WindowsStageDirectory' $WindowsStageDirectory $true;$dist=Require-Path 'DistributionDirectory' $DistributionDirectory $true
-        @('run','--rm','--pull=never','--network','none','--read-only','--cap-drop','ALL','--security-opt','no-new-privileges','--pids-limit','64','--memory','1g','--memory-swap','1g','--cpus','1','--tmpfs','/tmp:rw,exec,nosuid,nodev,size=64m','--mount',"type=bind,src=$raw,dst=/tools,readonly",'--mount',"type=bind,src=$linux,dst=/input/linux,readonly",'--mount',"type=bind,src=$windows,dst=/input/windows,readonly",'--mount',"type=bind,src=$dist,dst=/dist",$image,'/bin/sh','-ceu',(Get-PackagePayload $SourceDateEpoch))
+        $a=@('run','--rm','--pull=never','--network','none','--read-only','--cap-drop','ALL','--security-opt','no-new-privileges','--pids-limit','64','--memory','1g','--memory-swap','1g','--cpus','1','--tmpfs','/tmp:rw,exec,nosuid,nodev,size=64m','--mount',"type=bind,src=$raw,dst=/tools,readonly",'--mount',"type=bind,src=$linux,dst=/input/linux,readonly",'--mount',"type=bind,src=$windows,dst=/input/windows,readonly",'--mount',"type=bind,src=$dist,dst=/dist",'--workdir','/tmp',$image,'/bin/sh','-ceu',(Get-PackagePayload $SourceDateEpoch))
+        $index=$a.IndexOf('--tmpfs');$a=$a[0..($index-1)]+$containerUser.Arguments+$a[$index..($a.Count-1)]
+        $a[$a.IndexOf('--tmpfs')+1] += $containerUser.TmpfsSuffix
+        $a
     }
 }
 

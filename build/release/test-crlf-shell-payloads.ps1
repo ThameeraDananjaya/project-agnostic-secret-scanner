@@ -4,7 +4,8 @@ param(
     [string]$BuildOutputDirectory,
     [string]$SourceRepository,
     [string]$SourceRevision,
-    [ValidateSet('HostOnly','Container','Build','All')][string]$Phase = 'All'
+    [ValidateSet('HostOnly','Container','Build','All')][string]$Phase = 'All',
+    [ValidateSet('Candidate','Validation')][string]$Mode='Candidate'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -125,13 +126,19 @@ if (([regex]::Matches($boundaryContent, 'function Get-(Cache|Acquisition|Build|P
 $positiveCache = Join-Path $testRoot 'positive-cache'
 $readOnlyCache = Join-Path $testRoot 'read-only-cache'
 New-Item -ItemType Directory -Path $positiveCache,$readOnlyCache | Out-Null
-Invoke-ReleaseCacheCanary -Image $image -ModuleCache $positiveCache -ExpectedDockerSHA256 $dockerSHA256
+. (Join-Path $PSScriptRoot 'host-cache-canary.ps1')
+$cacheIdentity = Get-HostCacheIdentity -CacheDirectory $positiveCache
+$cacheUser = @{}
+if ($null -ne $cacheIdentity.HostUID) { $cacheUser.HostUID=$cacheIdentity.HostUID; $cacheUser.HostGID=$cacheIdentity.HostGID }
+Invoke-ReleaseCacheCanary -Image $image -ModuleCache $positiveCache -ExpectedDockerSHA256 $dockerSHA256 @cacheUser
 Require-Empty $positiveCache
 
 $readOnlyRejected = $false
 try {
-    Invoke-ReleaseCacheCanary -Image $image -ModuleCache $readOnlyCache -ExpectedDockerSHA256 $dockerSHA256 -ReadOnlyCache
+    Invoke-ReleaseCacheCanary -Image $image -ModuleCache $readOnlyCache -ExpectedDockerSHA256 $dockerSHA256 -ReadOnlyCache @cacheUser
 } catch {
+    if($_.FullyQualifiedErrorId-notlike'PSCAN_CACHE_EXPECTED_DENIAL*'){throw}
+    Write-Host ('PSCAN_CACHE_NEGATIVE '+($_.TargetObject|ConvertTo-Json -Compress))
     $readOnlyRejected = $true
 }
 if (!$readOnlyRejected) { throw 'CRLF read-only cache unexpectedly passed the pre-acquisition canary' }
@@ -144,11 +151,16 @@ if ([string]::IsNullOrWhiteSpace($AcquisitionDirectory) -xor [string]::IsNullOrW
 if (![string]::IsNullOrWhiteSpace($AcquisitionDirectory)) {
     if ($Phase -notin @('Build','All')) { throw 'A complete build is only valid in the Build or All phase' }
     $buildLauncher = Join-Path $PSScriptRoot 'invoke-exact-build.ps1'
-    & pwsh -NoProfile -File $buildLauncher -RepositoryRoot $fixtureRoot -ExpectedToolingRevision $SourceRevision -AcquisitionDirectory $AcquisitionDirectory -OutputDirectory $BuildOutputDirectory -AllowCanonicalEolProjection
+    & pwsh -NoProfile -File $buildLauncher -RepositoryRoot $fixtureRoot -ExpectedToolingRevision $SourceRevision -AcquisitionDirectory $AcquisitionDirectory -OutputDirectory $BuildOutputDirectory -AllowCanonicalEolProjection -Mode $Mode
     if ($LASTEXITCODE -ne 0) { throw 'Complete offline release build from the CRLF checkout failed' }
     $dist = Join-Path ([IO.Path]::GetFullPath($BuildOutputDirectory)) 'dist'
     $testSummary = Get-Content -LiteralPath (Join-Path $dist 'TEST-SUMMARY.json') -Raw | ConvertFrom-Json
-    $manifest = Get-Content -LiteralPath (Join-Path $dist 'release-manifest.json') -Raw | ConvertFrom-Json
+    $manifest = if($Mode-ceq'Validation'){
+        if(Test-Path -LiteralPath (Join-Path $dist 'release-manifest.json')){throw 'Validation emitted a release trust manifest'}
+        $validation=Get-Content -LiteralPath (Join-Path $dist 'BUILD-VALIDATION.json') -Raw|ConvertFrom-Json
+        if($validation.schema-cne'pscan-build-validation-v1'-or$validation.candidate-ne$false){throw 'Validation output identity is invalid'}
+        [pscustomobject]@{releaseTooling=$validation.source}
+    }else{Get-Content -LiteralPath (Join-Path $dist 'release-manifest.json') -Raw | ConvertFrom-Json}
     if ($testSummary.commands -notcontains "go test -p=1 -count=1 -run '^TestPinnedRuleAndCoverageIntegrityBindings$' ./tests/acceptance/gitleaks" -or
         $manifest.releaseTooling.commit -ne $SourceRevision -or $manifest.releaseTooling.tree -ne $sourceTrust.Tree) {
         throw 'CRLF build did not prove the pinned integrity test and exact tooling identity'

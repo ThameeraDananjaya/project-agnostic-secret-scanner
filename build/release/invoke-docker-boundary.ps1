@@ -104,7 +104,7 @@ try {
     foreach($property in $document.RootElement.EnumerateObject()){if(!$names.Add($property.Name)){throw 'Duplicate boundary child JSON field'}}
 } finally {$document.Dispose()}
 $result=$json|ConvertFrom-Json -AsHashtable
-$expected=@('Operation','DockerSHA256','ExitCode','StdOut','StdErr','StdOutByteCount','StdErrByteCount','ContainmentMembersObserved','ContainmentEmpty')
+$expected=@('Operation','DockerSHA256','ExitCode','StdOut','StdErr','StdOutByteCount','StdErrByteCount','ContainmentMembersObserved','ContainmentEmpty','DaemonContainerID','DaemonContainerRemoved','ProtocolCallCount','AggregateStdOutByteCount','AggregateStdErrByteCount')
 if($result-isnot[Collections.IDictionary]-or$result.Count-ne$expected.Count-or@($result.Keys|Where-Object{$_-cnotin$expected}).Count-ne 0-or
     $result.Operation-cne$Operation-or$result.DockerSHA256-notmatch'^[0-9a-f]{64}$'-or$result.ContainmentEmpty-isnot[bool]-or!$result.ContainmentEmpty-or
     $result.ExitCode-isnot[long]-and$result.ExitCode-isnot[int]-or$result.StdOut-isnot[string]-or$result.StdErr-isnot[string]){throw 'Boundary child returned malformed evidence'}
@@ -113,5 +113,19 @@ foreach($pair in @(@('StdOut','StdOutByteCount'),@('StdErr','StdErrByteCount')))
     if(($count-isnot[long]-and$count-isnot[int])-or$count-lt 0-or$count-gt 131072-or[Text.Encoding]::UTF8.GetByteCount($result[$pair[0]])-ne$count){throw 'Boundary child stream binding mismatch'}
 }
 if(($result.ContainmentMembersObserved-isnot[long]-and$result.ContainmentMembersObserved-isnot[int])-or$result.ContainmentMembersObserved-lt 0){throw 'Boundary member count invalid'}
+$containerOperation=$Operation-in@('ContainerCacheProof','ContainerCrlfParse','DependencyAcquisition','ReleaseBuild','ReleasePackage')
+if($result.DaemonContainerRemoved-isnot[bool]-or$result.DaemonContainerRemoved-ne$containerOperation-or
+    ($containerOperation-and($result.DaemonContainerID-isnot[string]-or$result.DaemonContainerID-cnotmatch'^[0-9a-f]{64}$'))-or
+    (!$containerOperation-and$null-ne$result.DaemonContainerID)-or
+    ($result.ProtocolCallCount-isnot[long]-and$result.ProtocolCallCount-isnot[int])-or$result.ProtocolCallCount-ne$(if($containerOperation){7}else{1})){throw 'Daemon lifecycle binding mismatch'}
+foreach($stream in @('StdOut','StdErr')){
+    $aggregate=$result['Aggregate'+$stream+'ByteCount']
+    if(($aggregate-isnot[long]-and$aggregate-isnot[int])-or$aggregate-lt$result[$stream+'ByteCount']-or$aggregate-gt 131072){throw 'Aggregate protocol stream evidence invalid'}
+}
 $global:LASTEXITCODE=0
+Write-Host ('PSCAN_DOCKER_LIFECYCLE '+(@{
+    operation=$Operation;container=$result.DaemonContainerID;daemonRemoved=$result.DaemonContainerRemoved
+    nativeEmpty=$result.ContainmentEmpty;calls=$result.ProtocolCallCount
+    stdoutBytes=$result.AggregateStdOutByteCount;stderrBytes=$result.AggregateStdErrByteCount
+}|ConvertTo-Json -Compress))
 Write-Output $json

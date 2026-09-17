@@ -1,9 +1,22 @@
-param([Parameter(Mandatory = $true)][string]$CacheDirectory)
+param(
+    [Parameter(Mandatory = $true)][string]$CacheDirectory,
+    [Parameter(Mandatory = $true)][string]$SourceRepository,
+    [Parameter(Mandatory = $true)][ValidatePattern('^[0-9a-f]{40}$')][string]$SourceRevision
+)
 
 $ErrorActionPreference = 'Stop'
 
 $image = 'docker.io/library/golang@sha256:ded31c68586d2e49e760acc2e65a884b23d032e9bbbed0ae0c55abd3fcaf4452'
-$root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+if ($SourceRevision -cne $env:PSCAN_TRUSTED_LAUNCHER_REVISION) { throw 'Acquisition source and launcher revisions conflict' }
+. (Join-Path $PSScriptRoot 'source-trust.ps1')
+$sourceTrust = Assert-ExactGitSourceTrust -Repository $SourceRepository -ExpectedRevision $SourceRevision
+$root = $sourceTrust.Repository
+# Acquisition consumes these files from the admitted complete repository, never
+# from the release-entrypoint-only materialization or an ambient fallback.
+foreach ($name in @('go.mod','go.sum')) {
+    $blob = (Convert-StrictUtf8 -Bytes (Invoke-SourceTrustGit -Repository $root -Arguments @('rev-parse',"${SourceRevision}:$name")).Bytes -Label 'Acquisition module source').Trim()
+    if ($blob -notmatch '^[0-9a-f]{40}$' -or (Get-RawFileGitBlobID -Path (Join-Path $root $name)) -cne $blob) { throw 'Acquisition module source bytes differ from the exact commit' }
+}
 $cache = [IO.Path]::GetFullPath($CacheDirectory)
 if (Test-Path -LiteralPath $cache) {
     if (Test-Path -LiteralPath (Join-Path $cache 'acquisition-ledger.json')) {
@@ -22,9 +35,10 @@ New-Item -ItemType Directory -Path $downloads,$moduleCache -Force | Out-Null
 
 $hostUID = $null
 $hostGID = $null
-$platformMode = 'windows-docker-desktop-default-user'
+$platformMode = 'windows-invoking-host'
 if ($IsLinux) {
     $hostUIDText = (& id -u).Trim()
+    if ($LASTEXITCODE -ne 0 -or $hostUIDText -notmatch '^\d+$') { throw 'Linux numeric UID discovery failed' }
     $hostGIDText = (& id -g).Trim()
     if ($LASTEXITCODE -ne 0 -or $hostUIDText -notmatch '^\d+$' -or $hostGIDText -notmatch '^\d+$') {
         throw 'Linux host numeric UID/GID discovery failed before dependency acquisition'

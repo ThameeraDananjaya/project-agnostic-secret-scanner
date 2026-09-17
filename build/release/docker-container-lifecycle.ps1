@@ -44,7 +44,7 @@ function Assert-ContainerConfiguration($Object,[string[]]$RunArguments,[string]$
     }
     $config=$Object.Config; $hostConfig=$Object.HostConfig
     foreach($field in @('Memory','MemorySwap','PidsLimit','NanoCpus')){
-        if($hostConfig[$field]-isnot[int]-and$hostConfig[$field]-isnot[long]){throw 'Malformed container numeric resource field'}
+        if($hostConfig[$field]-isnot[int]-and$hostConfig[$field]-isnot[long]){throw "Malformed container numeric resource field: $field"}
     }
     if($hostConfig.RestartPolicy.MaximumRetryCount-isnot[int]-and$hostConfig.RestartPolicy.MaximumRetryCount-isnot[long]){throw 'Malformed container restart count'}
     if ($Object.Image-cne$ImageID-or$config.Image-cne$Image-or$hostConfig.Privileged-isnot[bool]-or$hostConfig.Privileged-or
@@ -57,9 +57,19 @@ function Assert-ContainerConfiguration($Object,[string[]]$RunArguments,[string]$
     }
     SameList $hostConfig.CapDrop @('ALL') 'Dropped capabilities'
     SameList $hostConfig.SecurityOpt @('no-new-privileges') 'Security options'
-    $network=if($RunArguments-contains'--network'){Value '--network'}else{'default'}
-    if ($hostConfig.NetworkMode-cne$network-or$hostConfig.Memory-ne(Bytes (Value '--memory'))-or$hostConfig.MemorySwap-ne(Bytes (Value '--memory-swap'))-or
-        $hostConfig.PidsLimit-ne[int](Value '--pids-limit')-or$hostConfig.NanoCpus-ne([long](Value '--cpus')*1000000000)) { throw 'Created container network or resource limits differ' }
+    # Every fixed operation declares an exact built-in network. Docker maps the
+    # implicit "default" alias to "bridge" for Linux; never admit that ambiguity.
+    $network=Value '--network'
+    if($network-cnotin@('none','bridge')){throw 'Unsupported fixed container network'}
+    if($hostConfig.NetworkMode-isnot[string]-or$hostConfig.NetworkMode-cne$network){
+        $actualNetwork='other-or-invalid'
+        if($hostConfig.NetworkMode-is[string]-and$hostConfig.NetworkMode-cin@('none','bridge','default','host','nat')){$actualNetwork=$hostConfig.NetworkMode}
+        throw "Created container configuration differs: field=NetworkMode expected=$network actual=$actualNetwork"
+    }
+    $resources=[ordered]@{Memory=(Bytes (Value '--memory'));MemorySwap=(Bytes (Value '--memory-swap'));PidsLimit=[int](Value '--pids-limit');NanoCpus=([long](Value '--cpus')*1000000000)}
+    foreach($field in $resources.Keys){
+        if($hostConfig[$field]-ne$resources[$field]){throw "Created container configuration differs: field=$field expected=$($resources[$field]) actual=$($hostConfig[$field])"}
+    }
     $user=if($RunArguments-contains'--user'){Value '--user'}else{''}
     $workdir=if($RunArguments-contains'--workdir'){Value '--workdir'}else{''}
     if ($config.User-cne$user-or$config.WorkingDir-cne$workdir-or$config.Tty-isnot[bool]-or$config.Tty-or$config.OpenStdin-isnot[bool]-or$config.OpenStdin-or

@@ -121,4 +121,83 @@ $second=[PscanNativeBoundary]::CaptureShared([IO.MemoryStream]::new([byte[]]@(1,
 $rejected=$false;try{[void][PscanNativeBoundary]::CaptureShared([IO.MemoryStream]::new([byte[]]@(1,2,3,4)),131072,$budget,$false).GetAwaiter().GetResult()}catch{$rejected=$true}
 if(!$rejected-or$first.Length-ne 5-or$second.Length-ne 8){throw 'Actual per-stream aggregate capture failed'}
 $budget.BeginCleanup();Start-Sleep -Milliseconds 120;$budget.BeginCleanup();if($budget.Remaining-ne 0){throw 'Cleanup deadline was renewed'}
-Write-Output "Container lifecycle inert PASS scenarios=$cases omitted-empty-mounts=PASS shared-capture=PASS shared-cleanup-clock=PASS Docker-calls=0 daemon-runtime-proof=UNAVAILABLE"
+# Evaluate the actual closed operation selector with only path/payload I/O
+# replaced in this test scope. No production callback or selector is added.
+$selection=$tree.Find({param($n)$n-is[Management.Automation.Language.AssignmentStatementAst]-and$n.Left.Extent.Text-ceq'$arguments'-and$n.Right.Extent.Text.StartsWith('switch ($Operation)')},$true)
+if($null-eq$selection){throw 'Actual fixed operation selector missing'}
+$select=[scriptblock]::Create(@'
+param($Operation)
+function Require-Path($Name,$Path,$Directory){'/inert/'+$Name}
+function Get-CachePayload{'inert cache'}
+function Get-AcquisitionPayload{'inert acquisition'}
+function Get-BuildPayload{'inert build'}
+function Get-PackagePayload($Epoch){'inert package'}
+$containerUser=@{Arguments=@('--user','1001:1002');TmpfsSuffix=',mode=0700,uid=1001,gid=1002'}
+$PayloadKind='Acquisition';$SourceDateEpoch='1';$ProductRevision='a'*40;$ToolingRevision='b'*40;$ToolingTree='c'*40
+$ProductArchiveSHA256='d'*64;$ToolingArchiveSHA256='e'*64;$Created='2026-09-17T00:00:00Z'
+'@ + "`n" + $selection.Extent.Text + "`n" + '$arguments')
+$fixedChecks=0
+foreach($profile in @(
+    @{Operation='ContainerCacheProof';Network='none';Memory='128m';Pids='32';Cpus='1'},
+    @{Operation='ContainerCrlfParse';Network='none';Memory='128m';Pids='32';Cpus='1'},
+    @{Operation='DependencyAcquisition';Network='bridge';Memory='4g';Pids='256';Cpus='2'},
+    @{Operation='ReleaseBuild';Network='none';Memory='8g';Pids='512';Cpus='2'},
+    @{Operation='ReleasePackage';Network='none';Memory='1g';Pids='64';Cpus='1'}
+)){
+    $actual=@(& $select $profile.Operation)
+    foreach($pair in @(@('--network',$profile.Network),@('--memory',$profile.Memory),@('--memory-swap',$profile.Memory),@('--pids-limit',$profile.Pids),@('--cpus',$profile.Cpus))){
+        if(@($actual|Where-Object{$_-ceq$pair[0]}).Count-ne1-or$actual[$actual.IndexOf($pair[0])+1]-cne$pair[1]){throw "Actual fixed vector differs: $($profile.Operation) $($pair[0])"}
+        $fixedChecks++
+    }
+    if($profile.Operation-ceq'DependencyAcquisition'){$acquisitionVector=$actual}
+}
+function AcquisitionRecord {
+    $record=Record 'created'
+    $record.Config.WorkingDir='/src';$record.Config.Cmd=@('/usr/bin/env','-i','PATH=/usr/bin:/bin','HOME=/work','/bin/sh','-ceu','inert acquisition')
+    $record.HostConfig.NetworkMode='bridge';$record.HostConfig.Memory=[long]4294967296;$record.HostConfig.MemorySwap=[long]4294967296
+    $record.HostConfig.PidsLimit=256;$record.HostConfig.NanoCpus=[long]2000000000
+    $record.HostConfig.Tmpfs=@{'/work'='rw,exec,nosuid,nodev,size=1g,mode=0700,uid=1001,gid=1002'}
+    $record.HostConfig.Mounts=@(
+        @{Type='bind';Source='/inert/SourceRoot';Target='/src';ReadOnly=$true},
+        @{Type='bind';Source='/inert/RunnerGoArchive';Target='/input/runner-go.tar.gz';ReadOnly=$true},
+        @{Type='bind';Source='/inert/EngineGoArchive';Target='/input/engine-go.tar.gz';ReadOnly=$true},
+        @{Type='bind';Source='/inert/GitleaksArchive';Target='/input/gitleaks.tar.gz';ReadOnly=$true},
+        @{Type='bind';Source='/inert/CacheDirectory';Target='/gomodcache'}
+    )
+    return $record
+}
+Assert-ContainerConfiguration (AcquisitionRecord) $acquisitionVector $image $imageID;$fixedChecks++
+# Exact normalized readback is accepted; aliases, network changes and malformed
+# values fail with bounded fixed-field diagnostics, never arbitrary strings.
+foreach($mode in @('default','none','host','nat','Bridge','private-network-secret',"bridge`nsecret",('secret'*2000),$null,@('bridge'),42)){
+    $record=AcquisitionRecord;$record.HostConfig.NetworkMode=$mode
+    $message='';try{Assert-ContainerConfiguration $record $acquisitionVector $image $imageID}catch{$message=$_.Exception.Message}
+    if(!$message.StartsWith('Created container configuration differs: field=NetworkMode expected=bridge actual=')-or$message.Length-gt160-or$message.Contains('secret')){throw 'Network mutation accepted or diagnostic leaked unbounded input'}
+    $fixedChecks++
+}
+foreach($field in @('Memory','MemorySwap','PidsLimit','NanoCpus')){
+    foreach($delta in @(-1,1)){
+        $record=AcquisitionRecord;$expected=$record.HostConfig[$field];$record.HostConfig[$field]+=$delta
+        $message='';try{Assert-ContainerConfiguration $record $acquisitionVector $image $imageID}catch{$message=$_.Exception.Message}
+        if($message-cne"Created container configuration differs: field=$field expected=$expected actual=$($expected+$delta)"){throw "Resource mutation accepted or misclassified: $field"}
+        $fixedChecks++
+    }
+    foreach($invalid in @(@{V=$null},@{V='secret'},@{V=1.5},@{V=@(1)},@{V=$true})){
+        $record=AcquisitionRecord;$record.HostConfig[$field]=$invalid.V
+        $message='';try{Assert-ContainerConfiguration $record $acquisitionVector $image $imageID}catch{$message=$_.Exception.Message}
+        if($message-cne"Malformed container numeric resource field: $field"){throw 'Malformed resource field accepted or leaked'}
+        $fixedChecks++
+    }
+}
+foreach($variant in @('omitted','duplicate','implicit','host')){
+    $argsCopy=$acquisitionVector.Clone();$index=$argsCopy.IndexOf('--network')
+    switch($variant){
+        'omitted'{$argsCopy=$argsCopy[0..($index-1)]+$argsCopy[($index+2)..($argsCopy.Count-1)]}
+        'duplicate'{$argsCopy+=@('--network','bridge')}
+        'implicit'{$argsCopy[$index+1]='default'}
+        'host'{$argsCopy[$index+1]='host'}
+    }
+    $rejected=$false;try{Assert-ContainerConfiguration (AcquisitionRecord) $argsCopy $image $imageID}catch{$rejected=$true}
+    if(!$rejected){throw "Ambiguous fixed network vector accepted: $variant"};$fixedChecks++
+}
+Write-Output "Container lifecycle inert PASS scenarios=$cases fixed-vector-and-readback-checks=$fixedChecks omitted-empty-mounts=PASS shared-capture=PASS shared-cleanup-clock=PASS Docker-calls=0 daemon-runtime-proof=UNAVAILABLE"

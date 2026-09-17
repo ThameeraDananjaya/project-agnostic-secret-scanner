@@ -209,7 +209,10 @@ Docker inspection proves the complete repository-digest set contains exactly
 one canonical identity after any pull. Daemon, permission, timeout, protocol,
 stderr, malformed, scalar, null, duplicate, alias, mixed or unknown evidence
 must stop with no pull or later action. Container cache and shell-parser proofs must
-use `--pull=never --network none`. Dependency acquisition is the only networked
+use `--pull=never --network none`. Dependency acquisition explicitly selects
+the built-in Linux `--network bridge`; inspection must return that exact mode.
+Implicit/default modes, host networking and custom networks are not admitted.
+Dependency acquisition is the only networked
 build phase, and reproducibility builds must remain network-disabled with the
 completed cache read-only.
 

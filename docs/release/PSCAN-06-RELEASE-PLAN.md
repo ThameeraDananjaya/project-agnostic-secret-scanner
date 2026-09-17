@@ -1,5 +1,12 @@
 # PSCAN-06 Release Control Plan
 
+Current Step 3 timing amendment: `execution-profile.ps1` defines profile
+`pscan-release-execution-v2`: quick checks 15s, one image pull 180s, acquisition
+300s, each full build 900s and packaging 120s. This explicitly replaces the
+historical universal 15s release-tooling budget described below for new runs.
+The job remains 60 minutes; streams, containment and terminal cleanup retain
+their limits. Product scan profiles and historical attempts are unchanged.
+
 Correction C2 uses a separate manual-dispatch recovery workflow, exact product
 source and exact correction-tooling identities. Its build job has read-only
 contents permission and runs only from proposed tooling tag

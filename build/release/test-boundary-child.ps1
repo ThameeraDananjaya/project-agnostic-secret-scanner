@@ -5,6 +5,7 @@ if($errors.Count){throw 'Boundary child launcher does not parse'}
 $function=$tree.Find({param($n)$n-is[Management.Automation.Language.FunctionDefinitionAst]-and$n.Name-ceq'Invoke-BoundaryChild'},$true)
 if($null-eq$function){throw 'Actual child transport missing'}
 . ([scriptblock]::Create($function.Extent.Text))
+$childTransportBudgetMilliseconds=35000
 $hostPath=(Get-Process -Id $PID).Path
 function StartInfo([string]$Code){
     $s=[Diagnostics.ProcessStartInfo]::new();$s.FileName=$hostPath;$s.UseShellExecute=$false;$s.CreateNoWindow=$true
@@ -29,9 +30,7 @@ foreach($code in @('exit 7','[Console]::Error.Write("failure")','[Console]::Open
     if(!$rejected){throw 'Child failure or malformed/oversized transport was accepted'};$cases++
 }
 # Exercise the actual deadline/cleanup path with a shorter test-only deadline.
-$short=$function.Extent.Text.Replace('-ge 35000','-ge 2000')
-if($short-ceq$function.Extent.Text){throw 'Transport deadline site changed'}
-. ([scriptblock]::Create($short))
+$childTransportBudgetMilliseconds=2000
 $watch=[Diagnostics.Stopwatch]::StartNew();$rejected=$false
 try{[void](Invoke-BoundaryChild (StartInfo 'Start-Sleep -Seconds 30'))}catch{$rejected=$true}
 if(!$rejected-or$watch.ElapsedMilliseconds-gt 6000){throw 'Timeout/cleanup did not fail within the test bound'};$cases++

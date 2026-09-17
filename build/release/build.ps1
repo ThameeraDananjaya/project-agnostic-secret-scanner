@@ -165,10 +165,10 @@ if ($ledgerValue.schemaVersion -ne '2.1' -or $ledgerValue.cacheCanary.semantics 
 
 $receiptPath = Join-Path $acquisition 'docker-admission.json'
 if (!(Test-Path -LiteralPath $receiptPath -PathType Leaf)) { throw 'Release build requires the prior closed Docker admission receipt' }
-try { $imageAdmission = Get-Content -Raw -LiteralPath $receiptPath | ConvertFrom-Json } catch { throw 'Docker admission receipt is malformed' }
-if ($imageAdmission.schemaVersion -cne '1.0' -or $imageAdmission.sourceRevision -cne $toolingRevision -or $imageAdmission.image -cne $image -or
-    $imageAdmission.dockerExecutableSHA256 -notmatch '^[0-9a-f]{64}$' -or $imageAdmission.containment -cne 'empty-after-every-operation' -or
-    $imageAdmission.streamLimitBytes -ne 131072 -or $imageAdmission.commandBudgetMilliseconds -ne 15000 -or $imageAdmission.cleanupGraceMilliseconds -ne 2000) { throw 'Docker admission receipt does not bind this exact build' }
+. (Join-Path $PSScriptRoot 'execution-profile.ps1')
+$imageAdmission = Read-ReleaseImageAdmission $receiptPath
+if ($imageAdmission.sourceRevision -cne $toolingRevision -or $imageAdmission.image -cne $image -or
+    $imageAdmission.dockerExecutableSHA256 -notmatch '^[0-9a-f]{64}$' -or $imageAdmission.containment -cne 'empty-after-every-operation') { throw 'Docker admission receipt does not bind this exact build' }
 # Carry the admitted ordinary host identity through every writable container.
 . (Join-Path $PSScriptRoot 'host-cache-canary.ps1')
 $hostIdentity = Get-HostCacheIdentity -CacheDirectory $moduleCache

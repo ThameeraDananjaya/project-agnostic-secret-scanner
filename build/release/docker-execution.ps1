@@ -41,8 +41,9 @@ if ($MyInvocation.InvocationName -eq '.' -or $MyInvocation.Line -match '^\s*\.\s
 }
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'execution-profile.ps1')
 $dockerOutputLimit = 131072
-$dockerBudgetMilliseconds = 15000
+$dockerBudgetMilliseconds = Get-ReleaseOperationBudget $Operation
 $cleanupGraceMilliseconds = 2000
 $image = 'docker.io/library/golang@sha256:ded31c68586d2e49e760acc2e65a884b23d032e9bbbed0ae0c55abd3fcaf4452'
 if ($Operation -cne 'EngineInspection' -and [string]::IsNullOrEmpty($ExpectedDockerSHA256)) { throw "$Operation requires the exact Docker digest admitted by EngineInspection" }
@@ -73,7 +74,7 @@ public sealed class PscanOperationBudget {
     long cleanupStart = -1;
     int stdoutUsed, stderrUsed;
     public PscanOperationBudget(int operation, int cleanup, int limit) {
-        if (operation < 1 || operation > 15000 || cleanup < 0 || cleanup > 2000 || limit < 1 || limit > 131072) throw new ArgumentOutOfRangeException();
+        if (operation < 1 || operation > 900000 || cleanup < 0 || cleanup > 2000 || limit < 1 || limit > 131072) throw new ArgumentOutOfRangeException();
         operationMs=operation; cleanupMs=cleanup; streamLimit=limit;
     }
     public void BeginCleanup() { Interlocked.CompareExchange(ref cleanupStart, watch.ElapsedMilliseconds, -1); }

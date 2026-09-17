@@ -19,7 +19,7 @@ FIELDS = ('Uid', 'Gid', 'Groups', 'CapInh', 'CapPrm', 'CapEff', 'CapBnd', 'CapAm
 NAMESPACES = ('cgroup', 'ipc', 'mnt', 'net', 'pid', 'pid_for_children',
               'time', 'time_for_children', 'user', 'uts')
 SOURCES = ('native-profile-context.py', 'native-profile-driver.ps1', 'native-host-facts.py',
-           'test-docker-execution.ps1', 'docker-execution.ps1', 'native-fixture-diagnostics.ps1')
+           'test-docker-execution.ps1', 'docker-execution.ps1', 'execution-profile.ps1', 'native-fixture-diagnostics.ps1')
 
 
 def require(condition, message):

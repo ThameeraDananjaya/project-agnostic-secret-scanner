@@ -13,6 +13,7 @@ $dockerBoundary = [IO.Path]::Combine($PSScriptRoot, 'invoke-docker-boundary.ps1'
 $receiptPath = Join-Path ([IO.Path]::GetFullPath((Resolve-Path -LiteralPath $CacheDirectory).Path)) 'docker-admission.json'
 if (Test-Path -LiteralPath $receiptPath) { throw 'Docker admission receipt path must be absent before any admission operation' }
 . ([IO.Path]::Combine($PSScriptRoot, 'image-admission.ps1'))
+. (Join-Path $PSScriptRoot 'execution-profile.ps1')
 
 function Invoke-ClosedOperation([string]$Operation, [string]$ExpectedDockerSHA256) {
     $parameters = @{ Operation = $Operation }
@@ -72,10 +73,10 @@ $result = [pscustomobject]@{
     ProvedCachePaths=@($prerequisites.CacheRoot,$prerequisites.Downloads,$prerequisites.ModuleCache)
 }
 $receipt = [ordered]@{
-    schemaVersion='1.0'; sourceRevision=$SourceRevision; image=$releaseImage
+    schemaVersion='2.0'; sourceRevision=$SourceRevision; image=$releaseImage
     dockerExecutableSHA256=$dockerSHA256; pulledDuringAdmission=$pulled
     hostIdentityMode=$result.HostIdentityMode; hostUID=$result.HostUID; hostGID=$result.HostGID
-    containment='empty-after-every-operation'; streamLimitBytes=131072; commandBudgetMilliseconds=15000; cleanupGraceMilliseconds=2000
+    containment='empty-after-every-operation'; executionProfile=(Get-ReleaseExecutionProfile)
 }
 [IO.File]::WriteAllText($receiptPath, ($receipt | ConvertTo-Json -Depth 4) + "`n", [Text.UTF8Encoding]::new($false))
 $result

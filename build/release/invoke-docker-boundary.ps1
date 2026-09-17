@@ -39,6 +39,8 @@ param(
 # A fixed fresh PowerShell transport; Docker remains created only by the closed child.
 if ($MyInvocation.InvocationName -eq '.') { throw 'Boundary child launcher cannot be dot-sourced' }
 $ErrorActionPreference='Stop'
+. (Join-Path $PSScriptRoot 'execution-profile.ps1')
+$childTransportBudgetMilliseconds=(Get-ReleaseOperationBudget $Operation)+(Get-ReleaseExecutionProfile).childTransportAllowanceMilliseconds
 function Invoke-BoundaryChild([Diagnostics.ProcessStartInfo]$StartInfo) {
     $process=[Diagnostics.Process]::new();$process.StartInfo=$StartInfo
     $watch=[Diagnostics.Stopwatch]::StartNew()
@@ -65,9 +67,9 @@ function Invoke-BoundaryChild([Diagnostics.ProcessStartInfo]$StartInfo) {
                 }
             }
             if($process.HasExited-and$closed[0]-and$closed[1]){break}
-            # Independent startup/compilation/JSON transport allowance. The child
-            # still enforces the unchanged 15000ms Docker + 2000ms cleanup bounds.
-            if($watch.ElapsedMilliseconds-ge 35000){throw 'Boundary child transport timeout'}
+            # Same fixed operation profile plus startup/compilation/JSON allowance.
+            # The child retains one operation clock and its terminal cleanup bound.
+            if($watch.ElapsedMilliseconds-ge $childTransportBudgetMilliseconds){throw 'Boundary child transport timeout'}
             Start-Sleep -Milliseconds 2
         }
         $utf8=[Text.UTF8Encoding]::new($false,$true)

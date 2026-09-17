@@ -46,16 +46,21 @@ removed forcibly during the original bounded terminal cleanup. An actual
 nonzero workload exit remains nonzero, including expected negative controls;
 OOM, identity mismatch or uncertainty cannot become successful containment.
 
-One monotonic budget spans the whole protocol: 15000ms for all operation stages
-and a single 2000ms grace shared by native and daemon cleanup. Nested calls do
-not reset these clocks. Protocol and workload bytes share independent 131072-
-byte stdout/stderr limits. The existing 35s fresh-child transport does not
-extend those limits. The validated child result includes the exact removed
+One monotonic budget spans the whole protocol. Fixed profile
+`pscan-release-execution-v2` retains 15s for quick inspections/cache/CRLF, with
+180s for the one image pull, 300s for acquisition, 900s per full build and 120s
+for packaging both bundles. A single 2000ms grace is shared by native and daemon
+terminal cleanup. Nested calls do not reset clocks. Protocol and workload bytes
+share independent 131072-byte stdout/stderr limits, with at most nine calls.
+Fresh-child transport uses the same operation ceiling plus 20s overhead and
+its existing 2s terminal wait. The validated child result includes the exact removed
 container identity, protocol-call count and aggregate stream counts; the caller
 logs a bounded `PSCAN_DOCKER_LIFECYCLE` record.
 
-Cold image pull/acquisition/full build may exceed 15 seconds. No budget extension,
-retry or stage splitting is implied. Failure freezes the attempt and stops.
+The strict internal image-admission receipt schema 2.0 binds this exact profile;
+old, malformed or altered profiles reject. The job remains bounded to 60 minutes.
+These limits are engineering ceilings, not measured guarantees. Expiration
+freezes the attempt; no automatic increase, retry or stage splitting is implied.
 
 ## Evidence limits
 

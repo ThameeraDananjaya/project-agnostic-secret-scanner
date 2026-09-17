@@ -59,10 +59,10 @@ $sourceRevision = $env:PSCAN_TRUSTED_LAUNCHER_REVISION
 if ($sourceRevision -notmatch '^[0-9a-f]{40}$') { throw 'Acquisition requires the exact committed launcher revision' }
 $receiptPath = Join-Path $cache 'docker-admission.json'
 if (!(Test-Path -LiteralPath $receiptPath -PathType Leaf)) { throw 'Dependency acquisition requires the prior closed Docker admission receipt' }
-try { $imageAdmission = Get-Content -Raw -LiteralPath $receiptPath | ConvertFrom-Json } catch { throw 'Docker admission receipt is malformed' }
-if ($imageAdmission.schemaVersion -cne '1.0' -or $imageAdmission.sourceRevision -cne $sourceRevision -or $imageAdmission.image -cne $image -or
+. (Join-Path $PSScriptRoot 'execution-profile.ps1')
+$imageAdmission = Read-ReleaseImageAdmission $receiptPath
+if ($imageAdmission.sourceRevision -cne $sourceRevision -or $imageAdmission.image -cne $image -or
     $imageAdmission.dockerExecutableSHA256 -notmatch '^[0-9a-f]{64}$' -or $imageAdmission.containment -cne 'empty-after-every-operation' -or
-    $imageAdmission.streamLimitBytes -ne 131072 -or $imageAdmission.commandBudgetMilliseconds -ne 15000 -or $imageAdmission.cleanupGraceMilliseconds -ne 2000 -or
     $imageAdmission.hostIdentityMode -cne $platformMode -or $imageAdmission.hostUID -ne $hostUID -or $imageAdmission.hostGID -ne $hostGID) { throw 'Docker admission receipt does not bind this exact acquisition' }
 $dockerSHA256 = $imageAdmission.dockerExecutableSHA256
 . (Join-Path $PSScriptRoot 'image-admission.ps1')

@@ -29,6 +29,37 @@ function Get-HostCacheIdentity {
     return [pscustomobject]@{ IdentityMode=$identityMode; HostUID=$hostUID; HostGID=$hostGID }
 }
 
+function Test-LinuxHostCacheWriteDenial {
+    param([Exception]$Failure)
+    # This host control uses chmod 0500, not a read-only filesystem. Admit only
+    # Linux EACCES (13). .NET preserves that errno in the innermost IOException.
+    # Windows HRESULTs, EROFS (30), messages and generic IOException do not prove it.
+    $seen = [Collections.Generic.List[Exception]]::new()
+    $recordSeen = $false
+    while ($null -ne $Failure) {
+        if ($seen.Count -ge 8) { return $false }
+        foreach ($previous in $seen) { if ([object]::ReferenceEquals($previous, $Failure)) { return $false } }
+        $seen.Add($Failure)
+        $type = $Failure.GetType()
+        if ($Failure.Data.Contains('PSCANCachePhase')) {
+            if ($recordSeen -or $type -ne [IO.IOException] -or
+                $Failure.Data['PSCANCachePhase'] -cne 'create-write' -or
+                $Failure.Data['PSCANCacheCleanup'] -cne 'not-needed' -or
+                $Failure.Data['PSCANCacheOwnedFile'] -isnot [bool] -or
+                $Failure.Data['PSCANCacheOwnedFile']) { return $false }
+            $recordSeen = $true
+            if ($null -eq $Failure.InnerException) { return $false }
+        } elseif ($null -eq $Failure.InnerException) {
+            return ($recordSeen -and $type -eq [IO.IOException] -and $Failure.HResult -eq 13)
+        } elseif ($type -ne [Management.Automation.MethodInvocationException] -and
+                  $type -ne [UnauthorizedAccessException]) {
+            return $false
+        }
+        $Failure = $Failure.InnerException
+    }
+    return $false
+}
+
 function Invoke-HostCacheCanary {
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)][string]$CacheDirectory)
@@ -78,6 +109,7 @@ function Invoke-HostCacheCanary {
         } | ConvertTo-Json -Compress
         $canaryFailure=[IO.IOException]::new("Host cache canary failed before acquisition: $diagnostic", $failure)
         $canaryFailure.Data['PSCANCachePhase']=$phase;$canaryFailure.Data['PSCANCacheCleanup']=$cleanup
+        $canaryFailure.Data['PSCANCacheOwnedFile']=($null -ne $ownedPath)
         throw $canaryFailure
     }
 

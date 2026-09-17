@@ -36,8 +36,7 @@ if ($Phase -in @('Host','All')) {
             if($case.Name-ceq'wrong-owner'){
                 if($_.FullyQualifiedErrorId-notlike'PSCAN_HOST_CACHE_OWNER_MISMATCH*'){throw}
             }else{
-                $failure=$_.Exception;$cause=$failure;while($null-ne$cause.InnerException){$cause=$cause.InnerException}
-                if($failure.Data['PSCANCachePhase']-cne'create-write'-or$failure.Data['PSCANCacheCleanup']-cne'not-needed'-or$cause-isnot[UnauthorizedAccessException]){throw}
+                if (!(Test-LinuxHostCacheWriteDenial $_.Exception)) { throw }
             }
             $failedClosed = $true
         }

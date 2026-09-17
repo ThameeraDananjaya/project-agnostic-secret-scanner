@@ -60,6 +60,60 @@ try {
         Check ($errorID-ne''-and$errorID-notlike'PSCAN_CACHE_EXPECTED_DENIAL*') 'Untrusted lifecycle became an expected negative control'
     }
     . (Join-Path $PSScriptRoot 'host-cache-canary.ps1')
+    function New-CanaryFailure([Exception]$Inner) {
+        $failure=[IO.IOException]::new('inert canary record',$Inner)
+        $failure.Data['PSCANCachePhase']='create-write'
+        $failure.Data['PSCANCacheCleanup']='not-needed'
+        $failure.Data['PSCANCacheOwnedFile']=$false
+        return $failure
+    }
+    $errno13=[IO.IOException]::new('arbitrary non-permission message',13)
+    foreach ($inner in @(
+        $errno13,
+        [UnauthorizedAccessException]::new('inert unauthorized wrapper',$errno13),
+        [Management.Automation.MethodInvocationException]::new('inert method wrapper',$errno13),
+        [Management.Automation.MethodInvocationException]::new('inert method wrapper',[UnauthorizedAccessException]::new('inert unauthorized wrapper',$errno13))
+    )) {
+        $failure=New-CanaryFailure $inner
+        Check (Test-LinuxHostCacheWriteDenial $failure) 'Verified Linux errno 13 chain rejected'
+        Check (Test-LinuxHostCacheWriteDenial ([Management.Automation.MethodInvocationException]::new('outer wrapper',$failure))) 'Outer method wrapper lost exact canary record'
+    }
+    foreach ($inner in @(
+        [IO.IOException]::new('Permission denied'),
+        [UnauthorizedAccessException]::new('Permission denied'),
+        [IO.IOException]::new('Permission denied',30), # EROFS belongs to a mounted-filesystem control, not chmod.
+        [IO.IOException]::new('Permission denied',1),
+        [IO.IOException]::new('Permission denied',5),
+        [IO.IOException]::new('Permission denied',9),
+        [IO.IOException]::new('Permission denied',17),
+        [IO.IOException]::new('Permission denied',28),
+        [IO.IOException]::new('Permission denied',-2147024891), # Windows access denied HRESULT.
+        [IO.IOException]::new('Permission denied',-2147024877), # Windows write-protected HRESULT.
+        [Exception]::new('unknown wrapper',$errno13),
+        [IO.IOException]::new('unstructured intermediate I/O failure',$errno13),
+        [UnauthorizedAccessException]::new('wrong errno',[IO.IOException]::new('Permission denied',9))
+    )) { Check (!(Test-LinuxHostCacheWriteDenial (New-CanaryFailure $inner))) 'Unproved platform denial admitted' }
+    Check (!(Test-LinuxHostCacheWriteDenial $errno13)) 'Raw errno without canary phase/ownership record admitted'
+    Check (!(Test-LinuxHostCacheWriteDenial $null)) 'Missing failure admitted'
+    foreach ($phase in @('atomic-rename','read','delete','verify-cleanup','')) {
+        $failure=New-CanaryFailure $errno13; $failure.Data['PSCANCachePhase']=$phase
+        Check (!(Test-LinuxHostCacheWriteDenial $failure)) 'Later or missing phase admitted'
+    }
+    foreach ($cleanup in @('completed','failed','unproved','')) {
+        $failure=New-CanaryFailure $errno13; $failure.Data['PSCANCacheCleanup']=$cleanup
+        Check (!(Test-LinuxHostCacheWriteDenial $failure)) 'Uncertain or required cleanup admitted'
+    }
+    foreach ($owned in @($true,'false',0,$null)) {
+        $failure=New-CanaryFailure $errno13; $failure.Data['PSCANCacheOwnedFile']=$owned
+        Check (!(Test-LinuxHostCacheWriteDenial $failure)) 'Owned file or malformed ownership proof admitted'
+    }
+    $failure=New-CanaryFailure (New-CanaryFailure $errno13)
+    Check (!(Test-LinuxHostCacheWriteDenial $failure)) 'Duplicate canary metadata admitted'
+    $failure=New-CanaryFailure $errno13
+    for($n=0;$n-lt 6;$n++) { $failure=[Management.Automation.MethodInvocationException]::new('bounded wrapper',$failure) }
+    Check (Test-LinuxHostCacheWriteDenial $failure) 'Eight-exception bounded chain rejected'
+    $failure=[Management.Automation.MethodInvocationException]::new('excess wrapper',$failure)
+    Check (!(Test-LinuxHostCacheWriteDenial $failure)) 'Oversize exception chain admitted'
     $positive=Join-Path $temporaryRoot 'positive'; [void][IO.Directory]::CreateDirectory($positive)
     $identity=Invoke-HostCacheCanary $positive
     Check ($null-ne$identity-and[IO.Directory]::GetFileSystemEntries($positive).Count-eq 0) 'Actual host canary failed or left files'
